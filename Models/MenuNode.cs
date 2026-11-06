@@ -61,21 +61,43 @@ namespace CascadeControl.Models
         /// </summary>
         public bool IsLeaf => _children.Count == 0;
 
+        private string _displayText;
+
         /// <summary>
-        /// 畫面上的顯示文字，格式為 &lt;序號&gt;名稱，例如 &lt;01&gt;A。樹根為空字串。
+        /// 畫面上的顯示文字，格式為 &lt;序號&gt;名稱，有子節點時再加上 " [+]"，例如 &lt;01&gt;A [+]、&lt;01&gt;A11。樹根為空字串。
         /// </summary>
-        public string DisplayText => Parent == null ? string.Empty : $"<{Index:00}>{Name}";
+        /// <remarks>
+        /// 第一次讀取時才組字串並快取；子節點增加時由 <see cref="GetOrAddChild"/> 清除快取。
+        /// </remarks>
+        public string DisplayText
+        {
+            get
+            {
+                if (_displayText == null)
+                    _displayText = BuildDisplayText();
+                return _displayText;
+            }
+        }
+
+        private string BuildDisplayText()
+        {
+            return Parent == null
+                ? string.Empty
+                : $"<{Index:00}>{Name}{(_children.Count > 0 ? " [+]" : string.Empty)}";
+        }
+
+        // 顯示文字會隨 _children 是否為空而改變，所以 _children 增加時要呼叫。
+        // Name 不可變；Parent / Index 只在 GetOrAddChild 建立節點時設定一次，當時還沒有快取，不必呼叫。
+        private void InvalidateDisplayText()
+        {
+            _displayText = null;
+        }
 
         /// <summary>
         /// 從第一層到本節點的路徑字串，只含名稱、不含序號，例如 A &gt; A1 &gt; A11。
         /// </summary>
         /// <remarks>內容和來源資料寫的一樣，所以用在警告訊息裡，使用者可以直接拿去找出有問題的那一筆。</remarks>
         public string FullPath => BuildPath(node => node.Name);
-
-        /// <summary>
-        /// 從第一層到本節點的路徑字串，含序號，例如 &lt;01&gt;A &gt; &lt;02&gt;A1 &gt; &lt;01&gt;A11。
-        /// </summary>
-        public string DisplayPath => BuildPath(node => node.DisplayText);
 
         /// <summary>
         /// 從第一層到本節點經過的所有節點，由淺到深排列，不含樹根；樹根本身回傳空集合。
@@ -114,6 +136,7 @@ namespace CascadeControl.Models
             var child = new MenuNode(key) { Parent = this, Depth = Depth + 1, Index = _children.Count + 1 };
             _children.Add(child);
             _index.Add(key, child);
+            InvalidateDisplayText(); // 本節點可能剛從葉節點變成中間節點，" [+]" 要重算
             return child;
         }
 
@@ -136,8 +159,9 @@ namespace CascadeControl.Models
         IReadOnlyList<ICascadeItem> ICascadeItem.Children => _children;
 
         /// <summary>
-        /// 回傳 <see cref="DisplayText"/>，方便除錯與記錄。
+        /// 回傳 <see cref="Name"/>，方便除錯與記錄。
         /// </summary>
-        public override string ToString() => DisplayText;
+        /// <remarks>欄位上的顯示文字由 <see cref="ICascadeItem.Text"/> 決定，不受這裡影響。</remarks>
+        public override string ToString() => Name;
     }
 }

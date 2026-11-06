@@ -173,10 +173,10 @@ namespace CascadeControl.Views
         public IReadOnlyList<ICascadeItem> SelectedPath => Selection.ToList();
 
         /// <summary>
-        /// 目前選取路徑的文字表示，以 <see cref="PathSeparator"/> 串接；未選取時為空字串。
+        /// 目前選取路徑上各層的 <see cref="ICascadeItem.Name"/>，以 <see cref="PathSeparator"/> 串接；未選取時為空字串。
         /// </summary>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string SelectedPathText => string.Join(_pathSeparator, Selection.Select(item => item.Text));
+        public string SelectedPathText => string.Join(_pathSeparator, Selection.Select(item => item.Name));
 
         /// <summary>
         /// 目前的選取是否停在葉節點，也就是整條路徑已經選到底。

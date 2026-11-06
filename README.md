@@ -115,10 +115,10 @@ MenuTreeCsv.Save(menu, "menu.csv");   // 需要的話存成檔案
 ```csharp
 cascadeView1.SetRoots(new[]
 {
-    new CascadeItem("System", children: new[]
+    new CascadeItem("System", "System", children: new[]   // 名稱、顯示文字
     {
-        new CascadeItem("Reboot", tag: myRebootCommand),
-        new CascadeItem("Shutdown", tag: myShutdownCommand),
+        new CascadeItem("Reboot", "Reboot", tag: myRebootCommand),
+        new CascadeItem("Shutdown", "Shutdown", tag: myShutdownCommand),
     }),
 });
 
@@ -128,12 +128,13 @@ var command = ((CascadeItem)e.Item).Tag;
 
 ### 接上自己的資料模型
 
-只要實作 `ICascadeItem` 的兩個成員就行。這個介面不相依 WinForms，可以放在資料層。
+只要實作 `ICascadeItem` 的三個成員就行。這個介面不相依 WinForms，可以放在資料層。
 
 ```csharp
 public sealed class DeviceNode : ICascadeItem
 {
-    public string Text => Name;                                  // 欄位上顯示的文字
+    public string Name { get; }                                  // 原始名稱，用於路徑文字
+    public string Text => Name;                                  // 欄位上顯示的文字，可以和 Name 不同
     public IReadOnlyList<ICascadeItem> Children => LoadChildren(); // 空集合代表終點
     // ...
 }
@@ -159,7 +160,7 @@ public sealed class DeviceNode : ICascadeItem
 private void CascadeView1_SelectionChanged(object sender, CascadeItemEventArgs e)
 {
     btnRun.Enabled = e.IsLeaf;                    // 選到終點才能執行
-    lblPath.Text = cascadeView1.SelectedPathText; // 「<02>Motor => <01>Axis X」
+    lblPath.Text = cascadeView1.SelectedPathText; // 「Motor => Axis X」
 }
 ```
 
@@ -215,7 +216,7 @@ cascadeView1.DrawItem += (s, e) =>
   程式中組這種字串可以用 `MenuTreeCsv.JoinAlternatives`。
 - **名稱**：前後空白會自動去除；**區分大小寫**，所以 `Reboot` 和 `reboot` 是兩個不同的項目。
 - **重複與延伸**：完全相同的路徑會合併。`A,B` 和 `A,B,C` 同時存在時，`B` 會變成中間節點，不算錯誤。
-- **顯示文字**：`MenuNode` 在畫面上顯示成 `<01>Name`，序號是它在同一層中第一次出現的順序。
+- **顯示文字**：`MenuNode` 在畫面上顯示成 `<01>Name`，有子節點時再加上 ` [+]`；序號是它在同一層中第一次出現的順序。顯示文字只用在欄位上，路徑與記錄一律使用 `Name`。
 
 以下情況不會丟例外，而是寫進 `warnings`：
 
@@ -275,8 +276,9 @@ cascadeView1.DrawItem += (s, e) =>
 | `MenuTree.AddPath(names)` | 加入一條路徑，回傳終點節點 |
 | `MenuTree.Leaves()` / `MaxDepth` / `IsEmpty` | 查詢 |
 | `MenuTree.FromRows(rows, out warnings)` / `ToRows()` | 與二維字串陣列互轉 |
-| `MenuNode.Name` / `DisplayText` | 原始名稱，以及 `<01>Name` 形式的顯示文字 |
-| `MenuNode.FullPath` / `DisplayPath` / `PathFromRoot` | 由第一層到本節點的路徑 |
+| `MenuNode.Name` | 原始名稱，即 `ICascadeItem.Name`；路徑、記錄都用它 |
+| `MenuNode.DisplayText` | 欄位上的顯示文字，即 `ICascadeItem.Text`：`<01>Name`，有子節點時為 `<01>Name [+]` |
+| `MenuNode.FullPath` / `PathFromRoot` | 由第一層到本節點的路徑 |
 | `MenuNode.Parent` / `Depth` / `Index` / `IsLeaf` | 位置資訊 |
 
 **`MenuTreeCsv`**（`CascadeControl.Services`）
