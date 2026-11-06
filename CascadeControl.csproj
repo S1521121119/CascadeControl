@@ -53,11 +53,13 @@
     <Compile Include="Views\CascadeView.Rendering.cs" />
     <Compile Include="Views\CascadeViewDesigner.cs" />
     <Compile Include="Views\ICascadeItem.cs" />
+    <Compile Include="Models\AlternativeCell.cs" />
     <Compile Include="Models\MenuNode.cs" />
     <Compile Include="Models\MenuTree.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\CsvFile.cs" />
     <Compile Include="Services\MenuTreeCsv.cs" />
+    <Compile Include="Services\MenuTreeText.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

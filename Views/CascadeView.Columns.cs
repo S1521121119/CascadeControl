@@ -16,6 +16,7 @@ namespace CascadeControl.Views
 
         // BeginColumnUpdate 可巢狀呼叫（TrySelectPath 裡會逐欄觸發 SelectedIndexChanged），只有最外層真的暫停／恢復繪製。
         private int _columnUpdateDepth;
+
         private bool _redrawSuspended;
 
         private void OnColumnSelectedIndexChanged(object sender, EventArgs e)
@@ -230,7 +231,7 @@ namespace CascadeControl.Views
             if (AutoScrollMinSize != minSize) AutoScrollMinSize = minSize;
 
             var left = ColumnLeft(FocusedLevel);
-            var nextRight = left + (ColumnWidth + ColumnGap) + ColumnWidth;
+            var nextRight = left + ColumnWidth + ColumnGap + ColumnWidth;
 
             // 位置沒變就不要重設，設下去會讓所有欄位跟著重畫一次。AutoScrollPosition 讀出來是負值。
             var wanted = Math.Max(0, Math.Min(left, nextRight - ClientSize.Width));

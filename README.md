@@ -18,7 +18,7 @@
 第 4 欄是 `Jog` 的子節點。`Forward` 沒有下一層，選到它再按 Enter 就會觸發 `ItemActivated`。
 
 - **需求**：.NET Framework 4.8、Windows Forms，不需要第三方套件。
-- **命名空間**：`CascadeControl.Views`（控制項）、`CascadeControl.Models`（選單樹）、`CascadeControl.Services`（CSV 讀寫）。
+- **命名空間**：`CascadeControl.Views`（控制項）、`CascadeControl.Models`（選單樹與 `|` 語法）、`CascadeControl.Services`（文字與 CSV 讀寫）。
 
 **目錄**：[快速開始](#快速開始) · [常見任務](#常見任務) · [CSV 格式](#csv-格式) · [操作方式](#操作方式) · [API 速查](#api-速查) · [注意事項](#注意事項)
 
@@ -98,7 +98,7 @@ private void CascadeView1_ItemActivated(object sender, CascadeItemEventArgs e)
 
 ### 用程式組選單
 
-**`MenuTree.AddPath`**：一次加入一條路徑。畫面上的順序就是呼叫的順序，同一條路徑重複加入會自動合併。
+**`MenuTree.AddPath`**：一次加入一條路徑。畫面上的順序就是呼叫的順序，同一條路徑重複加入會自動合併。名稱不可含有 `|`，否則丟 `ArgumentException`；要列舉同層項目請用下面的 `AddPaths`。
 
 ```csharp
 var menu = new MenuTree();
@@ -109,6 +109,35 @@ menu.AddPath("Motor", "Axis X", "Home");
 cascadeView1.SetRoots(menu.TopLevel);
 MenuTreeCsv.Save(menu, "menu.csv");   // 需要的話存成檔案
 ```
+
+**`MenuTree.AddPaths`**：一次加入一整列，每一格都可以用 `|` 列舉同層項目，規則和 CSV 相同。回傳每一條路徑的終點節點。
+
+```csharp
+menu.AddPaths("Motor", "Axis X|Axis Y", "Jog", "Forward|Backward");   // 加入 4 條路徑
+menu.AddPaths("IO", "Input", AlternativeCell.Join(inputNames));        // 名稱清單來自程式時
+```
+
+和 `AddPath` 不同，`AddPaths` 會先去除每個名稱前後的空白；有任何一格不合法時丟 `ArgumentException`，整列都不會加入。
+
+### 用文字組選單
+
+**`MenuTreeText`** 處理文字和樹之間的轉換，不碰檔案。格式和 CSV 檔完全相同，所以可以直接在程式裡手寫，
+也可以貼上從剪貼簿、資料庫或其他來源拿到的整段文字：
+
+```csharp
+MenuTree menu = MenuTreeText.Parse(@"
+    System, Reboot|Shutdown
+    System, Info,          Version|Uptime|Memory
+
+    Motor,  Axis X|Axis Y, Home
+", out IList<string> warnings);
+
+string text = MenuTreeText.Format(menu, compact: true);   // 轉回文字，可另外存放
+```
+
+- 表頭可有可無；空白行、縮排、逗號後的空白都會被忽略。
+- 警告中的「第 N 列」是文字中的實際行號，空白行和跨行的儲存格也照算。
+- `Parse` 不會丟例外，有問題的資料只會寫進 `warnings`。
 
 **`CascadeItem`**：不需要 `MenuTree` 的功能（例如 CSV、序號、`FullPath`）時，直接用內建節點組樹，再用 `Tag` 帶上自己的資料：
 
@@ -210,10 +239,12 @@ cascadeView1.DrawItem += (s, e) =>
 
 ## CSV 格式
 
-- **表頭**：第一列是 `Level1,Level2,…`（不分大小寫）。如果第一列不是表頭，會被當成資料並發出警告。
+檔案（`MenuTreeCsv`）和文字（`MenuTreeText`）用的是同一種格式。
+
+- **表頭**：第一列是 `Level1,Level2,…`（不分大小寫）。讀檔時如果第一列不是表頭，會被當成資料並發出警告；`MenuTreeText.Parse` 則不要求表頭。
 - **一列一條路徑**：由左至右是第 1 層、第 2 層…，深度不足的尾欄留空。深度沒有上限。
-- **用 `|` 列舉同層項目**：`Axis X|Axis Y` 代表兩個兄弟節點；同一列有好幾格這樣寫時，會依笛卡兒積展開成多條路徑。
-  程式中組這種字串可以用 `MenuTreeCsv.JoinAlternatives`。
+- **用 `|` 列舉同層項目**：`Axis X|Axis Y` 代表兩個兄弟節點；同一列有好幾格這樣寫時，會依笛卡兒積展開成多條路徑（越右邊的欄位變化越快）。
+  程式中組這種字串可以用 `AlternativeCell.Join`。
 - **名稱**：前後空白會自動去除；**區分大小寫**，所以 `Reboot` 和 `reboot` 是兩個不同的項目。
 - **重複與延伸**：完全相同的路徑會合併。`A,B` 和 `A,B,C` 同時存在時，`B` 會變成中間節點，不算錯誤。
 - **顯示文字**：`MenuNode` 在畫面上顯示成 `<01>Name`，有子節點時再加上 ` [+]`；序號是它在同一層中第一次出現的順序。顯示文字只用在欄位上，路徑與記錄一律使用 `Name`。
@@ -222,14 +253,44 @@ cascadeView1.DrawItem += (s, e) =>
 
 - 中間缺一層，例如 `A,,C`：空欄之後的欄位會被忽略。
 - `|` 用法錯誤，例如 `A||B`、`|A`、`A|`，或某一段只有空白：整列跳過。
-- 單列展開超過 5000 條（`MAX_EXPANSION_PER_ROW`）：整列跳過。
-- 整份展開超過 30000 條（`MAX_EXPANSION_TOTAL`）：整份放棄，回傳空樹。
+- 單列展開超過 65,535 條（`AlternativeCell.MAX_EXPANSION`）：整列跳過。
+- 整份展開累計超過 65,535 條：整份放棄，回傳空樹。
 
-其他須知：
+警告訊息中的「第 N 列」是檔案（或文字）中的實際行號。
 
-- 警告訊息中的「第 N 列」是檔案行號。檔案中如果夾著空白行，行號會比實際的小。
-- `MenuTreeCsv.Save` 一律寫出展開後的形式，不會壓回 `|` 的寫法；節點名稱含 `|` 時會丟 `ArgumentException`。
-- `MenuTreeCsv.Sort` 可以整理手寫的資料列：逐層分組排序、補齊欄數，並去掉重複的路徑。
+### 上限為什麼是 65,535
+
+這個數字不是隨意挑的保護值，而是現有架構的限制：
+
+- **UI**：每一欄都是 Win32 `ListBox`，`LB_ITEMFROMPOINT`（`ListBox.IndexFromPoint`）只用 16 位元回傳索引。
+  實測一欄放 70,000 項時，捲到底部點第一列，拿到的索引是 4442（= 69978 & 0xFFFF）。
+  任何一欄的項目數都不會超過全樹的路徑數，所以總數限制在 65,535，就保證每一欄都點得對。
+- **速度**：每次改選都會把下一欄整批重新加入，實測 1 萬項約 60 ms、65,535 項約 0.8 秒。上限內都能用，但單欄最好控制在數千項以內。
+- **記憶體**：65,535 條路徑的樹約 30 MB，32 位元行程也沒問題。
+
+單列與整份用同一個上限，所以壓縮寫出時，不會出現某一列超過上限、需要拆開的情況（見下節）。
+
+### 寫出：展開或壓縮
+
+`MenuTreeCsv.Save(menu, path, compact)` 和 `MenuTreeText.Format(menu, compact)` 都可以選擇寫出的形式，兩種形式讀回來都是同一棵樹：
+
+- `compact: false`（預設）：每個終點一列。
+- `compact: true`：**相鄰**而且**子樹完全相同**（名稱、順序、結構都一樣）的兄弟節點，合併成同一格。
+
+```csv
+Level1,Level2,Level3
+Device,Info|Status,Version|Uptime|Memory
+Device,Reset,
+Network,Ping,
+```
+
+壓縮產生的是標準形，不追求最少列數：同一棵樹只有一種寫法，列與列不重疊，列序和展開形式一致，
+已經壓縮過的結果再壓一次也不會改變。
+
+寫出前會先檢查，讀不回同一棵樹的內容會直接丟 `ArgumentException`，不會寫出任何東西：
+名稱含 `|`、名稱前後有空白，或路徑超過 65,535 條。
+
+`MenuTreeText.Sort(rows, compact, out warnings)` 可以整理手寫的資料列：逐層分組排序、補齊欄數、去掉重複的路徑，並視需要壓縮。
 
 ---
 
@@ -274,22 +335,31 @@ cascadeView1.DrawItem += (s, e) =>
 |---|---|
 | `MenuTree.TopLevel` | 第一層節點，傳給 `SetRoots` |
 | `MenuTree.AddPath(names)` | 加入一條路徑，回傳終點節點 |
+| `MenuTree.AddPaths(cells)` | 加入一整列（格子可含 `\|`），回傳各條路徑的終點節點 |
 | `MenuTree.Leaves()` / `MaxDepth` / `IsEmpty` | 查詢 |
-| `MenuTree.FromRows(rows, out warnings)` / `ToRows()` | 與二維字串陣列互轉 |
+| `MenuTree.FromRows(rows, out warnings)` / `ToRows(compact)` | 與二維字串陣列互轉；讀入時展開 `\|`，寫出時可以壓縮 |
+| `AlternativeCell.SEPARATOR` / `MAX_EXPANSION` | `\|` 與展開上限 65,535 |
+| `AlternativeCell.Join(names)` | 把多個同層名稱串成一格 |
 | `MenuNode.Name` | 原始名稱，即 `ICascadeItem.Name`；路徑、記錄都用它 |
 | `MenuNode.DisplayText` | 欄位上的顯示文字，即 `ICascadeItem.Text`：`<01>Name`，有子節點時為 `<01>Name [+]` |
 | `MenuNode.FullPath` / `PathFromRoot` | 由第一層到本節點的路徑 |
 | `MenuNode.Parent` / `Depth` / `Index` / `IsLeaf` | 位置資訊 |
 
-**`MenuTreeCsv`**（`CascadeControl.Services`）
+**`MenuTreeText`**（`CascadeControl.Services`，純文字、不碰檔案）
+
+| 成員 | 說明 |
+|---|---|
+| `Parse(text, out warnings)` | 解析文字，表頭可省略，不丟例外 |
+| `Format(menu, compact)` | 轉成文字，`compact: true` 時壓回 `\|` 的寫法 |
+| `Sort(rows, [compact,] out warnings)` | 整理資料列 |
+| `Header(depth)` | 產生 `Level1…LevelN` 表頭 |
+
+**`MenuTreeCsv`**（`CascadeControl.Services`，檔案）
 
 | 成員 | 說明 |
 |---|---|
 | `Load(filePath, out warnings)` | 讀取 CSV，不丟例外 |
-| `Save(menu, filePath)` | 寫出展開後的 CSV，目錄不存在時會自動建立 |
-| `JoinAlternatives(names)` | 把多個同層名稱以 `ALTERNATIVE_SEPARATOR` 串成一格 |
-| `Sort(rows, out warnings)` | 整理資料列 |
-| `Header(depth)` | 產生 `Level1…LevelN` 表頭 |
+| `Save(menu, filePath, compact)` | 寫出 CSV（預設展開），目錄不存在時會自動建立 |
 
 ---
 

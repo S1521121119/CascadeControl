@@ -23,6 +23,9 @@
 //                                                          3. Standardize column counts per row for strict parsers.
 //  2026-05-21      0.00.010        Jeff.WK.Lin             Add XML documentation comments in traditional Chinese.
 //  2026-11-05      0.00.011        Jeff.WK.Lin             Polish comment wording and align docs with actual behavior.
+//  2026-11-06      0.00.012        Jeff.WK.Lin             1. Add ParseStringToData overload that reports each row's source line number
+//                                                          2. Add static FormatDataWithHeader; WriteFile_DataWithHeader reuses it
+//                                                          3. Skip a whitespace-only last row, same as the other rows
 //
 //=============================================================================================================================
 
@@ -74,12 +77,31 @@ namespace CascadeControl.Utilities
         /// <returns>解析成功時為 true；目前的實作一律回傳 true。</returns>
         public static bool ParseStringToData(string input, out string[][] data)
         {
-            if (string.IsNullOrEmpty(input)) { data = new string[0][]; return true; }
+            return ParseStringToData(input, out data, out _);
+        }
+
+        /// <summary>
+        /// 將 CSV 格式的字串解析為二維陣列，並回報每一列在原始字串中從第幾行開始。
+        /// <para>解析規則與 <see cref="ParseStringToData(string, out string[][])"/> 相同。</para>
+        /// </summary>
+        /// <param name="input">CSV 格式的原始字串。</param>
+        /// <param name="data">解析後的二維字串陣列。</param>
+        /// <param name="lineNumbers">
+        /// 與 <paramref name="data"/> 等長，第 i 個元素是 data[i] 起始的行號（由 1 起算）。
+        /// CRLF、LF、CR 都算一次換行，引號內的換行也照算，所以被略過的空白列與跨行儲存格都不會讓行號偏掉。
+        /// </param>
+        /// <returns>解析成功時為 true；目前的實作一律回傳 true。</returns>
+        public static bool ParseStringToData(string input, out string[][] data, out int[] lineNumbers)
+        {
+            if (string.IsNullOrEmpty(input)) { data = new string[0][]; lineNumbers = new int[0]; return true; }
 
             List<string[]> rows = new List<string[]>();
+            List<int> rowLines = new List<int>();
             List<string> currentRow = new List<string>();
             StringBuilder currentField = new StringBuilder();
             bool inQuotes = false;
+            int line = 1;       // 目前字元所在的行號
+            int rowStart = 1;   // 目前這一列從第幾行開始
 
             for (int i = 0; i < input.Length; i++)
             {
@@ -97,6 +119,9 @@ namespace CascadeControl.Utilities
                     else
                     {
                         currentField.Append(c);
+
+                        // 引號內的換行屬於儲存格內容，但仍要計入行號；CRLF 只在 LF 算一次。
+                        if (c == '\n' || (c == '\r' && !(i + 1 < input.Length && input[i + 1] == '\n'))) line++;
                     }
                 }
                 else
@@ -112,6 +137,7 @@ namespace CascadeControl.Utilities
                         if (currentRow.Any(f => !string.IsNullOrWhiteSpace(f)))
                         {
                             rows.Add(currentRow.ToArray());
+                            rowLines.Add(rowStart);
                         }
 
                         currentRow.Clear();
@@ -120,6 +146,9 @@ namespace CascadeControl.Utilities
                         {
                             i++;
                         }
+
+                        line++;
+                        rowStart = line;
                     }
                     else
                     {
@@ -130,9 +159,14 @@ namespace CascadeControl.Utilities
             if (currentField.Length > 0 || currentRow.Count > 0)
             {
                 currentRow.Add(currentField.ToString().Trim());
-                rows.Add(currentRow.ToArray());
+                if (currentRow.Any(f => !string.IsNullOrWhiteSpace(f)))
+                {
+                    rows.Add(currentRow.ToArray());
+                    rowLines.Add(rowStart);
+                }
             }
             data = rows.ToArray();
+            lineNumbers = rowLines.ToArray();
             return true;
         }
 
@@ -171,7 +205,7 @@ namespace CascadeControl.Utilities
         /// 依 RFC 4180 跳脫欄位內容。
         /// <para>先去除前後空白；內容含有逗號、換行或雙引號時，整格用雙引號包起來，裡面的每個雙引號改寫成兩個（""）。</para>
         /// </summary>
-        private string EscapeField(string field)
+        private static string EscapeField(string field)
         {
             if (string.IsNullOrEmpty(field))
             {
@@ -231,8 +265,40 @@ namespace CascadeControl.Utilities
         }
 
         /// <summary>
+        /// 將標題列與所有資料列轉換為符合 RFC 4180 格式的 CSV 字串，每一列以 <see cref="Environment.NewLine"/> 結尾。
+        /// <para>每一列的欄數會對齊標題列：不足的補上空白欄，多出來的捨棄。</para>
+        /// </summary>
+        /// <param name="header">標題列的各欄名稱。</param>
+        /// <param name="data">資料列；可為 null。</param>
+        /// <returns>CSV 字串。</returns>
+        public static string FormatDataWithHeader(string[] header, string[][] data)
+        {
+            StringBuilder csvContent = new StringBuilder();
+
+            // 寫入標題列
+            csvContent.AppendLine(string.Join(",", header.Select(EscapeField)));
+
+            // 寫入資料列
+            if (data != null)
+            {
+                foreach (var row in data)
+                {
+                    // 欄數對齊標題列，較嚴格的解析器（例如 csvLens）才不會出錯
+                    var escapedRow = new string[header.Length];
+                    for (int i = 0; i < header.Length; i++)
+                    {
+                        escapedRow[i] = i < row.Length ? EscapeField(row[i]) : "";
+                    }
+                    csvContent.AppendLine(string.Join(",", escapedRow));
+                }
+            }
+
+            return csvContent.ToString();
+        }
+
+        /// <summary>
         /// 將標題列與所有資料列寫入 CSV 檔案；檔案已存在時會被覆寫。
-        /// <para>每一列的欄數會對齊標題列：不足的補上空白欄，多出來的捨棄。編碼為帶 BOM 的 UTF-8。</para>
+        /// <para>內容與 <see cref="FormatDataWithHeader"/> 相同：欄數對齊標題列。編碼為帶 BOM 的 UTF-8。</para>
         /// </summary>
         /// <param name="filePath">目標檔案路徑。</param>
         /// <param name="header">標題列的各欄名稱。</param>
@@ -243,23 +309,7 @@ namespace CascadeControl.Utilities
             {
                 using (var writer = new StreamWriter(filePath, false, _encoding))
                 {
-                    // 寫入標題列
-                    writer.WriteLine(string.Join(",", header.Select(EscapeField)));
-
-                    // 寫入資料列
-                    if (data != null)
-                    {
-                        foreach (var row in data)
-                        {
-                            // 欄數對齊標題列，較嚴格的解析器（例如 csvLens）才不會出錯
-                            var escapedRow = new string[header.Length];
-                            for (int i = 0; i < header.Length; i++)
-                            {
-                                escapedRow[i] = i < row.Length ? EscapeField(row[i]) : "";
-                            }
-                            writer.WriteLine(string.Join(",", escapedRow));
-                        }
-                    }
+                    writer.Write(FormatDataWithHeader(header, data));
                 }
             }
         }
