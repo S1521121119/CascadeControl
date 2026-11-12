@@ -45,7 +45,7 @@ namespace CascadeControl.Views
         private int _columnWidth = DEFAULT_COLUMN_WIDTH;
         private int _columnGap = DEFAULT_COLUMN_GAP;
         private CascadeColumnSizeMode _columnSizeMode = CascadeColumnSizeMode.Fixed;
-        private int _fillColumnCount;
+        private int _displayColumnCount;
         private bool _showRememberedPath;
         private Color _inactiveSelectionBackColor = Color.Empty;
         private Color _rememberedBackColor = Color.Empty;
@@ -63,10 +63,10 @@ namespace CascadeControl.Views
 
         /// <summary>
         /// 每一欄的寬度（像素）；<see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Fill"/> 或
-        /// <see cref="CascadeColumnSizeMode.Single"/> 時是最小欄寬。
+        /// <see cref="CascadeColumnSizeMode.Window"/> 時是最小欄寬。
         /// </summary>
         [Category("Cascade")]
-        [Description("每一欄的寬度（像素）；ColumnSizeMode 為 Fill 或 Single 時是最小欄寬。要調整欄位字型，請設定這個控制項的 Font。")]
+        [Description("每一欄的寬度（像素）；ColumnSizeMode 為 Fill 或 Window 時是最小欄寬。要調整欄位字型，請設定這個控制項的 Font。")]
         [DefaultValue(DEFAULT_COLUMN_WIDTH)]
         public int ColumnWidth
         {
@@ -108,7 +108,7 @@ namespace CascadeControl.Views
         /// 欄寬與顯示欄數的決定方式。
         /// </summary>
         [Category("Cascade")]
-        [Description("Fixed：固定使用 ColumnWidth；Fill：讓 FillColumnCount 欄平均填滿寬度；Single：只顯示目前操作的那一欄。")]
+        [Description("Fixed：固定使用 ColumnWidth；Fill：讓 DisplayColumnCount 欄平均填滿寬度，其餘捲動；Window：只顯示最後 DisplayColumnCount 欄，不捲動。")]
         [DefaultValue(CascadeColumnSizeMode.Fixed)]
         public CascadeColumnSizeMode ColumnSizeMode
         {
@@ -126,23 +126,28 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// <see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Fill"/> 時，畫面上平均排列的欄數；0 表示等同 <see cref="CascadeColumnSizeMode.Fixed"/>。
+        /// <see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Fill"/> 或 <see cref="CascadeColumnSizeMode.Window"/> 時，
+        /// 畫面上平均排列的欄數。資料有幾層就設幾層，停在最深一層時右邊不會空一格。
         /// </summary>
-        /// <remarks>平均後的欄寬小於 <see cref="ColumnWidth"/> 時改用 <see cref="ColumnWidth"/>，放不下的部分出現水平捲軸。</remarks>
+        /// <remarks>
+        /// 0 在 <see cref="CascadeColumnSizeMode.Fill"/> 時等同 <see cref="CascadeColumnSizeMode.Fixed"/>，在 <see cref="CascadeColumnSizeMode.Window"/> 時當成 1。
+        /// 平均後的欄寬小於 <see cref="ColumnWidth"/> 時，<see cref="CascadeColumnSizeMode.Fill"/> 改用 <see cref="ColumnWidth"/> 並出現水平捲軸，
+        /// <see cref="CascadeColumnSizeMode.Window"/> 則減少顯示的欄數。
+        /// </remarks>
         [Category("Cascade")]
-        [Description("ColumnSizeMode 為 Fill 時，畫面上平均排列的欄數；0 表示等同 Fixed。")]
+        [Description("ColumnSizeMode 為 Fill 或 Window 時，畫面上平均排列的欄數；資料有幾層就設幾層。Fill 時 0 等同 Fixed，Window 時 0 當成 1。")]
         [DefaultValue(0)]
-        public int FillColumnCount
+        public int DisplayColumnCount
         {
-            get => _fillColumnCount;
+            get => _displayColumnCount;
             set
             {
                 if (value < 0)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "FillColumnCount 不可為負數。");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "DisplayColumnCount 不可為負數。");
 
-                if (_fillColumnCount == value) return;
+                if (_displayColumnCount == value) return;
 
-                _fillColumnCount = value;
+                _displayColumnCount = value;
                 Relayout();
             }
         }
@@ -152,7 +157,7 @@ namespace CascadeControl.Views
         /// </summary>
         /// <remarks>
         /// 不論設定為何，記憶都會保留，按 → 就能沿記憶走回去；這個屬性只影響畫面，不影響選取。
-        /// <see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Single"/> 時沒有作用。
+        /// <see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Window"/> 時沒有作用。
         /// </remarks>
         [Category("Cascade")]
         [Description("退回較淺的層級後，是否仍畫出記憶中更深的整條路徑；false 時只畫到選取的下一欄。")]
@@ -170,13 +175,17 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 沒有焦點的欄位中，選取項的背景色；設為 <see cref="Color.Empty"/> 時使用調淡的系統選取色。
+        /// 沒有焦點的欄位中，選取項的背景色；預設為調淡的系統選取色。
         /// </summary>
+        /// <remarks>
+        /// 沒有設定時讀到的是實際使用的預設色，不是 <see cref="Color.Empty"/>，屬性視窗才看得到預設值，繪製時也可以直接拿來用。
+        /// 設為 <see cref="Color.Empty"/>，或在屬性視窗按右鍵選「重設」，就會回到預設色；預設色會跟著系統配色變化。
+        /// </remarks>
         [Category("Cascade")]
-        [Description("沒有焦點的欄位中，選取項的背景色；留空時使用調淡的系統選取色。")]
+        [Description("沒有焦點的欄位中，選取項的背景色；預設為調淡的系統選取色，按右鍵「重設」可以回到預設。")]
         public Color InactiveSelectionBackColor
         {
-            get => _inactiveSelectionBackColor;
+            get => _inactiveSelectionBackColor.IsEmpty ? DefaultInactiveSelectionBackColor : _inactiveSelectionBackColor;
             set
             {
                 if (_inactiveSelectionBackColor == value) return;
@@ -190,14 +199,21 @@ namespace CascadeControl.Views
 
         private void ResetInactiveSelectionBackColor() => InactiveSelectionBackColor = Color.Empty;
 
+        private static Color DefaultInactiveSelectionBackColor =>
+            Blend(SystemColors.Highlight, SystemColors.Window, INACTIVE_SELECTION_BLEND);
+
         /// <summary>
-        /// 記憶項目（退回前走過、目前不算選取的項目）的背景色；設為 <see cref="Color.Empty"/> 時使用 <see cref="SystemColors.ControlLight"/>。
+        /// 記憶項目（退回前走過、目前不算選取的項目）的背景色；預設為 <see cref="SystemColors.ControlLight"/>。
         /// </summary>
+        /// <remarks>
+        /// 沒有設定時讀到的是實際使用的預設色，不是 <see cref="Color.Empty"/>。
+        /// 設為 <see cref="Color.Empty"/>，或在屬性視窗按右鍵選「重設」，就會回到預設色。
+        /// </remarks>
         [Category("Cascade")]
-        [Description("記憶項目（退回前走過、目前不算選取的項目）的背景色；留空時使用系統淺灰色。")]
+        [Description("記憶項目（退回前走過、目前不算選取的項目）的背景色；預設為系統淺灰色，按右鍵「重設」可以回到預設。")]
         public Color RememberedBackColor
         {
-            get => _rememberedBackColor;
+            get => _rememberedBackColor.IsEmpty ? SystemColors.ControlLight : _rememberedBackColor;
             set
             {
                 if (_rememberedBackColor == value) return;
@@ -346,13 +362,6 @@ namespace CascadeControl.Views
             var list = _lists[level];
             if (list.CanFocus && !list.Focused) list.Focus();
         }
-
-        /// <summary>
-        /// 已改名為 <see cref="FocusActiveColumn"/>：鍵盤焦點固定在目前操作的那一欄，不會停在其他欄。
-        /// </summary>
-        [Obsolete("請改用 FocusActiveColumn：鍵盤焦點固定在目前操作的那一欄。")]
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public void FocusFirstColumn() => FocusActiveColumn();
 
         #endregion 選取操作
 

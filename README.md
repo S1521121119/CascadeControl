@@ -132,7 +132,7 @@ MenuTree menu = MenuTreeText.Parse(@"
     Motor,  Axis X|Axis Y, Home
 ", out IList<string> warnings);
 
-string text = MenuTreeText.Format(menu, compact: true);   // 轉回文字，可另外存放
+string text = MenuTreeText.Format(menu, MenuRowStyle.Outline);   // 轉回文字，可另外存放
 ```
 
 - 表頭可有可無；空白行、縮排、逗號後的空白都會被忽略。
@@ -215,7 +215,6 @@ if (last != null) cascadeView1.TrySelectPath(last.PathFromRoot);
 - 路徑經過的每一層會記成「上次選的項目」，其他分支的記憶保留。
 
 要把鍵盤焦點交給控制項時，呼叫 `FocusActiveColumn()`，焦點會落在目前操作的那一欄（未選取時是第一欄）。
-舊的 `FocusFirstColumn()` 仍可呼叫，行為相同，但已標為過時。
 
 ### 欄寬與顯示欄數
 
@@ -224,15 +223,20 @@ if (last != null) cascadeView1.TrySelectPath(last.PathFromRoot);
 | 模式 | 欄寬 | 畫面 |
 |---|---|---|
 | `Fixed`（預設） | 固定為 `ColumnWidth` | 放不下時出現水平捲軸 |
-| `Fill` | 讓 `FillColumnCount` 欄平均填滿寬度，不小於 `ColumnWidth` | 一次看到 `FillColumnCount` 欄，捲動時對齊欄位邊界 |
-| `Single` | 填滿控制項寬度，不小於 `ColumnWidth` | 只顯示目前操作的那一欄，不保留右側的下一欄 |
+| `Fill` | 讓 `DisplayColumnCount` 欄平均填滿寬度，不小於 `ColumnWidth` | 一次看到 `DisplayColumnCount` 欄，其餘出現水平捲軸，捲動時對齊欄位邊界 |
+| `Window` | 讓 `DisplayColumnCount` 欄平均填滿寬度，不小於 `ColumnWidth` | 只顯示最後 `DisplayColumnCount` 欄，更淺的欄位隱藏，**不出現捲軸** |
 
 ```csharp
 cascadeView1.ColumnSizeMode = CascadeColumnSizeMode.Fill;
-cascadeView1.FillColumnCount = 3;   // 控制項寬 300、欄距 0 時，每欄約 100
+cascadeView1.DisplayColumnCount = menu.MaxDepth;   // 資料有幾層就設幾層
 ```
 
-`FillColumnCount` 為 0 時，`Fill` 等同 `Fixed`。平均後小於 `ColumnWidth` 時改用 `ColumnWidth`，放不下的部分照樣出現水平捲軸。
+畫面的右緣對齊「操作欄的下一欄」；下一欄不存在（選到終點）時，就對齊操作欄本身。
+所以資料有 3 層、`DisplayColumnCount = 3` 時，停在第 3 層會剛好看到第 1～3 層，右邊不會空一格。
+選到終點、或從終點按 ← 退回時欄數不變，畫面不會移動；只有長出新的一欄時，畫面才往左移一格。`Fixed` 也照這個規則捲動。
+
+- `Fill`：`DisplayColumnCount` 為 0 時等同 `Fixed`。平均後小於 `ColumnWidth` 時改用 `ColumnWidth`，放不下的部分照樣出現水平捲軸。
+- `Window`：`DisplayColumnCount` 為 0 時當成 1，也就是只顯示操作欄。平均後小於 `ColumnWidth` 時減少顯示的欄數，至少顯示操作欄。
 
 ### 退回與記憶
 
@@ -257,7 +261,7 @@ cascadeView1.FillColumnCount = 3;   // 控制項寬 300、欄距 0 時，每欄�
 - `ClearMemory()` 忘掉所有分支的記憶，只留下目前的選取路徑。`SetRoots`、`Clear` 會連同選取一起清空。
 - 每個走過的父節點各記一筆，上限是節點總數，不會無限增長。
 
-記憶項目的底色可以用 `RememberedBackColor` 調整。`Single` 模式只顯示一欄，所以 `ShowRememberedPath` 沒有作用，但記憶仍然有效。
+記憶項目的底色可以用 `RememberedBackColor` 調整。`Window` 模式不能捲動，最多只顯示到操作欄的下一欄，所以 `ShowRememberedPath` 沒有作用，但記憶仍然有效。
 
 > 記憶以節點本身當作 key，比對用 `Equals` 與 `GetHashCode`。`MenuNode`、`CascadeItem` 比對的是參照，不需要處理；
 > 自訂模型如果覆寫 `Equals`，請一併覆寫 `GetHashCode`。
@@ -267,7 +271,7 @@ cascadeView1.FillColumnCount = 3;   // 控制項寬 300、欄距 0 時，每欄�
 | 想調整 | 用 |
 |---|---|
 | 字型、列高 | 控制項的 `Font`，列高會跟著字型自動調整 |
-| 欄寬、欄距 | `ColumnWidth`（最小 20）、`ColumnGap`；平均或單欄顯示請見[欄寬與顯示欄數](#欄寬與顯示欄數) |
+| 欄寬、欄距 | `ColumnWidth`（最小 20）、`ColumnGap`；平均排列或只顯示最後幾欄請見[欄寬與顯示欄數](#欄寬與顯示欄數) |
 | 非焦點欄的選取底色 | `InactiveSelectionBackColor`，預設為調淡的系統選取色 |
 | 記憶項目的底色 | `RememberedBackColor`，預設為系統淺灰色 |
 
@@ -324,29 +328,38 @@ cascadeView1.DrawItem += (s, e) =>
 - **速度**：每次改選都會把下一欄整批重新加入，實測 1 萬項約 60 ms、65,535 項約 0.8 秒。上限內都能用，但單欄最好控制在數千項以內。
 - **記憶體**：65,535 條路徑的樹約 30 MB，32 位元行程也沒問題。
 
-單列與整份用同一個上限，所以壓縮寫出時，不會出現某一列超過上限、需要拆開的情況（見下節）。
+單列與整份用同一個上限，所以寫出時不會出現某一列超過上限、需要拆開的情況（見下節）。
 
-### 寫出：展開或壓縮
+### 寫出：展開、壓縮或大綱
 
-`MenuTreeCsv.Save(menu, path, compact)` 和 `MenuTreeText.Format(menu, compact)` 都可以選擇寫出的形式，兩種形式讀回來都是同一棵樹：
+`MenuTreeCsv.Save(menu, path, style)` 和 `MenuTreeText.Format(menu, style)` 都可以選擇寫出的寫法（`MenuRowStyle`），
+三種寫法讀回來都是同一棵樹。以 `A` 底下有 `x`、`m`、`n`，而 `m`、`n` 底下都是 `1`、`2` 為例：
 
-- `compact: false`（預設）：每個終點一列。
-- `compact: true`：**相鄰**而且**子樹完全相同**（名稱、順序、結構都一樣）的兄弟節點，合併成同一格。
+| `MenuRowStyle` | 規則 | 資料列 |
+|---|---|---|
+| `Expanded`（預設） | 每個終點一列 | `A,x,` / `A,m,1` / `A,m,2` / `A,n,1` / `A,n,2` |
+| `Compact` | **相鄰**而且**子樹完全相同**的兄弟節點合併成同一格；遇到有下一層的兄弟就切成新的一列 | `A,x,` / `A,m\|n,1\|2` |
+| `Outline` | **每個中間節點一列**，列出它底下的全部子節點；子樹完全相同的兄弟（不必相鄰）共用一列 | `A,x\|m\|n,` / `A,m\|n,1\|2` |
+
+「子樹完全相同」指名稱、順序、結構都一樣。`Outline` 最接近手寫：同一層的兄弟一定擠在同一格，
+有下一層的節點先出現在父節點那一列，再用自己的一列往下展開。
 
 ```csv
-Level1,Level2,Level3
-Device,Info|Status,Version|Uptime|Memory
-Device,Reset,
-Network,Ping,
+Level1,Level2,Level3,Level4
+ActionStep,Init|ActionPretest|ActionBurnIn|Last,,
+ActionStep,ActionPretest,Init|RfStep1|RfStep2|Analysis,
+ActionStep,ActionPretest,RfStep1|RfStep2,Init|GetHWAddr|Last
+ActionStep,ActionBurnIn,Init|Stop,
 ```
 
-壓縮產生的是標準形，不追求最少列數：同一棵樹只有一種寫法，列與列不重疊，列序和展開形式一致，
-已經壓縮過的結果再壓一次也不會改變。
+兩種壓縮都是標準形，不追求最少列數：同一棵樹只有一種寫法，再轉一次也不會改變。
+`Compact` 的列與列不重疊，列序和展開形式一致；`Outline` 的中間節點會同時出現在父節點那一列和自己那一列。
 
 寫出前會先檢查，讀不回同一棵樹的內容會直接丟 `ArgumentException`，不會寫出任何東西：
-名稱含 `|`、名稱前後有空白，或路徑超過 65,535 條。
+名稱含 `|`、名稱前後有空白，或展開後超過 65,535 條路徑。
+`Outline` 展開後還包含中間節點那幾條，路徑數比終點多，所以很大的樹可能只有 `Outline` 寫不出來，這時請改用 `Compact`。
 
-`MenuTreeText.Sort(rows, compact, out warnings)` 可以整理手寫的資料列：逐層分組排序、補齊欄數、去掉重複的路徑，並視需要壓縮。
+`MenuTreeText.Sort(rows, style, out warnings)` 可以整理手寫的資料列：逐層分組排序、補齊欄數、去掉重複的路徑，再用指定的寫法寫出。
 
 ---
 
@@ -382,7 +395,7 @@ Network,Ping,
 | `SelectedItem` / `SelectedPath` / `SelectedPathText` | 目前的選取（不含記憶） |
 | `IsLeafSelected` | 是否已選到終點 |
 | `FocusedLevel` | 目前操作中的欄位索引，也就是最深選取項所在的欄 |
-| `ColumnSizeMode` / `FillColumnCount` | 欄寬模式（`Fixed`、`Fill`、`Single`）與 `Fill` 的平均欄數 |
+| `ColumnSizeMode` / `DisplayColumnCount` | 欄寬模式（`Fixed`、`Fill`、`Window`）與 `Fill`、`Window` 一次顯示的欄數 |
 | `ShowRememberedPath` | 是否畫出記憶中的整段路線 |
 | `ClearMemory()` | 忘掉所有分支的記憶，只留目前的選取路徑 |
 | `ColumnWidth` / `ColumnGap` / `InactiveSelectionBackColor` / `RememberedBackColor` / `PathSeparator` | 外觀設定 |
@@ -399,7 +412,7 @@ Network,Ping,
 | `MenuTree.AddPath(names)` | 加入一條路徑，回傳終點節點 |
 | `MenuTree.AddPaths(cells)` | 加入一整列（格子可含 `\|`），回傳各條路徑的終點節點 |
 | `MenuTree.Leaves()` / `MaxDepth` / `IsEmpty` | 查詢 |
-| `MenuTree.FromRows(rows, out warnings)` / `ToRows(compact)` | 與二維字串陣列互轉；讀入時展開 `\|`，寫出時可以壓縮 |
+| `MenuTree.FromRows(rows, out warnings)` / `ToRows(style)` | 與二維字串陣列互轉；讀入時展開 `\|`，寫出時依 `MenuRowStyle` 展開、壓縮或寫成大綱 |
 | `AlternativeCell.SEPARATOR` / `MAX_EXPANSION` | `\|` 與展開上限 65,535 |
 | `AlternativeCell.Join(names)` | 把多個同層名稱串成一格 |
 | `MenuNode.Name` | 原始名稱，即 `ICascadeItem.Name`；路徑、記錄都用它 |
@@ -412,8 +425,8 @@ Network,Ping,
 | 成員 | 說明 |
 |---|---|
 | `Parse(text, out warnings)` | 解析文字，表頭可省略，不丟例外 |
-| `Format(menu, compact)` | 轉成文字，`compact: true` 時壓回 `\|` 的寫法 |
-| `Sort(rows, [compact,] out warnings)` | 整理資料列 |
+| `Format(menu, [style])` | 轉成文字，`style` 預設為 `Expanded` |
+| `Sort(rows, [style,] out warnings)` | 整理資料列 |
 | `Header(depth)` | 產生 `Level1…LevelN` 表頭 |
 
 **`MenuTreeCsv`**（`CascadeControl.Services`，檔案）
@@ -421,7 +434,7 @@ Network,Ping,
 | 成員 | 說明 |
 |---|---|
 | `Load(filePath, out warnings)` | 讀取 CSV，不丟例外 |
-| `Save(menu, filePath, compact)` | 寫出 CSV（預設展開），目錄不存在時會自動建立 |
+| `Save(menu, filePath, [style])` | 寫出 CSV（預設展開），目錄不存在時會自動建立 |
 
 ---
 

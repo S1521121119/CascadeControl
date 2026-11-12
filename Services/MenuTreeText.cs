@@ -7,7 +7,7 @@ using System.Linq;
 namespace CascadeControl.Services
 {
     /// <summary>
-    /// 選單樹與純文字（CSV 格式）之間的轉換，不碰檔案。每一列是一條通往葉節點的路徑，各層以逗號分隔。
+    /// 選單樹與純文字（CSV 格式）之間的轉換，不碰檔案。每一列由左至右是第 1 層、第 2 層…，各層以逗號分隔；寫出時的寫法見 <see cref="MenuRowStyle"/>。
     /// </summary>
     /// <remarks>
     /// 適合直接在程式裡手寫選單、從剪貼簿或其他來源匯入整段文字，或把樹轉成文字另外存放：
@@ -82,19 +82,22 @@ namespace CascadeControl.Services
         /// 把選單樹轉成 CSV 格式的文字，第一列是表頭，每一列以 <see cref="Environment.NewLine"/> 結尾。
         /// </summary>
         /// <param name="menu">要轉換的選單樹。</param>
-        /// <param name="compact">
-        /// false（預設）：每個葉節點一列。
-        /// true：相鄰且子樹完全相同的兄弟節點以 <see cref="AlternativeCell.SEPARATOR"/> 合併成同一格，例如
-        /// <c>Device,Info|Status,Version|Uptime|Memory</c>；規則見 <see cref="MenuTree.ToRows(bool)"/>。
+        /// <param name="style">
+        /// 寫法，預設為 <see cref="MenuRowStyle.Expanded"/>（每個葉節點一列）。
+        /// <see cref="MenuRowStyle.Compact"/> 例如 <c>Device,Info|Status,Version|Uptime|Memory</c>；
+        /// <see cref="MenuRowStyle.Outline"/> 每個中間節點一列，最接近手寫。規則見 <see cref="MenuTree.ToRows(MenuRowStyle)"/>。
         /// </param>
         /// <returns>文字；交給 <see cref="Parse(string, out IList{string})"/> 會還原成同一棵樹。空樹只有表頭。</returns>
         /// <remarks>寫出的文字如果讀回來會變成另一棵樹，就直接丟例外，不會產生任何輸出。</remarks>
         /// <exception cref="ArgumentNullException"><paramref name="menu"/> 為 null。</exception>
         /// <exception cref="ArgumentException">
         /// 有節點名稱含有 <see cref="AlternativeCell.SEPARATOR"/>（讀回時會被拆成多個兄弟節點）、
-        /// 名稱前後有空白（讀回時會被去掉），或葉節點超過 <see cref="AlternativeCell.MAX_EXPANSION"/> 個（讀回時會整份放棄）。
+        /// 名稱前後有空白（讀回時會被去掉），或寫出的資料列展開後超過 <see cref="AlternativeCell.MAX_EXPANSION"/> 條路徑（讀回時會整份放棄）。
+        /// 展開後的路徑數在 <see cref="MenuRowStyle.Expanded"/> 與 <see cref="MenuRowStyle.Compact"/> 等於葉節點數，
+        /// 在 <see cref="MenuRowStyle.Outline"/> 會多出中間節點那幾條，所以同一棵樹可能只有 <see cref="MenuRowStyle.Outline"/> 寫不出來。
         /// </exception>
-        public static string Format(MenuTree menu, bool compact = false)
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="style"/> 不是已定義的值。</exception>
+        public static string Format(MenuTree menu, MenuRowStyle style = MenuRowStyle.Expanded)
         {
             if (menu == null) throw new ArgumentNullException(nameof(menu));
 
@@ -113,13 +116,30 @@ namespace CascadeControl.Services
                 if (node.IsLeaf) leaves++;
             }
 
+            // 任何寫法展開後都至少有葉節點數那麼多條路徑，先擋下來，免得白白組出一大堆資料列。
             if (leaves > AlternativeCell.MAX_EXPANSION)
             {
                 throw new ArgumentException(
                     $"共有 {leaves} 條路徑，超過上限 {AlternativeCell.MAX_EXPANSION}，寫出後無法讀回。", nameof(menu));
             }
 
-            return CsvFile.FormatDataWithHeader(Header(menu.MaxDepth), menu.ToRows(compact));
+            var rows = menu.ToRows(style);
+
+            // 大綱的列與列會重疊，展開後的路徑數比葉節點多，要照實際寫出的列再算一次。
+            if (style == MenuRowStyle.Outline)
+            {
+                var expanded = rows.Sum(row => AlternativeCell.CountCombinations(
+                    row.Select(cell => cell.Split(AlternativeCell.SEPARATOR))));
+
+                if (expanded > AlternativeCell.MAX_EXPANSION)
+                {
+                    throw new ArgumentException(
+                        $"大綱寫法展開後有 {expanded} 條路徑（含中間節點），超過上限 {AlternativeCell.MAX_EXPANSION}，寫出後無法讀回；"
+                        + $"請改用 {nameof(MenuRowStyle.Compact)}。", nameof(menu));
+                }
+            }
+
+            return CsvFile.FormatDataWithHeader(Header(menu.MaxDepth), rows);
         }
 
         /// <summary>
@@ -128,17 +148,17 @@ namespace CascadeControl.Services
         /// <param name="rows">資料列，格子內可以用 <see cref="AlternativeCell.SEPARATOR"/> 列舉兄弟節點。</param>
         /// <param name="warnings">整理時發現的問題，重複的訊息只保留一筆。</param>
         /// <returns>整理後的資料列。</returns>
-        /// <remarks>整理規則見 <see cref="Sort(IEnumerable{string[]}, bool, out IList{string})"/>。</remarks>
+        /// <remarks>整理規則見 <see cref="Sort(IEnumerable{string[]}, MenuRowStyle, out IList{string})"/>。</remarks>
         public static string[][] Sort(IEnumerable<string[]> rows, out IList<string> warnings)
         {
-            return Sort(rows, false, out warnings);
+            return Sort(rows, MenuRowStyle.Expanded, out warnings);
         }
 
         /// <summary>
         /// 重新整理資料列：每一層都依第一次出現的順序分組排列。
         /// </summary>
         /// <param name="rows">資料列，格子內可以用 <see cref="AlternativeCell.SEPARATOR"/> 列舉兄弟節點，會先展開再排序。</param>
-        /// <param name="compact">整理後是否壓回 <see cref="AlternativeCell.SEPARATOR"/> 的寫法，規則見 <see cref="MenuTree.ToRows(bool)"/>。</param>
+        /// <param name="style">整理後的寫法，見 <see cref="MenuTree.ToRows(MenuRowStyle)"/>。</param>
         /// <param name="warnings">整理時發現的問題，重複的訊息只保留一筆。</param>
         /// <returns>整理後的資料列。</returns>
         /// <remarks>
@@ -149,10 +169,14 @@ namespace CascadeControl.Services
         /// （例如同時有 A,B,C 和 A,B,C,Set 時，只留下 A,B,C,Set）。
         /// 結果再整理一次不會改變。由於沒有來源行號，警告訊息中的「第 N 列」是依輸入順序從 1 起算的流水號。
         /// </remarks>
-        public static string[][] Sort(IEnumerable<string[]> rows, bool compact, out IList<string> warnings)
+        /// <exception cref="ArgumentException">
+        /// <paramref name="style"/> 不是 <see cref="MenuRowStyle.Expanded"/>，且有節點名稱含有 <see cref="AlternativeCell.SEPARATOR"/>。
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="style"/> 不是已定義的值。</exception>
+        public static string[][] Sort(IEnumerable<string[]> rows, MenuRowStyle style, out IList<string> warnings)
         {
             var tree = MenuTree.FromRows(rows, out warnings);
-            return tree.ToRows(compact);
+            return tree.ToRows(style);
         }
 
         private static bool IsHeader(string[] row)

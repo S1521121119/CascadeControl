@@ -7,11 +7,11 @@ using System.Text;
 namespace CascadeControl.Services
 {
     /// <summary>
-    /// 選單樹的 CSV 檔案讀寫。每一列是一條通往葉節點的完整路徑，深度不足的尾欄留空。
+    /// 選單樹的 CSV 檔案讀寫。每一列由左至右是第 1 層、第 2 層…，深度不足的尾欄留空；寫出時的寫法見 <see cref="MenuRowStyle"/>。
     /// </summary>
     /// <remarks>
     /// 這裡只負責檔案：編碼、目錄與範本檔。文字與樹之間的轉換都交給 <see cref="MenuTreeText"/>，
-    /// 所以檔案內容與 <see cref="MenuTreeText.Parse(string, out IList{string})"/>／<see cref="MenuTreeText.Format"/> 的文字完全相同。
+    /// 所以檔案內容與 <see cref="MenuTreeText.Parse(string, out IList{string})"/>／<see cref="MenuTreeText.Format(MenuTree, MenuRowStyle)"/> 的文字完全相同。
     /// 深度沒有上限：讀取時 CSV 有幾欄就是幾層，寫出時依最深的路徑決定欄數。
     /// 同一格可以用 <see cref="AlternativeCell.SEPARATOR"/> 列舉多個兄弟節點，整列會依各欄的笛卡兒積展開成多條路徑。
     /// </remarks>
@@ -77,17 +77,17 @@ namespace CascadeControl.Services
         /// </summary>
         /// <param name="menu">要寫出的選單樹。</param>
         /// <param name="filePath">CSV 檔案路徑。</param>
-        /// <param name="compact">
-        /// false（預設）：寫出展開後的形式，每個葉節點一列。
-        /// true：壓回 <see cref="AlternativeCell.SEPARATOR"/> 的寫法，規則見 <see cref="MenuTree.ToRows(bool)"/>。
-        /// 兩種形式由 <see cref="Load"/> 讀回都是同一棵樹。
+        /// <param name="style">
+        /// 寫法，預設為 <see cref="MenuRowStyle.Expanded"/>（每個葉節點一列），規則見 <see cref="MenuTree.ToRows(MenuRowStyle)"/>。
+        /// 每一種寫法由 <see cref="Load"/> 讀回都是同一棵樹。
         /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="menu"/> 為 null。</exception>
-        /// <exception cref="ArgumentException">樹的內容寫出後無法讀回同一棵樹，條件見 <see cref="MenuTreeText.Format"/>。</exception>
-        public static void Save(MenuTree menu, string filePath, bool compact = false)
+        /// <exception cref="ArgumentException">樹的內容寫出後無法讀回同一棵樹，條件見 <see cref="MenuTreeText.Format(MenuTree, MenuRowStyle)"/>。</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="style"/> 不是已定義的值。</exception>
+        public static void Save(MenuTree menu, string filePath, MenuRowStyle style = MenuRowStyle.Expanded)
         {
             // 先轉成文字：內容不合法時在這裡就丟例外，寧可整個不寫，也不要留下寫到一半的檔案或空目錄。
-            var text = MenuTreeText.Format(menu, compact);
+            var text = MenuTreeText.Format(menu, style);
 
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))

@@ -9,7 +9,7 @@ namespace CascadeControl.Models
     /// </summary>
     /// <remarks>
     /// 樹只處理節點與路徑，不管資料存成什麼格式：匯入匯出一律透過 <see cref="FromRows(IEnumerable{string[]}, out IList{string})"/> 與
-    /// <see cref="ToRows(bool)"/> 的二維字串陣列，文字與檔案的轉換交給 Services 層。
+    /// <see cref="ToRows(MenuRowStyle)"/> 的二維字串陣列，文字與檔案的轉換交給 Services 層。
     /// 資料列的格子可以用 <see cref="AlternativeCell.SEPARATOR"/> 列舉兄弟節點（見 <see cref="AlternativeCell"/>）。
     /// 要在程式中直接組樹，就用 <see cref="AddPath(string[])"/> 一次加入一條路徑，
     /// 或用 <see cref="AddPaths(string[])"/> 一次加入一整列 <c>A|B</c> 寫法展開後的路徑。
@@ -71,7 +71,7 @@ namespace CascadeControl.Models
         /// 已經有下一層後來又單獨寫成葉節點。資料有問題的情況只有：中間缺一層（捨棄空欄之後的部分）、
         /// <see cref="AlternativeCell.SEPARATOR"/> 用法錯誤或單列展開超過 <see cref="AlternativeCell.MAX_EXPANSION"/>（跳過整列）、
         /// 路徑總數超過 <see cref="AlternativeCell.MAX_EXPANSION"/>（放棄全部，回傳空樹）。
-        /// 這是 <see cref="ToRows(bool)"/> 的反向操作，壓縮或展開的形式都能讀回同一棵樹。
+        /// 這是 <see cref="ToRows(MenuRowStyle)"/> 的反向操作，<see cref="MenuRowStyle"/> 的每一種寫法都能讀回同一棵樹。
         /// </remarks>
         /// <exception cref="ArgumentException">
         /// <paramref name="sourceLineNumbers"/> 不為 null，且長度與 <paramref name="rows"/> 不符。
@@ -261,27 +261,38 @@ namespace CascadeControl.Models
         /// <returns>資料列。</returns>
         public string[][] ToRows()
         {
-            return ToRows(false);
+            return ToRows(MenuRowStyle.Expanded);
         }
 
         /// <summary>
         /// 攤平成資料列，欄數一律補到 <see cref="MaxDepth"/>。
         /// </summary>
-        /// <param name="compact">
-        /// false：每個葉節點一列。
-        /// true：相鄰且子樹完全相同的兄弟節點以 <see cref="AlternativeCell.SEPARATOR"/> 合併成同一格（規則見 <see cref="AlternativeCell"/>），
-        /// 同一棵樹只會有一種寫法，列與列不重疊，列序與展開形式一致。
+        /// <param name="style">
+        /// 寫法，見 <see cref="MenuRowStyle"/>。<see cref="MenuRowStyle.Compact"/> 的規則見 <see cref="AlternativeCell.Compress"/>，
+        /// <see cref="MenuRowStyle.Outline"/> 的規則見 <see cref="AlternativeCell.Outline"/>；兩者都是同一棵樹只有一種寫法。
         /// </param>
         /// <returns>資料列；交給 <see cref="FromRows(IEnumerable{string[]}, out IList{string})"/> 會還原成同一棵樹。</returns>
         /// <remarks>
-        /// 要能完整讀回，葉節點數不能超過 <see cref="AlternativeCell.MAX_EXPANSION"/>，節點名稱也不能有前後空白；
+        /// 要能完整讀回，展開後的路徑數不能超過 <see cref="AlternativeCell.MAX_EXPANSION"/>，節點名稱也不能有前後空白；
         /// 這兩項檢查在 Services 層寫出文字時才做，這裡不檢查。
         /// </remarks>
-        /// <exception cref="ArgumentException"><paramref name="compact"/> 為 true，且有節點名稱含有 <see cref="AlternativeCell.SEPARATOR"/>。</exception>
-        public string[][] ToRows(bool compact)
+        /// <exception cref="ArgumentException">
+        /// <paramref name="style"/> 不是 <see cref="MenuRowStyle.Expanded"/>，且有節點名稱含有 <see cref="AlternativeCell.SEPARATOR"/>。
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="style"/> 不是已定義的值。</exception>
+        public string[][] ToRows(MenuRowStyle style)
         {
-            if (compact) return AlternativeCell.Compress(this);
+            switch (style)
+            {
+                case MenuRowStyle.Expanded: return ExpandedRows();
+                case MenuRowStyle.Compact: return AlternativeCell.Compress(this);
+                case MenuRowStyle.Outline: return AlternativeCell.Outline(this);
+                default: throw new ArgumentOutOfRangeException(nameof(style), style, "未定義的寫法。");
+            }
+        }
 
+        private string[][] ExpandedRows()
+        {
             var width = Math.Max(1, MaxDepth);
 
             return Leaves().Select(leaf =>

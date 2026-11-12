@@ -57,6 +57,7 @@
     <Compile Include="Views\ICascadeItem.cs" />
     <Compile Include="Models\AlternativeCell.cs" />
     <Compile Include="Models\MenuNode.cs" />
+    <Compile Include="Models\MenuRowStyle.cs" />
     <Compile Include="Models\MenuTree.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\CsvFile.cs" />
