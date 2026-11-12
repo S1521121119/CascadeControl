@@ -170,6 +170,8 @@ public sealed class DeviceNode : ICascadeItem
 ```
 
 - 控制項在需要時才讀取 `Children`（例如要開下一欄的時候），所以可以在這裡延遲載入。
+  但同一個節點可能被讀取不只一次（例如退回後再走回去），控制項用 `Equals` 比對記憶中的項目，
+  所以延遲載入的結果要快取起來，或讓子節點覆寫 `Equals`；每次都產生新實例的話，記憶會對不上。
 - 不需要提供 Parent 或 Depth。路徑由欄位順序決定，事件參數會直接把整條路徑交給你。
 
 ### 讀取目前的選取
@@ -195,6 +197,9 @@ private void CascadeView1_SelectionChanged(object sender, CascadeItemEventArgs e
 
 不在事件裡時，可以直接讀控制項的 `SelectedItem`、`SelectedPath`、`SelectedPathText` 和 `IsLeafSelected`。
 
+選取只算到目前操作的那一欄。例如選到第 7 層後按 ← 退到第 3 層，選取就是前 3 層，`SelectionChanged` 也會觸發；
+第 4～7 層只是記憶（見[退回與記憶](#退回與記憶)），不會出現在 `Path` 裡。
+
 ### 用程式選取某條路徑
 
 例如還原上次的選取：
@@ -207,20 +212,71 @@ if (last != null) cascadeView1.TrySelectPath(last.PathFromRoot);
 - 比對用的是 `Equals`，所以要傳入「同一棵樹」裡的節點。
 - 中途對不上時，選取會停在已對上的那一段，並回傳 `false`。
 - 不論選了幾層，`SelectionChanged` 都只觸發一次。
+- 路徑經過的每一層會記成「上次選的項目」，其他分支的記憶保留。
 
-要把鍵盤焦點交給控制項時，呼叫 `FocusFirstColumn()`。
+要把鍵盤焦點交給控制項時，呼叫 `FocusActiveColumn()`，焦點會落在目前操作的那一欄（未選取時是第一欄）。
+舊的 `FocusFirstColumn()` 仍可呼叫，行為相同，但已標為過時。
+
+### 欄寬與顯示欄數
+
+`ColumnSizeMode` 決定欄寬，以及畫面上一次看得到幾欄：
+
+| 模式 | 欄寬 | 畫面 |
+|---|---|---|
+| `Fixed`（預設） | 固定為 `ColumnWidth` | 放不下時出現水平捲軸 |
+| `Fill` | 讓 `FillColumnCount` 欄平均填滿寬度，不小於 `ColumnWidth` | 一次看到 `FillColumnCount` 欄，捲動時對齊欄位邊界 |
+| `Single` | 填滿控制項寬度，不小於 `ColumnWidth` | 只顯示目前操作的那一欄，不保留右側的下一欄 |
+
+```csharp
+cascadeView1.ColumnSizeMode = CascadeColumnSizeMode.Fill;
+cascadeView1.FillColumnCount = 3;   // 控制項寬 300、欄距 0 時，每欄約 100
+```
+
+`FillColumnCount` 為 0 時，`Fill` 等同 `Fixed`。平均後小於 `ColumnWidth` 時改用 `ColumnWidth`，放不下的部分照樣出現水平捲軸。
+
+### 退回與記憶
+
+每個項目都會記住「上次在它底下選了哪一個子節點」。退回較淺的層級，或切換到別的分支再切回來時，
+按 → 就能沿上次的路線走回去。改選別的項目只會改寫那一層的記錄，其他分支走過的路線都還在。
+
+例如：
+1. 先選到 `ActionStep\ActionPretest\RfStep1\GetHWAddr`。
+2. 再改選 `ActionStep\ActionBurnIn\RfStep3\WifiTestVerify`，看一下設定。
+3. 按 ← ← 回到 `ActionBurnIn`，再按 ↑ 回到 `ActionPretest`。
+4. 按 → → 就回到 `GetHWAddr`。之後切回 `ActionBurnIn`，`RfStep3\WifiTestVerify` 也還記得。
+
+`ShowRememberedPath` 只決定畫面上要不要畫出記憶的路線：
+
+| `ShowRememberedPath` | 選取停在第 3 層、記憶還有第 4～7 層時的畫面 |
+|---|---|
+| `false`（預設） | 畫到第 4 欄，第 4 欄用淺灰底標出上次選的項目 |
+| `true` | 第 4～7 欄都畫出來，記憶項目都用淺灰底標出；用 ↑↓ 切換項目時，右邊會跟著換成那個項目記住的路線 |
+
+- 點選路徑或記憶中的**同一項**，只會移動選取深度，效果等同連按 ← 或 →。
+- 按 Esc 只清除選取，記憶保留，第一欄會標出上次選的項目，按 → 就能沿記憶走回去。
+- `ClearMemory()` 忘掉所有分支的記憶，只留下目前的選取路徑。`SetRoots`、`Clear` 會連同選取一起清空。
+- 每個走過的父節點各記一筆，上限是節點總數，不會無限增長。
+
+記憶項目的底色可以用 `RememberedBackColor` 調整。`Single` 模式只顯示一欄，所以 `ShowRememberedPath` 沒有作用，但記憶仍然有效。
+
+> 記憶以節點本身當作 key，比對用 `Equals` 與 `GetHashCode`。`MenuNode`、`CascadeItem` 比對的是參照，不需要處理；
+> 自訂模型如果覆寫 `Equals`，請一併覆寫 `GetHashCode`。
 
 ### 自訂外觀
 
 | 想調整 | 用 |
 |---|---|
 | 字型、列高 | 控制項的 `Font`，列高會跟著字型自動調整 |
-| 欄寬、欄距 | `ColumnWidth`（最小 20）、`ColumnGap` |
-| 非焦點欄的選取底色 | `InactiveSelectionBackColor`，留空時使用調淡的系統選取色 |
+| 欄寬、欄距 | `ColumnWidth`（最小 20）、`ColumnGap`；平均或單欄顯示請見[欄寬與顯示欄數](#欄寬與顯示欄數) |
+| 非焦點欄的選取底色 | `InactiveSelectionBackColor`，預設為調淡的系統選取色 |
+| 記憶項目的底色 | `RememberedBackColor`，預設為系統淺灰色 |
+
+這兩個顏色沒設定時，會跟著 Windows 的系統配色變。在屬性視窗按右鍵選「重設」就能回到預設；程式中設為 `Color.Empty` 也一樣。
 | `SelectedPathText` 的分隔字串 | `PathSeparator`，預設 `" => "` |
 | 完全自繪 | `DrawItem` 事件，設定 `e.Handled = true` 就會略過預設外觀 |
 
-`DrawItem` 不會出現在屬性視窗裡，請在程式碼中訂閱。自繪時要自己填滿背景，否則舊的選取色會殘留：
+`DrawItem` 不會出現在屬性視窗裡，請在程式碼中訂閱。用 `e.IsSelected`、`e.IsRemembered` 分辨選取項和記憶項目。
+自繪時要自己填滿背景，否則舊的選取色會殘留：
 
 ```csharp
 cascadeView1.DrawItem += (s, e) =>
@@ -298,14 +354,17 @@ Network,Ping,
 
 | 按鍵 / 動作 | 行為 |
 |---|---|
-| ↑ ↓ | 在同一欄內移動，也就是改選這一層 |
-| → | 進入下一欄；下一欄還沒選時，會直接選第一項 |
-| ← | 焦點退回上一欄，**選取不變**，後面的欄位會保留 |
+| ↑ ↓ | 在同一欄內移動，也就是改選這一層；其他分支的記憶保留 |
+| → | 進入下一欄：有記憶時選上次的項目，沒有時選第一項 |
+| ← | 退回上一欄，**選取也跟著退回**；更深的那一段留作記憶 |
 | Enter | 在終點上觸發 `ItemActivated`；不是終點時等同 → |
-| 滑鼠點選 | 選取該項 |
+| Esc | 清除選取（記憶保留），焦點回到第一欄 |
+| 滑鼠點選 | 點不同的項目等同改選；點路徑或記憶中的同一項，等同連按 ← 或 → 到那一欄 |
 | 雙擊 | 在終點上觸發 `ItemActivated` |
 
-欄位多到放不下時會出現水平捲軸，並自動捲到焦點欄，讓它的右邊剛好留得下一欄。
+- 鍵盤焦點固定在目前操作的那一欄（最深選取項所在的欄），點在其他欄的空白處後，焦點會回到這一欄。
+- 只要焦點在控制項的欄位上，←、→、Enter、Esc 一律由控制項處理。所以表單的 `CancelButton` 在這時候不會被 Esc 觸發。
+- 欄位多到放不下時會出現水平捲軸，並自動捲到操作欄，讓它的右邊剛好留得下一欄。
 
 ---
 
@@ -319,12 +378,15 @@ Network,Ping,
 |---|---|
 | `SetRoots(roots)` / `Clear()` | 以第一層內容重設，或清空 |
 | `TrySelectPath(path)` | 依序選取一條路徑 |
-| `FocusFirstColumn()` | 把焦點放到第一欄 |
-| `SelectedItem` / `SelectedPath` / `SelectedPathText` | 目前的選取 |
+| `FocusActiveColumn()` | 把焦點放到目前操作的那一欄 |
+| `SelectedItem` / `SelectedPath` / `SelectedPathText` | 目前的選取（不含記憶） |
 | `IsLeafSelected` | 是否已選到終點 |
-| `FocusedLevel` | 目前操作中的欄位索引 |
-| `ColumnWidth` / `ColumnGap` / `InactiveSelectionBackColor` / `PathSeparator` | 外觀設定 |
-| `SelectionChanged` | 任何一層的選取改變後觸發，包含 `SetRoots` 與 `Clear` |
+| `FocusedLevel` | 目前操作中的欄位索引，也就是最深選取項所在的欄 |
+| `ColumnSizeMode` / `FillColumnCount` | 欄寬模式（`Fixed`、`Fill`、`Single`）與 `Fill` 的平均欄數 |
+| `ShowRememberedPath` | 是否畫出記憶中的整段路線 |
+| `ClearMemory()` | 忘掉所有分支的記憶，只留目前的選取路徑 |
+| `ColumnWidth` / `ColumnGap` / `InactiveSelectionBackColor` / `RememberedBackColor` / `PathSeparator` | 外觀設定 |
+| `SelectionChanged` | 選取路徑改變後觸發，包含 ←、→、Esc、`SetRoots` 與 `Clear` |
 | `ItemActivated` | 在終點上按 Enter 或雙擊時觸發 |
 | `DrawItem` | 繪製每一列之前觸發，用於自繪 |
 | `ColumnWidthChanged` | `ColumnWidth` 改變後觸發，供資料繫結使用 |
@@ -367,6 +429,7 @@ Network,Ping,
 
 - **資料改了要重新 `SetRoots`。** 已經顯示中的欄位不會自動反映 `CascadeItem.Children` 或你自己的模型的變動。
 - **`SetRoots` 也會觸發 `SelectionChanged`**（未選取的狀態）。在表單建構式裡呼叫時，事件處理常式也會跑一次。
+- **按 ← 會改變選取**，`SelectionChanged` 跟著觸發。依賴「← 只移動焦點」的舊程式要留意。
 - **`DrawItem` 和 `ColumnWidthChanged` 不在屬性視窗裡**，需要時請在程式碼中訂閱。
 - **更新 dll 時要連同 `CascadeControl.xml` 一起換**，否則 IntelliSense 顯示的會是舊的說明。
 - 控制項用 `WS_EX_COMPOSITED` 做雙緩衝，避免改選時閃爍。一般大小的選單感覺不出額外負擔；

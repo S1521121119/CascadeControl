@@ -11,11 +11,12 @@ namespace CascadeControl.Views
     /// 以 Miller Columns 的方式呈現多層選單：有下一層就長出一欄，改選時後面的欄位會整批換掉。
     /// </summary>
     /// <remarks>
-    /// 整個控制項只靠一條規則：節點有子節點，就為它的子節點開一欄。樹根也一樣，
-    /// 所以選單有內容時，載入後自然會有第一欄；空選單則一欄都沒有，不需要特別處理。
-    /// 選取狀態直接放在各欄的 SelectedIndex，類別本身不另外記一份，以免兩邊不同步。
-    /// 鍵盤操作：↑↓ 在同一欄內移動（ListBox 原生行為），→ 進入下一欄，← 把焦點移回上一欄；
-    /// Enter 在葉節點上觸發 <see cref="ItemActivated"/>，不是葉節點時等同 →。
+    /// 狀態只有一份，由 <see cref="CascadeNavigator"/> 持有：選取路徑，以及每個節點「上次在底下選了哪一個子節點」的記憶。
+    /// 記憶逐節點記住，切換分支不會忘掉其他分支走過的路線，只用來讓使用者退回或切換後還能往右走回去。
+    /// 欄位 ListBox 只負責呈現：每次狀態改變都由 SyncColumns 依狀態重建欄位、選取與排版，不反過來從 ListBox 讀狀態。
+    /// 鍵盤操作：↑↓ 改選目前這一欄（ListBox 原生行為），← 退回上一層，→ 沿記憶或第一個子節點進入下一層，
+    /// Enter 在葉節點上觸發 <see cref="ItemActivated"/>、不是葉節點時等同 →，Esc 清除選取（記憶保留）。
+    /// 鍵盤焦點固定在目前操作的那一欄，所以按鍵一律以選取深度為準，不看是哪一欄收到按鍵。
     /// 欄位 ListBox 一律由控制項自己建立和移除，不接受從外部加入子控制項：
     /// 設計階段由 <see cref="CascadeViewDesigner"/> 取消容器行為，執行階段由 <see cref="CreateControlsInstance"/> 擋下。
     /// 這個檔案只放對外 API；排版、輸入、繪製分別在 CascadeView.Columns / Input / Rendering。
@@ -31,15 +32,24 @@ namespace CascadeControl.Views
         private const int DEFAULT_COLUMN_GAP = 6;
         private const string DEFAULT_PATH_SEPARATOR = " => ";
 
+        private static readonly IReadOnlyList<ICascadeItem> NoItems = new ICascadeItem[0];
+
         private readonly List<ListBox> _lists = new List<ListBox>();
+        private readonly CascadeNavigator _navigator = new CascadeNavigator();
+
+        // 第一欄的內容。_rootsKey 每次 SetRoots 都換一個，當作第一欄的「來源」，用來判斷第一欄要不要換內容。
+        private IReadOnlyList<ICascadeItem> _roots = NoItems;
+
+        private object _rootsKey = new object();
 
         private int _columnWidth = DEFAULT_COLUMN_WIDTH;
         private int _columnGap = DEFAULT_COLUMN_GAP;
+        private CascadeColumnSizeMode _columnSizeMode = CascadeColumnSizeMode.Fixed;
+        private int _fillColumnCount;
+        private bool _showRememberedPath;
         private Color _inactiveSelectionBackColor = Color.Empty;
+        private Color _rememberedBackColor = Color.Empty;
         private string _pathSeparator = DEFAULT_PATH_SEPARATOR;
-
-        // TrySelectPath 會連續改好幾欄，期間不逐層觸發事件，結束後再統一觸發一次。
-        private bool _bulkSelecting;
 
         /// <summary>
         /// 建立控制項。欄位多到放不下時會出現水平捲軸。
@@ -52,10 +62,11 @@ namespace CascadeControl.Views
         #region 外觀
 
         /// <summary>
-        /// 每一欄的寬度（像素）。
+        /// 每一欄的寬度（像素）；<see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Fill"/> 或
+        /// <see cref="CascadeColumnSizeMode.Single"/> 時是最小欄寬。
         /// </summary>
         [Category("Cascade")]
-        [Description("每一欄的寬度（像素）。要調整欄位字型，請設定這個控制項的 Font。")]
+        [Description("每一欄的寬度（像素）；ColumnSizeMode 為 Fill 或 Single 時是最小欄寬。要調整欄位字型，請設定這個控制項的 Font。")]
         [DefaultValue(DEFAULT_COLUMN_WIDTH)]
         public int ColumnWidth
         {
@@ -94,6 +105,71 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
+        /// 欄寬與顯示欄數的決定方式。
+        /// </summary>
+        [Category("Cascade")]
+        [Description("Fixed：固定使用 ColumnWidth；Fill：讓 FillColumnCount 欄平均填滿寬度；Single：只顯示目前操作的那一欄。")]
+        [DefaultValue(CascadeColumnSizeMode.Fixed)]
+        public CascadeColumnSizeMode ColumnSizeMode
+        {
+            get => _columnSizeMode;
+            set
+            {
+                if (!Enum.IsDefined(typeof(CascadeColumnSizeMode), value))
+                    throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(CascadeColumnSizeMode));
+
+                if (_columnSizeMode == value) return;
+
+                _columnSizeMode = value;
+                SyncColumns();
+            }
+        }
+
+        /// <summary>
+        /// <see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Fill"/> 時，畫面上平均排列的欄數；0 表示等同 <see cref="CascadeColumnSizeMode.Fixed"/>。
+        /// </summary>
+        /// <remarks>平均後的欄寬小於 <see cref="ColumnWidth"/> 時改用 <see cref="ColumnWidth"/>，放不下的部分出現水平捲軸。</remarks>
+        [Category("Cascade")]
+        [Description("ColumnSizeMode 為 Fill 時，畫面上平均排列的欄數；0 表示等同 Fixed。")]
+        [DefaultValue(0)]
+        public int FillColumnCount
+        {
+            get => _fillColumnCount;
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "FillColumnCount 不可為負數。");
+
+                if (_fillColumnCount == value) return;
+
+                _fillColumnCount = value;
+                Relayout();
+            }
+        }
+
+        /// <summary>
+        /// 退回較淺的層級後，是否仍畫出記憶中更深的整條路徑；false 時只畫到選取的下一欄。
+        /// </summary>
+        /// <remarks>
+        /// 不論設定為何，記憶都會保留，按 → 就能沿記憶走回去；這個屬性只影響畫面，不影響選取。
+        /// <see cref="ColumnSizeMode"/> 為 <see cref="CascadeColumnSizeMode.Single"/> 時沒有作用。
+        /// </remarks>
+        [Category("Cascade")]
+        [Description("退回較淺的層級後，是否仍畫出記憶中更深的整條路徑；false 時只畫到選取的下一欄。")]
+        [DefaultValue(false)]
+        public bool ShowRememberedPath
+        {
+            get => _showRememberedPath;
+            set
+            {
+                if (_showRememberedPath == value) return;
+
+                _showRememberedPath = value;
+                SyncColumns();
+            }
+        }
+
+        /// <summary>
         /// 沒有焦點的欄位中，選取項的背景色；設為 <see cref="Color.Empty"/> 時使用調淡的系統選取色。
         /// </summary>
         [Category("Cascade")]
@@ -115,6 +191,27 @@ namespace CascadeControl.Views
         private void ResetInactiveSelectionBackColor() => InactiveSelectionBackColor = Color.Empty;
 
         /// <summary>
+        /// 記憶項目（退回前走過、目前不算選取的項目）的背景色；設為 <see cref="Color.Empty"/> 時使用 <see cref="SystemColors.ControlLight"/>。
+        /// </summary>
+        [Category("Cascade")]
+        [Description("記憶項目（退回前走過、目前不算選取的項目）的背景色；留空時使用系統淺灰色。")]
+        public Color RememberedBackColor
+        {
+            get => _rememberedBackColor;
+            set
+            {
+                if (_rememberedBackColor == value) return;
+
+                _rememberedBackColor = value;
+                foreach (var list in _lists) list.Invalidate();
+            }
+        }
+
+        private bool ShouldSerializeRememberedBackColor() => !_rememberedBackColor.IsEmpty;
+
+        private void ResetRememberedBackColor() => RememberedBackColor = Color.Empty;
+
+        /// <summary>
         /// <see cref="SelectedPathText"/> 使用的層級分隔字串。
         /// </summary>
         [Category("Cascade")]
@@ -131,23 +228,17 @@ namespace CascadeControl.Views
         #region 資料輸入
 
         /// <summary>
-        /// 重新設定第一層的內容：第一欄換成新內容，其他欄位全部移除；沒有內容時一欄都不留。
+        /// 重新設定第一層的內容：第一欄換成新內容，其他欄位全部移除，選取與記憶都清除；沒有內容時一欄都不留。
         /// </summary>
         /// <param name="roots">第一層節點；傳 null 或空集合表示清空。</param>
         /// <remarks>執行後會觸發一次 <see cref="SelectionChanged"/>（未選取的狀態）。</remarks>
         public void SetRoots(IEnumerable<ICascadeItem> roots)
         {
-            BeginColumnUpdate();
-            try
-            {
-                ShowColumn(0, roots?.ToList());
-                ScrollToActive();
-            }
-            finally
-            {
-                EndColumnUpdate();
-            }
+            _roots = roots?.ToList() ?? NoItems;
+            _rootsKey = new object();
+            _navigator.Clear();
 
+            SyncColumns();
             OnSelectionChanged(CreateItemEventArgs());
         }
 
@@ -164,19 +255,19 @@ namespace CascadeControl.Views
         /// 目前選取的最深節點；未選取時為 null。
         /// </summary>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public ICascadeItem SelectedItem => Selection.LastOrDefault();
+        public ICascadeItem SelectedItem => _navigator.Active;
 
         /// <summary>
-        /// 由淺至深的選取路徑；未選取時為空集合。
+        /// 由淺至深的選取路徑；未選取時為空集合。不包含退回後留下的記憶。
         /// </summary>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public IReadOnlyList<ICascadeItem> SelectedPath => Selection.ToList();
+        public IReadOnlyList<ICascadeItem> SelectedPath => _navigator.Selection.ToList();
 
         /// <summary>
         /// 目前選取路徑上各層的 <see cref="ICascadeItem.Name"/>，以 <see cref="PathSeparator"/> 串接；未選取時為空字串。
         /// </summary>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string SelectedPathText => string.Join(_pathSeparator, Selection.Select(item => item.Name));
+        public string SelectedPathText => string.Join(_pathSeparator, _navigator.Selection.Select(item => item.Name));
 
         /// <summary>
         /// 目前的選取是否停在葉節點，也就是整條路徑已經選到底。
@@ -188,19 +279,11 @@ namespace CascadeControl.Views
         public bool IsLeafSelected => IsLeaf(SelectedItem);
 
         /// <summary>
-        /// 目前操作中的欄位索引：優先取有鍵盤焦點的那一欄；沒有欄位有焦點時，取最深一個有選取的欄；兩者都沒有時為 0。
+        /// 目前操作中的欄位索引：最深選取項所在的欄；未選取時為 0。
         /// </summary>
+        /// <remarks>鍵盤焦點固定在這一欄，所以它和選取深度一致，不受控制項是否有焦點影響。</remarks>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public int FocusedLevel
-        {
-            get
-            {
-                var focused = _lists.FindLastIndex(list => list.Focused);
-                if (focused >= 0) return focused;
-
-                return Math.Max(0, _lists.FindLastIndex(list => list.SelectedIndex >= 0));
-            }
-        }
+        public int FocusedLevel => _navigator.ActiveLevel;
 
         #endregion 選取查詢
 
@@ -212,7 +295,7 @@ namespace CascadeControl.Views
         /// <param name="path">由淺到深的節點；以 <see cref="object.Equals(object)"/> 比對。</param>
         /// <returns>整條路徑都選到時為 true；中途找不到時，選取停在已選到的那一段，並回傳 false。</returns>
         /// <remarks>
-        /// 不論成功與否，最後的選取都正好是已比對成功的那一段，更深的舊選取會被清除。
+        /// 不論成功與否，最後的選取都正好是已比對成功的那一段。路徑經過的每一層會記成「上次選的項目」，其他分支的記憶保留。
         /// 不管選了幾層，<see cref="SelectionChanged"/> 都只觸發一次。
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="path"/> 為 null。</exception>
@@ -221,53 +304,62 @@ namespace CascadeControl.Views
             if (path == null) throw new ArgumentNullException(nameof(path));
 
             var steps = path.ToList();
-            var matched = 0;
+            var matched = new List<ICascadeItem>();
+            var items = _roots;
 
-            BeginColumnUpdate();
-            _bulkSelecting = true;
-            try
+            foreach (var step in steps)
             {
-                foreach (var step in steps)
-                {
-                    if (matched >= _lists.Count) break;
+                // 存入清單中的那一個實例，而不是呼叫端傳入的，之後在欄位裡找選取項時才對得上。
+                var found = items.FirstOrDefault(item => item != null && Equals(item, step));
+                if (found == null) break;
 
-                    var index = _lists[matched].Items.IndexOf(step);
-                    if (index < 0) break;
-
-                    _lists[matched].SelectedIndex = index;
-                    matched++;
-                }
-
-                // 同一欄原本就選著同一項時不會觸發 SelectedIndexChanged，後面的舊選取還在，要手動清掉。
-                if (matched < _lists.Count) _lists[matched].SelectedIndex = -1;
-
-                ScrollToActive();
+                matched.Add(found);
+                items = CascadeNavigator.ChildrenOf(found);
             }
-            finally
-            {
-                _bulkSelecting = false;
-                EndColumnUpdate();
-            }
+
+            _navigator.SelectPath(matched);
+            SyncColumns();
 
             OnSelectionChanged(CreateItemEventArgs());
-            return matched == steps.Count;
+            return matched.Count == steps.Count;
         }
 
         /// <summary>
-        /// 把鍵盤焦點移到第一欄。沒有欄位，或第一欄無法取得焦點（例如控制項已停用）時，不做任何事。
+        /// 忘掉所有分支的記憶，只保留目前的選取路徑；選取不變，所以不會觸發 <see cref="SelectionChanged"/>。
         /// </summary>
-        public void FocusFirstColumn()
+        /// <remarks>呼叫 <see cref="SetRoots"/> 或 <see cref="Clear"/> 時記憶也會一併清除，不需要另外呼叫。</remarks>
+        public void ClearMemory()
         {
-            var first = _lists.FirstOrDefault();
-            if (first?.CanFocus == true) first.Focus();
+            _navigator.ClearMemory();
+            SyncColumns();
         }
+
+        /// <summary>
+        /// 把鍵盤焦點移到目前操作的那一欄（<see cref="FocusedLevel"/>）；未選取時就是第一欄。
+        /// 沒有欄位，或那一欄無法取得焦點（例如控制項已停用）時，不做任何事。
+        /// </summary>
+        public void FocusActiveColumn()
+        {
+            var level = _navigator.ActiveLevel;
+            if (level >= _lists.Count) return;
+
+            var list = _lists[level];
+            if (list.CanFocus && !list.Focused) list.Focus();
+        }
+
+        /// <summary>
+        /// 已改名為 <see cref="FocusActiveColumn"/>：鍵盤焦點固定在目前操作的那一欄，不會停在其他欄。
+        /// </summary>
+        [Obsolete("請改用 FocusActiveColumn：鍵盤焦點固定在目前操作的那一欄。")]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void FocusFirstColumn() => FocusActiveColumn();
 
         #endregion 選取操作
 
         #region 事件
 
         /// <summary>
-        /// 任何一層的選取改變後觸發；呼叫 <see cref="SetRoots"/>、<see cref="Clear"/> 時也會觸發。
+        /// 選取路徑改變後觸發，包含 ← / → 改變選取深度；呼叫 <see cref="SetRoots"/>、<see cref="Clear"/>、<see cref="TrySelectPath"/> 時也會觸發。
         /// </summary>
         /// <remarks>
         /// 參數包含完整的選取路徑、上一層節點、下一欄的內容，以及是否已選到葉節點；
@@ -346,9 +438,16 @@ namespace CascadeControl.Views
 
         #endregion 事件
 
-        // 深一層的欄位是因為淺一層有選取才長出來的，所以選取一定是連續的，
-        // 直接由淺至深收集即可，只有最後一欄可能還沒選。
-        private IEnumerable<ICascadeItem> Selection => _lists.Select(ItemAt).Where(item => item != null);
+        /// <summary>
+        /// 導覽狀態改變後，重建欄位並觸發 <see cref="SelectionChanged"/>；沒有改變時不做任何事。
+        /// </summary>
+        private void ApplyNavigation(bool changed)
+        {
+            if (!changed) return;
+
+            SyncColumns();
+            OnSelectionChanged(CreateItemEventArgs());
+        }
 
         /// <summary>
         /// 依目前的選取狀態組出 <see cref="SelectionChanged"/> 與 <see cref="ItemActivated"/> 共用的事件參數。
@@ -356,14 +455,13 @@ namespace CascadeControl.Views
         /// <remarks>第一欄的內容只在未選取時才需要，有選取時不去複製它。</remarks>
         private CascadeItemEventArgs CreateItemEventArgs()
         {
-            var path = Selection.ToList();
-            var roots = path.Count == 0 && _lists.Count > 0 ? _lists[0].Items.OfType<ICascadeItem>() : null;
-            return new CascadeItemEventArgs(path, roots);
+            var path = _navigator.Selection.ToList();
+            return new CascadeItemEventArgs(path, path.Count == 0 ? _roots : null);
         }
 
-        private static bool IsLeaf(ICascadeItem item) => item != null && !(item.Children?.Count > 0);
+        private static bool IsLeaf(ICascadeItem item) => item != null && CascadeNavigator.ChildrenOf(item).Count == 0;
 
-        // 沒有佔位項，SelectedIndex 為 -1 就是這一欄還沒選。
+        // 沒有佔位項，SelectedIndex 為 -1 就是這一欄沒有選取。
         private static ICascadeItem ItemAt(ListBox list)
         {
             return list.SelectedIndex >= 0 ? list.Items[list.SelectedIndex] as ICascadeItem : null;

@@ -6,72 +6,129 @@ using System.Windows.Forms;
 
 namespace CascadeControl.Views
 {
-    // 欄位的生長、拆除與排版。
+    // 依導覽狀態建立、拆除與排列欄位。
     public partial class CascadeView
     {
         private const int MARGIN = 3;
 
-        // 換欄位內容時 Items.Clear 也會觸發 SelectedIndexChanged，那不是使用者改選，要略過。
-        private bool _replacingItems;
+        // SyncColumns 換內容、設定選取時都會觸發 SelectedIndexChanged，那不是使用者改選，要略過。
+        private bool _syncing;
 
-        // BeginColumnUpdate 可巢狀呼叫（TrySelectPath 裡會逐欄觸發 SelectedIndexChanged），只有最外層真的暫停／恢復繪製。
+        // BeginColumnUpdate 可巢狀呼叫，只有最外層真的暫停／恢復繪製。
         private int _columnUpdateDepth;
 
         private bool _redrawSuspended;
 
+        // 使用者用 ↑↓、打字或滑鼠改了某一欄的選取。
         private void OnColumnSelectedIndexChanged(object sender, EventArgs e)
         {
-            if (_replacingItems) return;
+            if (_syncing) return;
 
             var level = _lists.IndexOf(sender as ListBox);
             if (level < 0) return;
 
+            var item = ItemAt(_lists[level]);
+            if (item == null) return;
+
+            ApplyNavigation(_navigator.Select(level, item));
+        }
+
+        /// <summary>
+        /// 依導覽狀態重建欄位：要顯示哪幾欄、每欄的內容與選取、哪一欄可以取得焦點，最後重新排版。
+        /// </summary>
+        /// <remarks>
+        /// 內容來源沒變的欄位只更新選取，不重建也不換內容。新建的 ListBox 在 Handle 建立的當下會先清成白底，
+        /// 下一次繪製才畫上項目，中間那一瞬間的空白欄，就是改選時看到的閃爍。
+        /// 原本有焦點時，先把焦點交給新的操作欄再拆掉多餘的欄位；順序反過來的話，
+        /// 被拆掉的焦點欄會把焦點丟給表單上的其他控制項。拆完後再修正一次捲動範圍。
+        /// </remarks>
+        private void SyncColumns()
+        {
+            var hadFocus = ContainsFocus;
+            var active = _navigator.ActiveLevel;
+            var count = VisibleColumnCount();
+            var single = _columnSizeMode == CascadeColumnSizeMode.Single;
+
             BeginColumnUpdate();
+            _syncing = true;
             try
             {
-                // 這一層改選後，後面各欄的內容都過時了：下一欄換成新選取項的子節點，更深的全部拆掉。
-                ShowColumn(level + 1, ItemAt(_lists[level])?.Children);
+                for (var level = 0; level < count; level++)
+                {
+                    var source = ColumnSource(level);
+                    if (level >= _lists.Count)
+                    {
+                        AddColumn(ColumnItems(level), source);
+                    }
+                    else if (!Equals(_lists[level].Tag, source))
+                    {
+                        ReplaceItems(_lists[level], ColumnItems(level));
+                        _lists[level].Tag = source;
+                    }
 
-                if (!_bulkSelecting) ScrollToActive();
+                    var list = _lists[level];
+                    var selected = level < _navigator.Depth ? _navigator.Record[level] : null;
+                    if (!Equals(ItemAt(list), selected))
+                        list.SelectedIndex = selected == null ? -1 : list.Items.IndexOf(selected);
+
+                    // 只有操作欄能用 Tab 進入，焦點才不會停在其他欄。
+                    list.TabStop = level == active;
+                    list.Visible = !single || level == active;
+                }
+
+                // 先排好位置再移焦點：欄位取得焦點時，外層會把它捲進可視範圍，
+                // 用的是當下的位置，新長出來的欄位還在舊位置的話，會把剛算好的捲動位置蓋掉。
+                Relayout();
+
+                // 暫停繪製期間 WM_SETREDRAW 會清掉控制項的 WS_VISIBLE，CanFocus 為 false，Focus() 不會有作用，
+                // 所以直接呼叫 SetFocus；它不檢查可見性，WinForms 仍會照常收到 WM_SETFOCUS 並更新 ActiveControl。
+                if (hadFocus && active < count)
+                {
+                    var target = _lists[active];
+                    if (!target.Focused && target.Enabled && target.Visible && target.IsHandleCreated)
+                        NativeMethods.SetFocus(target.Handle);
+                }
+
+                TrimColumns(count);
+                ScrollToActive();
             }
             finally
             {
+                _syncing = false;
                 EndColumnUpdate();
             }
-
-            if (_bulkSelecting) return;
-
-            OnSelectionChanged(CreateItemEventArgs());
         }
 
         /// <summary>
-        /// 讓第 <paramref name="level"/> 欄顯示 <paramref name="items"/>，並拆掉更深的欄位；
-        /// <paramref name="items"/> 為空時連第 <paramref name="level"/> 欄一起拆掉。
+        /// 依導覽狀態與 <see cref="ShowRememberedPath"/> 算出要建立的欄數。
         /// </summary>
         /// <remarks>
-        /// 那一欄已經存在時只換內容、不重建。新建的 ListBox 在 Handle 建立的當下會先清成白底，
-        /// 下一次繪製才畫上項目，中間那一瞬間的空白欄，就是改選時看到的閃爍。
+        /// 畫到最後一個要顯示的項目為止，它有子節點時再多一欄。
+        /// <see cref="CascadeColumnSizeMode.Single"/> 雖然只顯示操作欄，仍照不顯示記憶的規則建立欄位，只是隱藏起來。
         /// </remarks>
-        private void ShowColumn(int level, IReadOnlyList<ICascadeItem> items)
+        private int VisibleColumnCount()
         {
-            if (!(items?.Count > 0))
-            {
-                TrimColumns(level);
-                return;
-            }
+            var showTrail = _showRememberedPath && _columnSizeMode != CascadeColumnSizeMode.Single;
+            var last = showTrail ? _navigator.Record.Count : _navigator.Depth;
 
-            TrimColumns(level + 1);
+            if (last == 0) return _roots.Count > 0 ? 1 : 0;
 
-            if (level < _lists.Count) ReplaceItems(_lists[level], items);
-            else AddColumn(items);
+            return last + (CascadeNavigator.ChildrenOf(_navigator.Record[last - 1]).Count > 0 ? 1 : 0);
+        }
+
+        // 第 level 欄內容的來源：第一欄是這次 SetRoots 的代表物件，其他欄是上一層的項目。
+        private object ColumnSource(int level) => level == 0 ? _rootsKey : _navigator.Record[level - 1];
+
+        private IReadOnlyList<ICascadeItem> ColumnItems(int level)
+        {
+            return level == 0 ? _roots : CascadeNavigator.ChildrenOf(_navigator.Record[level - 1]);
         }
 
         /// <summary>
-        /// 換掉既有欄位的內容；選取與捲動位置都會回到初始狀態，和新建的欄位一樣。
+        /// 換掉既有欄位的內容；捲動位置會回到頂端，和新建的欄位一樣。
         /// </summary>
-        private void ReplaceItems(ListBox list, IReadOnlyList<ICascadeItem> items)
+        private static void ReplaceItems(ListBox list, IReadOnlyList<ICascadeItem> items)
         {
-            _replacingItems = true;
             list.BeginUpdate();
             try
             {
@@ -81,7 +138,6 @@ namespace CascadeControl.Views
             finally
             {
                 list.EndUpdate();
-                _replacingItems = false;
             }
         }
 
@@ -111,6 +167,7 @@ namespace CascadeControl.Views
         /// </summary>
         /// <remarks>
         /// 暫停期間的失效區域不會被記下來，所以要連子視窗與邊框一起重畫；
+        /// 只改選取深度（← / →）時欄位內容不變，但配色變了，也靠這次重畫更新。
         /// 這次重畫有 <see cref="CreateParams"/> 設定的 WS_EX_COMPOSITED 做雙緩衝，不會看到一欄一欄刷新。
         /// </remarks>
         private void EndColumnUpdate()
@@ -130,19 +187,21 @@ namespace CascadeControl.Views
         /// <summary>
         /// 在最右側新增一欄。
         /// </summary>
-        private void AddColumn(IReadOnlyList<ICascadeItem> items)
+        private void AddColumn(IReadOnlyList<ICascadeItem> items, object source)
         {
             var level = _lists.Count;
             var list = new ListBox
             {
                 Name = $"lstColumn{level + 1:00}",
                 Location = ColumnLocation(level),
-                Size = new Size(ColumnWidth, ColumnHeight),
+                Size = new Size(ActualColumnWidth, ColumnHeight),
                 TabIndex = level,
+                Tag = source,
+
                 // ListBox 預設會把高度湊成整數列，關掉才能讓每一欄都等高。
                 IntegralHeight = false,
 
-                // 失去焦點後選取項仍是標準藍底，多欄一起看就分不出鍵盤在哪一欄，所以改為自繪。
+                // 失去焦點後選取項仍是標準藍底，多欄一起看就分不出鍵盤在哪一欄，記憶項目也要另外上色，所以改為自繪。
                 DrawMode = DrawMode.OwnerDrawFixed,
                 ItemHeight = ItemHeight,
 
@@ -155,6 +214,7 @@ namespace CascadeControl.Views
 
             list.SelectedIndexChanged += OnColumnSelectedIndexChanged;
             list.KeyDown += OnColumnKeyDown;
+            list.MouseUp += OnColumnMouseUp;
             list.DoubleClick += OnColumnDoubleClick;
             list.DrawItem += OnColumnDrawItem;
             list.GotFocus += OnColumnGotFocus;
@@ -216,25 +276,51 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 捲動到焦點欄右邊剛好放得下一整欄的位置。
+        /// 捲動到能看見操作欄、而且右邊剛好放得下一整欄的位置。
         /// </summary>
         /// <remarks>
-        /// 焦點欄在畫面上的位置只和它的層數與控制項寬度有關，和「下一層有沒有長出來」無關，
-        /// 所以選到葉節點時，焦點欄不會突然往右跳一格，視線才不會跟丟。
-        /// 連兩欄都放不下時，改為讓焦點欄靠左，以免把焦點欄本身捲出畫面。
+        /// 操作欄在畫面上的位置只和它的層數與控制項寬度有關，和「下一層有沒有長出來」無關，
+        /// 所以選到葉節點時，操作欄不會突然往右跳一格，視線才不會跟丟。
+        /// 連兩欄都放不下時，改為讓操作欄靠左，以免把操作欄本身捲出畫面。
+        /// <see cref="CascadeColumnSizeMode.Fill"/> 的平均欄寬放得下時，捲動位置對齊欄位邊界，一次正好看到 <see cref="FillColumnCount"/> 欄。
+        /// <see cref="CascadeColumnSizeMode.Single"/> 只顯示一欄，不需要捲動。
+        /// 沒有欄位時（包含設計階段）捲動範圍要歸零，否則設計工具會把非預設的 AutoScrollMinSize 寫進 Designer.cs。
         /// </remarks>
         private void ScrollToActive()
         {
+            if (_columnSizeMode == CascadeColumnSizeMode.Single || _lists.Count == 0)
+            {
+                if (AutoScrollMinSize != Size.Empty) AutoScrollMinSize = Size.Empty;
+                if (AutoScrollPosition != Point.Empty) AutoScrollPosition = Point.Empty;
+                return;
+            }
+
+            var level = FocusedLevel;
+            var width = ActualColumnWidth;
+            var step = width + ColumnGap;
+            var clientWidth = ClientSize.Width;
+
+            int wanted;
+            var window = FillWindowColumns;
+            if (window > 0)
+            {
+                // 視窗最右邊一欄是操作欄的下一欄；只容得下一欄時就只看操作欄。
+                var first = Math.Max(0, Math.Min(level, level - window + 2));
+                wanted = first * step;
+            }
+            else
+            {
+                var left = ColumnLeft(level);
+                var nextRight = left + step + width;
+                wanted = Math.Max(0, Math.Min(left, nextRight - clientWidth));
+            }
+
             // 最後一欄右邊固定多留一整欄的空間。少了這段，選到葉節點時會捲不過去，
-            // 焦點欄被推到最右邊，就是這一下跳動讓人跟丟。
-            var minSize = new Size(ColumnLeft(_lists.Count) + ColumnWidth + MARGIN, 0);
+            // 操作欄被推到最右邊，就是這一下跳動讓人跟丟。
+            var minSize = new Size(Math.Max(ColumnLeft(_lists.Count) + width + MARGIN, wanted + clientWidth), 0);
             if (AutoScrollMinSize != minSize) AutoScrollMinSize = minSize;
 
-            var left = ColumnLeft(FocusedLevel);
-            var nextRight = left + ColumnWidth + ColumnGap + ColumnWidth;
-
             // 位置沒變就不要重設，設下去會讓所有欄位跟著重畫一次。AutoScrollPosition 讀出來是負值。
-            var wanted = Math.Max(0, Math.Min(left, nextRight - ClientSize.Width));
             var current = AutoScrollPosition;
             if (current.X != -wanted || current.Y != 0) AutoScrollPosition = new Point(wanted, 0);
         }
@@ -254,9 +340,47 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 第 <paramref name="level"/> 欄左緣的 X 座標（以未捲動時為準）。
+        /// 第 <paramref name="level"/> 欄左緣的 X 座標（以未捲動時為準）。<see cref="CascadeColumnSizeMode.Single"/> 時每一欄都放在最左邊。
         /// </summary>
-        private int ColumnLeft(int level) => MARGIN + (level * (ColumnWidth + ColumnGap));
+        private int ColumnLeft(int level)
+        {
+            if (_columnSizeMode == CascadeColumnSizeMode.Single) return MARGIN;
+
+            return MARGIN + (level * (ActualColumnWidth + ColumnGap));
+        }
+
+        /// <summary>
+        /// 依 <see cref="ColumnSizeMode"/> 算出的實際欄寬，不會小於 <see cref="ColumnWidth"/>。
+        /// </summary>
+        private int ActualColumnWidth
+        {
+            get
+            {
+                switch (_columnSizeMode)
+                {
+                    case CascadeColumnSizeMode.Fill:
+                        return _fillColumnCount > 0 ? Math.Max(ColumnWidth, FillWidth) : ColumnWidth;
+
+                    case CascadeColumnSizeMode.Single:
+                        return Math.Max(ColumnWidth, ClientSize.Width - (MARGIN * 2));
+
+                    default:
+                        return ColumnWidth;
+                }
+            }
+        }
+
+        // 讓 FillColumnCount 欄（含欄距與左右邊距）剛好填滿寬度時的欄寬。
+        private int FillWidth => (ClientSize.Width - (MARGIN * 2) - ((_fillColumnCount - 1) * ColumnGap)) / _fillColumnCount;
+
+        /// <summary>
+        /// 平均欄寬放得下時，畫面上一次要看到的欄數；不是 <see cref="CascadeColumnSizeMode.Fill"/>，
+        /// 或平均欄寬小於 <see cref="ColumnWidth"/>（只能改用最小欄寬）時為 0。
+        /// </summary>
+        private int FillWindowColumns =>
+            _columnSizeMode == CascadeColumnSizeMode.Fill && _fillColumnCount > 0 && FillWidth >= ColumnWidth
+                ? _fillColumnCount
+                : 0;
 
         /// <summary>
         /// 依目前控制項高度算出的欄高。
@@ -289,21 +413,23 @@ namespace CascadeControl.Views
         /// <summary>
         /// 依目前的欄寬與欄高重新擺放所有欄位，並修正捲動範圍。
         /// </summary>
+        /// <remarks>沒有欄位時仍要修正捲動範圍，否則清空後會留下舊的水平捲軸。</remarks>
         private void Relayout()
         {
-            if (_lists.Count == 0) return;
-
-            var size = new Size(ColumnWidth, ColumnHeight);
-
-            SuspendLayout();
-            try
+            if (_lists.Count > 0)
             {
-                for (var level = 0; level < _lists.Count; level++)
-                    _lists[level].Bounds = new Rectangle(ColumnLocation(level), size);
-            }
-            finally
-            {
-                ResumeLayout();
+                var size = new Size(ActualColumnWidth, ColumnHeight);
+
+                SuspendLayout();
+                try
+                {
+                    for (var level = 0; level < _lists.Count; level++)
+                        _lists[level].Bounds = new Rectangle(ColumnLocation(level), size);
+                }
+                finally
+                {
+                    ResumeLayout();
+                }
             }
 
             ScrollToActive();

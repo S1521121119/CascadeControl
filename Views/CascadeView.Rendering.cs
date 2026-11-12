@@ -32,15 +32,21 @@ namespace CascadeControl.Views
         {
             if (!(sender is ListBox list) || e.Index < 0 || e.Index >= list.Items.Count) return;
 
+            var item = list.Items[e.Index] as ICascadeItem;
+            var level = _lists.IndexOf(list);
+            var isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            var remembered = level >= 0 ? _navigator.RememberedAt(level) : null;
+
             var args = new CascadeDrawItemEventArgs(
                 e.Graphics,
                 e.Font,
                 e.Bounds,
-                list.Items[e.Index] as ICascadeItem,
-                _lists.IndexOf(list),
-                (e.State & DrawItemState.Selected) == DrawItemState.Selected,
+                item,
+                level,
+                isSelected,
                 list.Focused,
-                list.Enabled);
+                list.Enabled,
+                !isSelected && item != null && Equals(item, remembered));
 
             OnDrawItem(args);
 
@@ -48,7 +54,8 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 預設外觀：焦點欄的選取項用系統選取色，其他欄的選取項用調淡的選取色，停用時整欄顯示灰字。
+        /// 預設外觀：焦點欄的選取項用系統選取色，其他欄的選取項用調淡的選取色，
+        /// 記憶項目用淺灰底，停用時整欄顯示灰字。
         /// </summary>
         private void DrawDefaultItem(CascadeDrawItemEventArgs e)
         {
@@ -72,9 +79,13 @@ namespace CascadeControl.Views
                 // 有選取、但不是目前操作的欄位：用調淡的系統選取色。
                 // 用灰色的話幾乎看不出選了什麼，整條路徑就像被藏起來；
                 // 淡藍色看得出是選取項，又能和焦點欄的實心藍一眼區分。
-                back = _inactiveSelectionBackColor.IsEmpty
-                    ? Blend(SystemColors.Highlight, listBack, INACTIVE_SELECTION_BLEND)
-                    : _inactiveSelectionBackColor;
+                back = InactiveSelectionBackColor;
+                fore = listFore;
+            }
+            else if (e.IsRemembered)
+            {
+                // 記憶項目不算選取，用不帶藍色的淺灰，避免和選取路徑混在一起。
+                back = RememberedBackColor;
                 fore = listFore;
             }
             else
@@ -104,7 +115,7 @@ namespace CascadeControl.Views
     }
 
     /// <summary>
-    /// 防止閃爍用到的 Win32 API。
+    /// 防止閃爍與暫停繪製期間移動焦點用到的 Win32 API。
     /// </summary>
     internal static class NativeMethods
     {
@@ -126,5 +137,8 @@ namespace CascadeControl.Views
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr SetFocus(IntPtr hWnd);
     }
 }

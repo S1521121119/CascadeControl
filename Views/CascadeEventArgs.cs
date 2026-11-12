@@ -81,8 +81,10 @@ namespace CascadeControl.Views
         /// </summary>
         public CascadeDrawItemEventArgs(
             Graphics graphics, Font font, Rectangle bounds,
-            ICascadeItem item, int level, bool isSelected, bool isFocusedColumn, bool isEnabled)
+            ICascadeItem item, int level, bool isSelected, bool isFocusedColumn, bool isEnabled,
+            bool isRemembered = false)
         {
+            IsRemembered = isRemembered;
             Graphics = graphics;
             Font = font;
             Bounds = bounds;
@@ -110,6 +112,11 @@ namespace CascadeControl.Views
 
         /// <summary>這一列是否為該欄的選取項。</summary>
         public bool IsSelected { get; }
+
+        /// <summary>
+        /// 這一列是否為記憶項目：使用者退回較淺的層級前走過、目前不算選取的項目。與 <see cref="IsSelected"/> 不會同時為 true。
+        /// </summary>
+        public bool IsRemembered { get; }
 
         /// <summary>這一欄是否持有鍵盤焦點。</summary>
         public bool IsFocusedColumn { get; }

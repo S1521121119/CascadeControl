@@ -46,7 +46,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Views\CascadeColumnSizeMode.cs" />
     <Compile Include="Views\CascadeEventArgs.cs" />
+    <Compile Include="Views\CascadeNavigator.cs" />
     <Compile Include="Views\CascadeView.Columns.cs" />
     <Compile Include="Views\CascadeView.cs" />
     <Compile Include="Views\CascadeView.Input.cs" />
