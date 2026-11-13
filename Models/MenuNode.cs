@@ -30,7 +30,7 @@ namespace CascadeControl.Models
         /// <summary>
         /// 節點的原始名稱，不含序號。
         /// </summary>
-        public string Name { get; }
+        public string Name { get; private set; }
 
         /// <summary>
         /// 父節點；樹根為 null。
@@ -149,6 +149,227 @@ namespace CascadeControl.Models
         public bool TryGetChild(string name, out MenuNode child)
         {
             return _index.TryGetValue(name ?? string.Empty, out child);
+        }
+
+        /// <summary>
+        /// 檢查底下是否已存在指定名稱的子節點。
+        /// </summary>
+        /// <param name="name">子節點名稱。</param>
+        /// <returns>已存在時為 true。</returns>
+        public bool ContainsChild(string name)
+        {
+            return _index.ContainsKey(name ?? string.Empty);
+        }
+
+        /// <summary>
+        /// 取得底下不重複的子節點名稱：若 <paramref name="baseName"/> 尚未使用則原樣回傳；
+        /// 若已存在，則在後綴依序加上 <c>" - 2"</c>、<c>" - 3"</c>… 直到不重複為止。
+        /// </summary>
+        /// <param name="baseName">原始名稱。</param>
+        /// <returns>在本節點底下不重複的名稱。</returns>
+        public string GetUniqueChildName(string baseName)
+        {
+            var key = baseName ?? string.Empty;
+            if (!_index.ContainsKey(key)) return key;
+
+            var suffix = 2;
+            while (true)
+            {
+                var candidate = $"{key} - {suffix}";
+                if (!_index.ContainsKey(candidate)) return candidate;
+                suffix++;
+            }
+        }
+
+        /// <summary>
+        /// 建立本節點及其所有子孫節點的深層複本（脫離原本的父節點）。
+        /// </summary>
+        /// <param name="newName">複本的新名稱；傳 null 則沿用本節點名稱。</param>
+        /// <returns>獨立的節點複本。</returns>
+        public MenuNode Copy(string newName = null)
+        {
+            var copy = new MenuNode(newName ?? Name);
+            copy.MergeFrom(this);
+            return copy;
+        }
+
+        /// <summary>
+        /// 將 <paramref name="source"/> 底下的所有子孫節點遞迴合併（往下疊）至本節點底下。
+        /// </summary>
+        /// <param name="source">來源節點。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="source"/> 為 null。</exception>
+        public void MergeFrom(MenuNode source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+
+            // 先對來源做快照，即使把節點合併進自己或祖先節點也不會造成無窮迴圈。
+            var stack = new Stack<KeyValuePair<IReadOnlyList<MenuNode>, MenuNode>>();
+            stack.Push(new KeyValuePair<IReadOnlyList<MenuNode>, MenuNode>(source._children.ToList(), this));
+
+            while (stack.Count > 0)
+            {
+                var pair = stack.Pop();
+                var children = pair.Key;
+                var target = pair.Value;
+
+                foreach (var child in children)
+                {
+                    var childSnapshot = child._children.ToList();
+                    var dstChild = target.GetOrAddChild(child.Name);
+                    if (childSnapshot.Count > 0)
+                    {
+                        stack.Push(new KeyValuePair<IReadOnlyList<MenuNode>, MenuNode>(childSnapshot, dstChild));
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 在本節點上方（同層前一個位置）插入 <paramref name="source"/> 的深層複本；
+        /// 若同層已有同名節點，則將 <paramref name="source"/> 的子孫節點往下疊合併至該既有節點。
+        /// </summary>
+        /// <param name="source">要插入的來源節點。</param>
+        /// <param name="overrideName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
+        /// <returns>插入或合併後的節點。</returns>
+        public MenuNode InsertBefore(MenuNode source, string overrideName = null)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (Parent == null) throw new InvalidOperationException("無法在樹根節點同層插入節點。");
+
+            var position = Parent._children.IndexOf(this);
+            return Parent.InsertChildAt(position, source, overrideName);
+        }
+
+        /// <summary>
+        /// 在本節點下方（同層後一個位置）插入 <paramref name="source"/> 的深層複本；
+        /// 若同層已有同名節點，則將 <paramref name="source"/> 的子孫節點往下疊合併至該既有節點。
+        /// </summary>
+        /// <param name="source">要插入的來源節點。</param>
+        /// <param name="overrideName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
+        /// <returns>插入或合併後的節點。</returns>
+        public MenuNode InsertAfter(MenuNode source, string overrideName = null)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (Parent == null) throw new InvalidOperationException("無法在樹根節點同層插入節點。");
+
+            var position = Parent._children.IndexOf(this) + 1;
+            return Parent.InsertChildAt(position, source, overrideName);
+        }
+
+        private MenuNode InsertChildAt(int position, MenuNode source, string overrideName)
+        {
+            var key = ValidateNodeName(overrideName ?? source.Name);
+
+            if (_index.TryGetValue(key, out MenuNode existing))
+            {
+                existing.MergeFrom(source);
+                return existing;
+            }
+
+            var child = source.Copy(key);
+            child.Parent = this;
+            child.UpdateDepthRecursive(Depth + 1);
+
+            var clampedPos = Math.Max(0, Math.Min(position, _children.Count));
+            _children.Insert(clampedPos, child);
+            _index.Add(key, child);
+            ReindexChildren();
+            return child;
+        }
+
+        /// <summary>
+        /// 將本節點從父節點中刪除，並重新計算同層兄弟節點的序號。
+        /// </summary>
+        /// <returns>成功移除時為 true；本節點為樹根或不在父節點底下時為 false。</returns>
+        public bool Remove()
+        {
+            if (Parent == null) return false;
+
+            var parent = Parent;
+            if (!parent._children.Remove(this)) return false;
+
+            parent._index.Remove(Name);
+            Parent = null;
+            parent.ReindexChildren();
+            return true;
+        }
+
+        /// <summary>
+        /// 修改本節點名稱。若同層尚無同名節點，則直接原地改名；
+        /// 若同層已有同名節點，則將本節點的子樹往下疊合併至該既有節點，並移除本節點。
+        /// </summary>
+        /// <param name="newName">新名稱。</param>
+        /// <returns>改名後的本節點，或合併後的既有同名節點。</returns>
+        /// <exception cref="InvalidOperationException">對樹根呼叫此方法。</exception>
+        /// <exception cref="ArgumentException"><paramref name="newName"/> 為空白或含有保留字元。</exception>
+        public MenuNode Rename(string newName)
+        {
+            if (Parent == null) throw new InvalidOperationException("樹根不可重新命名。");
+
+            var key = ValidateNodeName(newName);
+            if (string.Equals(Name, key, StringComparison.Ordinal)) return this;
+
+            var parent = Parent;
+            if (parent._index.TryGetValue(key, out MenuNode existing))
+            {
+                existing.MergeFrom(this);
+                Remove();
+                return existing;
+            }
+
+            parent._index.Remove(Name);
+            Name = key;
+            parent._index.Add(key, this);
+            InvalidateDisplayText();
+            return this;
+        }
+
+        private static string ValidateNodeName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("節點名稱不可為空白。", nameof(name));
+
+            var trimmed = name.Trim();
+            if (trimmed.IndexOf(AlternativeCell.SEPARATOR) >= 0)
+                throw new ArgumentException($"節點名稱不可含有保留字元 '{AlternativeCell.SEPARATOR}'。", nameof(name));
+
+            return trimmed;
+        }
+
+        private void ReindexChildren()
+        {
+            for (var i = 0; i < _children.Count; i++)
+            {
+                var child = _children[i];
+                var newIndex = i + 1;
+                if (child.Index != newIndex)
+                {
+                    child.Index = newIndex;
+                    child.InvalidateDisplayText();
+                }
+            }
+
+            InvalidateDisplayText();
+        }
+
+        private void UpdateDepthRecursive(int rootDepth)
+        {
+            Depth = rootDepth;
+            var stack = new Stack<MenuNode>();
+            stack.Push(this);
+
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+                foreach (var child in current._children)
+                {
+                    child.Depth = current.Depth + 1;
+                    if (child._children.Count > 0)
+                    {
+                        stack.Push(child);
+                    }
+                }
+            }
         }
 
         /// <summary>

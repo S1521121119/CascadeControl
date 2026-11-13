@@ -39,6 +39,59 @@ namespace CascadeControl.Models
         public int MaxDepth => Leaves().Select(leaf => leaf.Depth).DefaultIfEmpty(0).Max();
 
         /// <summary>
+        /// 建立空的選單樹。
+        /// </summary>
+        public MenuTree()
+        {
+        }
+
+        /// <summary>
+        /// 以指定節點作為第一層，連同其下所有子孫節點建立選單樹。
+        /// </summary>
+        /// <param name="rootNode">作為新樹起點的節點；若傳入樹根（名稱為空），則直接複製其下的所有子節點。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="rootNode"/> 為 null。</exception>
+        public MenuTree(MenuNode rootNode)
+        {
+            if (rootNode == null) throw new ArgumentNullException(nameof(rootNode));
+
+            var target = string.IsNullOrEmpty(rootNode.Name) ? Root : Root.GetOrAddChild(rootNode.Name);
+            CopyDescendants(rootNode, target);
+        }
+
+        /// <summary>
+        /// 以指定節點作為第一層，連同其下所有子孫節點建立選單樹。
+        /// </summary>
+        /// <param name="rootNode">作為新樹起點的節點。</param>
+        /// <returns>建好的選單樹。</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="rootNode"/> 為 null。</exception>
+        public static MenuTree FromNode(MenuNode rootNode)
+        {
+            return new MenuTree(rootNode);
+        }
+
+        private static void CopyDescendants(MenuNode sourceRoot, MenuNode targetRoot)
+        {
+            var stack = new Stack<KeyValuePair<MenuNode, MenuNode>>();
+            stack.Push(new KeyValuePair<MenuNode, MenuNode>(sourceRoot, targetRoot));
+
+            while (stack.Count > 0)
+            {
+                var pair = stack.Pop();
+                var source = pair.Key;
+                var target = pair.Value;
+
+                foreach (var child in source.Children)
+                {
+                    var copiedChild = target.GetOrAddChild(child.Name);
+                    if (!child.IsLeaf)
+                    {
+                        stack.Push(new KeyValuePair<MenuNode, MenuNode>(child, copiedChild));
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// 由資料列建立選單樹。各列長度可以不同；遇到有問題的資料只會寫進警告，不會丟例外。
         /// </summary>
         /// <param name="rows">

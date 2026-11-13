@@ -81,9 +81,9 @@ namespace CascadeControl.Views
 
         private void OnColumnDoubleClick(object sender, EventArgs e)
         {
-            // 第一下點擊已經把選取移到這一欄，所以只要它是操作欄、選到的又是葉節點就觸發。
+            // 第一下點擊已經把選取移到這一欄，所以只要它是操作欄且有選取項目就觸發。
             var level = _lists.IndexOf(sender as ListBox);
-            if (level >= 0 && level == _navigator.Depth - 1 && IsLeafSelected)
+            if (level >= 0 && level == _navigator.Depth - 1 && SelectedItem != null)
                 OnItemActivated(CreateItemEventArgs());
         }
 

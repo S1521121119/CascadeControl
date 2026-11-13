@@ -189,6 +189,12 @@ namespace CascadeControl.Views
             var parent = Depth == 0 ? RootKey : _selection[Depth - 1];
             while (_lastChild.TryGetValue(parent, out var child) && !_record.Contains(child))
             {
+                if (parent is ICascadeItem parentItem && !ChildrenOf(parentItem).Contains(child))
+                {
+                    _lastChild.Remove(parent);
+                    break;
+                }
+
                 _record.Add(child);
                 parent = child;
             }

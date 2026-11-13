@@ -1,3 +1,4 @@
+using CascadeControl.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -38,6 +39,7 @@ namespace CascadeControl.Views
         private readonly CascadeNavigator _navigator = new CascadeNavigator();
 
         // 第一欄的內容。_rootsKey 每次 SetRoots 都換一個，當作第一欄的「來源」，用來判斷第一欄要不要換內容。
+        private IEnumerable<ICascadeItem> _rootsSource;
         private IReadOnlyList<ICascadeItem> _roots = NoItems;
 
         private object _rootsKey = new object();
@@ -250,12 +252,59 @@ namespace CascadeControl.Views
         /// <remarks>執行後會觸發一次 <see cref="SelectionChanged"/>（未選取的狀態）。</remarks>
         public void SetRoots(IEnumerable<ICascadeItem> roots)
         {
+            _rootsSource = roots;
             _roots = roots?.ToList() ?? NoItems;
             _rootsKey = new object();
             _navigator.Clear();
 
             SyncColumns();
             OnSelectionChanged(CreateItemEventArgs());
+        }
+
+        /// <summary>
+        /// 當底層節點結構（插入、刪除、改名）變更後，重新整理所有欄位內容與顯示文字，並選取指定路徑。
+        /// </summary>
+        /// <param name="selectPath">更新後要選取的路徑；傳 null 則保留目前仍存在的選取路徑。</param>
+        public void RefreshTree(IEnumerable<ICascadeItem> selectPath = null)
+        {
+            var targetPath = (selectPath ?? _navigator.Selection).ToList();
+            _roots = _rootsSource?.ToList() ?? NoItems;
+            _rootsKey = new object();
+
+            // 清除既有欄位的來源標記，強制 SyncColumns 重建每一欄的項目清單與顯示文字。
+            foreach (var list in _lists) list.Tag = null;
+
+            if (targetPath.Count > 0)
+            {
+                TrySelectPath(targetPath);
+            }
+            else
+            {
+                _navigator.ClearSelection();
+                SyncColumns();
+                OnSelectionChanged(CreateItemEventArgs());
+            }
+        }
+
+        /// <summary>
+        /// 最近一次呼叫 <see cref="CopySelectedNode"/> 所複製的節點複本。
+        /// </summary>
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public MenuNode CopiedNode { get; private set; }
+
+        /// <summary>
+        /// 複製目前選取的 <see cref="MenuNode"/>（含其下所有子孫節點的深層複本），並存入 <see cref="CopiedNode"/>。
+        /// </summary>
+        /// <returns>複製出的節點複本；目前未選取或選取項不是 <see cref="MenuNode"/> 時回傳 null。</returns>
+        public MenuNode CopySelectedNode()
+        {
+            if (SelectedItem is MenuNode node)
+            {
+                CopiedNode = node.Copy();
+                return CopiedNode;
+            }
+
+            return null;
         }
 
         /// <summary>
