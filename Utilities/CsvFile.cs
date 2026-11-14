@@ -12,10 +12,10 @@
 //  2024-06-17      0.00.003        Jeff.WK.Lin             Upgrade to .net standard 2.0
 //  2024-07-10      0.00.004        Jeff.WK.Lin             1. Rename SaveFile to WriteFile
 //                                                          2. Remove SaveFile (string file_path, string[,] data)
-//                                                          3. Add WriteFile_DataWithHeader
+//                                                          3. Add WriteFileWithHeader
 //  2024-07-11      0.00.005        Jeff.WK.Lin             Add AppendData(string filePath, string[][] data) method
 //  2024-07-22      0.00.006        Jeff.WK.Lin             Add Create File method
-//  2025-05-28      0.00.007        Jeff.WK.Lin             1. Add method 'ParseStringToData'
+//  2025-05-28      0.00.007        Jeff.WK.Lin             1. Add method 'ParseRows'
 //                                                          2. fix read file with skip empty row
 //  2025-05-29      0.00.008        Jeff.WK.Lin             Trim each cell after write or read
 //  2026-02-26      0.00.009        Jeff.WK.Lin             1. Fixed: Handle CSV fields containing newlines (RFC 4180)
@@ -23,8 +23,8 @@
 //                                                          3. Standardize column counts per row for strict parsers.
 //  2026-05-21      0.00.010        Jeff.WK.Lin             Add XML documentation comments in traditional Chinese.
 //  2026-11-05      0.00.011        Jeff.WK.Lin             Polish comment wording and align docs with actual behavior.
-//  2026-11-06      0.00.012        Jeff.WK.Lin             1. Add ParseStringToData overload that reports each row's source line number
-//                                                          2. Add static FormatDataWithHeader; WriteFile_DataWithHeader reuses it
+//  2026-11-06      0.00.012        Jeff.WK.Lin             1. Add ParseRows overload that reports each row's source line number
+//                                                          2. Add static FormatRowsWithHeader; WriteFileWithHeader reuses it
 //                                                          3. Skip a whitespace-only last row, same as the other rows
 //
 //=============================================================================================================================
@@ -54,7 +54,7 @@ namespace CascadeControl.Utilities
         /// <param name="header">第一列，作為標題列。</param>
         /// <param name="data">其餘的列，作為資料列。</param>
         /// <returns>讀取成功且檔案有內容時為 true，否則為 false。</returns>
-        public bool ReadFile_DataWithHeader(string filePath, out string[] header, out string[][] data)
+        public bool ReadFileWithHeader(string filePath, out string[] header, out string[][] data)
         {
             if (!ReadFile(filePath, out var rawData) || rawData == null || rawData.Length == 0)
             {
@@ -75,14 +75,14 @@ namespace CascadeControl.Utilities
         /// <param name="input">CSV 格式的原始字串。</param>
         /// <param name="data">解析後的二維字串陣列。</param>
         /// <returns>解析成功時為 true；目前的實作一律回傳 true。</returns>
-        public static bool ParseStringToData(string input, out string[][] data)
+        public static bool ParseRows(string input, out string[][] data)
         {
-            return ParseStringToData(input, out data, out _);
+            return ParseRows(input, out data, out _);
         }
 
         /// <summary>
         /// 將 CSV 格式的字串解析為二維陣列，並回報每一列在原始字串中從第幾行開始。
-        /// <para>解析規則與 <see cref="ParseStringToData(string, out string[][])"/> 相同。</para>
+        /// <para>解析規則與 <see cref="ParseRows(string, out string[][])"/> 相同。</para>
         /// </summary>
         /// <param name="input">CSV 格式的原始字串。</param>
         /// <param name="data">解析後的二維字串陣列。</param>
@@ -91,7 +91,7 @@ namespace CascadeControl.Utilities
         /// CRLF、LF、CR 都算一次換行，引號內的換行也照算，所以被略過的空白列與跨行儲存格都不會讓行號偏掉。
         /// </param>
         /// <returns>解析成功時為 true；目前的實作一律回傳 true。</returns>
-        public static bool ParseStringToData(string input, out string[][] data, out int[] lineNumbers)
+        public static bool ParseRows(string input, out string[][] data, out int[] lineNumbers)
         {
             if (string.IsNullOrEmpty(input)) { data = new string[0][]; lineNumbers = new int[0]; return true; }
 
@@ -190,7 +190,7 @@ namespace CascadeControl.Utilities
                 {
                     // 有 BOM 時依 BOM 判斷編碼，沒有 BOM 就當成 UTF-8
                     string rawData = File.ReadAllText(filePath, Encoding.UTF8);
-                    return ParseStringToData(rawData, out data);
+                    return ParseRows(rawData, out data);
                 }
                 catch (Exception ex)
                 {
@@ -225,16 +225,16 @@ namespace CascadeControl.Utilities
         /// <summary>
         /// 將二維陣列轉換為符合 RFC 4180 格式的 CSV 字串。
         /// </summary>
-        private string ParseToString(string[][] data)
+        private string FormatRows(string[][] rows)
         {
-            if (data?.Any(row => row == null) != false)
+            if (rows?.Any(row => row == null) != false)
             {
-                throw new ArgumentNullException(nameof(data), "Data and its rows cannot be null.");
+                throw new ArgumentNullException(nameof(rows), "Data and its rows cannot be null.");
             }
 
             StringBuilder csvContent = new StringBuilder();
 
-            foreach (var row in data)
+            foreach (var row in rows)
             {
                 for (int i = 0; i < row.Length; i++)
                 {
@@ -269,9 +269,9 @@ namespace CascadeControl.Utilities
         /// <para>每一列的欄數會對齊標題列：不足的補上空白欄，多出來的捨棄。</para>
         /// </summary>
         /// <param name="header">標題列的各欄名稱。</param>
-        /// <param name="data">資料列；可為 null。</param>
+        /// <param name="rows">資料列；可為 null。</param>
         /// <returns>CSV 字串。</returns>
-        public static string FormatDataWithHeader(string[] header, string[][] data)
+        public static string FormatRowsWithHeader(string[] header, string[][] rows)
         {
             StringBuilder csvContent = new StringBuilder();
 
@@ -279,9 +279,9 @@ namespace CascadeControl.Utilities
             csvContent.AppendLine(string.Join(",", header.Select(EscapeField)));
 
             // 寫入資料列
-            if (data != null)
+            if (rows != null)
             {
-                foreach (var row in data)
+                foreach (var row in rows)
                 {
                     // 欄數對齊標題列，較嚴格的解析器（例如 csvLens）才不會出錯
                     var escapedRow = new string[header.Length];
@@ -298,18 +298,18 @@ namespace CascadeControl.Utilities
 
         /// <summary>
         /// 將標題列與所有資料列寫入 CSV 檔案；檔案已存在時會被覆寫。
-        /// <para>內容與 <see cref="FormatDataWithHeader"/> 相同：欄數對齊標題列。編碼為帶 BOM 的 UTF-8。</para>
+        /// <para>內容與 <see cref="FormatRowsWithHeader"/> 相同：欄數對齊標題列。編碼為帶 BOM 的 UTF-8。</para>
         /// </summary>
         /// <param name="filePath">目標檔案路徑。</param>
         /// <param name="header">標題列的各欄名稱。</param>
         /// <param name="data">資料列；可為 null。</param>
-        public void WriteFile_DataWithHeader(string filePath, string[] header, string[][] data)
+        public void WriteFileWithHeader(string filePath, string[] header, string[][] data)
         {
             lock (_lock)
             {
                 using (var writer = new StreamWriter(filePath, false, _encoding))
                 {
-                    writer.Write(FormatDataWithHeader(header, data));
+                    writer.Write(FormatRowsWithHeader(header, data));
                 }
             }
         }
@@ -323,7 +323,7 @@ namespace CascadeControl.Utilities
         {
             lock (_lock)
             {
-                File.WriteAllText(filePath, ParseToString(data), Encoding.UTF8);
+                File.WriteAllText(filePath, FormatRows(data), Encoding.UTF8);
             }
         }
 
@@ -342,7 +342,7 @@ namespace CascadeControl.Utilities
 
             lock (_lock)
             {
-                File.AppendAllText(filePath, ParseToString(data), Encoding.UTF8);
+                File.AppendAllText(filePath, FormatRows(data), Encoding.UTF8);
             }
         }
 

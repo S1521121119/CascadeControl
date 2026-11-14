@@ -12,14 +12,14 @@ namespace CascadeControl.Models
     /// 這套語法只和「資料列」有關，不相依任何檔案格式，所以放在 Models：
     /// <see cref="MenuTree.FromRows(IEnumerable{string[]}, out IList{string})"/> 讀入時展開、
     /// <see cref="MenuTree.ToRows(MenuRowStyle)"/> 寫出時可以壓回這種寫法、
-    /// <see cref="MenuTree.AddPaths(string[])"/> 讓程式碼裡也能直接這樣寫。
+    /// <see cref="MenuTree.ExpandAndAddPaths(string[])"/> 讓程式碼裡也能直接這樣寫。
     /// </remarks>
-    public static class AlternativeCell
+    public static class SiblingCellSyntax
     {
         /// <summary>
         /// 在同一格內列舉多個兄弟節點時使用的分隔字元。節點名稱不能包含這個字元。
         /// </summary>
-        public const char SEPARATOR = '|';
+        public const char SIBLING_SEPARATOR = '|';
 
         /// <summary>
         /// 展開後的路徑數上限：單一列超過就跳過那一列，整份資料累計超過就整份放棄；樹的葉節點超過這個數量時也無法寫出。
@@ -43,10 +43,10 @@ namespace CascadeControl.Models
         /// </description></item>
         /// </list>
         /// </remarks>
-        public const int MAX_EXPANSION = ushort.MaxValue;
+        public const int MAX_EXPANDED_PATHS = ushort.MaxValue;
 
         /// <summary>
-        /// 把多個兄弟節點的名稱用 <see cref="SEPARATOR"/> 串成一格；讀回時會再展開成各自的路徑。
+        /// 把多個兄弟節點的名稱用 <see cref="SIBLING_SEPARATOR"/> 串成一格；讀回時會再展開成各自的路徑。
         /// </summary>
         /// <param name="names">同一層的兄弟節點名稱，依序排列。</param>
         /// <returns>例如 <c>Version|Uptime|Memory</c>；只有一個名稱時就是名稱本身。</returns>
@@ -56,9 +56,9 @@ namespace CascadeControl.Models
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="names"/> 為 null。</exception>
         /// <exception cref="ArgumentException">
-        /// <paramref name="names"/> 為空，或其中有名稱為 null、空白，或含有 <see cref="SEPARATOR"/>。
+        /// <paramref name="names"/> 為空，或其中有名稱為 null、空白，或含有 <see cref="SIBLING_SEPARATOR"/>。
         /// </exception>
-        public static string Join(IEnumerable<string> names)
+        public static string JoinSiblings(IEnumerable<string> names)
         {
             if (names == null) throw new ArgumentNullException(nameof(names));
 
@@ -70,15 +70,15 @@ namespace CascadeControl.Models
                 if (string.IsNullOrWhiteSpace(parts[i]))
                     throw new ArgumentException($"第 {i + 1} 個名稱是空的。", nameof(names));
 
-                if (parts[i].IndexOf(SEPARATOR) >= 0)
-                    throw new ArgumentException($"名稱含有保留字元 '{SEPARATOR}'：{parts[i]}", nameof(names));
+                if (parts[i].IndexOf(SIBLING_SEPARATOR) >= 0)
+                    throw new ArgumentException($"名稱含有保留字元 '{SIBLING_SEPARATOR}'：{parts[i]}", nameof(names));
             }
 
-            return string.Join(SEPARATOR.ToString(), parts);
+            return string.Join(SIBLING_SEPARATOR.ToString(), parts);
         }
 
         /// <summary>
-        /// 拆開一格。不含 <see cref="SEPARATOR"/> 的格子原樣當成唯一的名稱（不 trim）；含有時拆開並逐段 trim。
+        /// 拆開一格。不含 <see cref="SIBLING_SEPARATOR"/> 的格子原樣當成唯一的名稱（不 trim）；含有時拆開並逐段 trim。
         /// </summary>
         /// <param name="cell">格子內容，不可為 null。</param>
         /// <param name="names">拆出來的名稱；格式錯誤時為 null。</param>
@@ -86,11 +86,11 @@ namespace CascadeControl.Models
         /// 格式是否正確。分隔字元連續（A||B）、出現在頭尾（|A、A|）、某一段只有空白（A| |B），
         /// 這三種寫法 trim 之後都會有一段是空字串，一律視為格式錯誤。
         /// </returns>
-        internal static bool TrySplit(string cell, out string[] names)
+        internal static bool TrySplitSiblings(string cell, out string[] names)
         {
-            if (cell.IndexOf(SEPARATOR) < 0) { names = new[] { cell }; return true; }
+            if (cell.IndexOf(SIBLING_SEPARATOR) < 0) { names = new[] { cell }; return true; }
 
-            var parts = cell.Split(SEPARATOR).Select(part => part.Trim()).ToArray();
+            var parts = cell.Split(SIBLING_SEPARATOR).Select(part => part.Trim()).ToArray();
             names = parts.Any(part => part.Length == 0) ? null : parts;
             return names != null;
         }
@@ -98,17 +98,17 @@ namespace CascadeControl.Models
         /// <summary>
         /// 錯誤訊息共用的格式說明。
         /// </summary>
-        internal static string UsageHint => $"'{SEPARATOR}' 不可連續、不可放在頭尾、每一段都不可為空";
+        internal static string UsageHint => $"'{SIBLING_SEPARATOR}' 不可連續、不可放在頭尾、每一段都不可為空";
 
         /// <summary>
-        /// 把含有 <see cref="SEPARATOR"/> 的列依各欄的笛卡兒積展開成多條路徑，每一條都沿用原始列的行號。
+        /// 把含有 <see cref="SIBLING_SEPARATOR"/> 的列依各欄的笛卡兒積展開成多條路徑，每一條都沿用原始列的行號。
         /// </summary>
         /// <param name="rows">原始資料列。</param>
         /// <param name="sourceLineNumbers">與 <paramref name="rows"/> 等長的原始行號。</param>
         /// <param name="expandedRows">展開後的資料列。</param>
         /// <param name="expandedLineNumbers">展開後每一列對應的原始行號。</param>
         /// <param name="warnings">警告訊息會加到這裡。</param>
-        /// <returns>展開結果是否可用；路徑總數超過 <see cref="MAX_EXPANSION"/> 時為 false。</returns>
+        /// <returns>展開結果是否可用；路徑總數超過 <see cref="MAX_EXPANDED_PATHS"/> 時為 false。</returns>
         /// <remarks>不含分隔字元的格子照原樣保留，空格與 trim 都交給 <see cref="MenuTree.FromRows(IEnumerable{string[]}, IReadOnlyList{int}, out IList{string})"/> 處理。</remarks>
         internal static bool Expand(
             IReadOnlyList<string[]> rows,
@@ -130,29 +130,29 @@ namespace CascadeControl.Models
 
                 for (var column = 0; column < row.Length; column++)
                 {
-                    if (!TrySplit(row[column] ?? string.Empty, out string[] names)) { invalidColumn = column; break; }
+                    if (!TrySplitSiblings(row[column] ?? string.Empty, out string[] names)) { invalidColumn = column; break; }
                     alternatives.Add(names);
                 }
 
                 if (invalidColumn >= 0)
                 {
                     // 只跳過這一列，其餘列照常處理。
-                    warnings.Add($"第 {lineNumber} 列：第 {invalidColumn + 1} 欄 '{row[invalidColumn]}' 的 '{SEPARATOR}' 用法有誤"
+                    warnings.Add($"第 {lineNumber} 列：第 {invalidColumn + 1} 欄 '{row[invalidColumn]}' 的 '{SIBLING_SEPARATOR}' 用法有誤"
                         + $"（{UsageHint}），整列已跳過。");
                     continue;
                 }
 
                 var count = CountCombinations(alternatives);
 
-                if (count > MAX_EXPANSION)
+                if (count > MAX_EXPANDED_PATHS)
                 {
-                    warnings.Add($"第 {lineNumber} 列：展開後有 {count} 條路徑，超過上限 {MAX_EXPANSION}，整列已跳過。");
+                    warnings.Add($"第 {lineNumber} 列：展開後有 {count} 條路徑，超過上限 {MAX_EXPANDED_PATHS}，整列已跳過。");
                     continue;
                 }
 
-                if (expandedRows.Count + count > MAX_EXPANSION)
+                if (expandedRows.Count + count > MAX_EXPANDED_PATHS)
                 {
-                    warnings.Add($"展開後的路徑總數超過上限 {MAX_EXPANSION}（處理到第 {lineNumber} 列），已放棄整份內容。");
+                    warnings.Add($"展開後的路徑總數超過上限 {MAX_EXPANDED_PATHS}（處理到第 {lineNumber} 列），已放棄整份內容。");
                     expandedRows = new List<string[]>();
                     expandedLineNumbers = new List<int>();
                     return false;
@@ -171,14 +171,14 @@ namespace CascadeControl.Models
         /// <summary>
         /// 各欄可選值個數的乘積，也就是展開後的路徑數。
         /// </summary>
-        /// <remarks>超過 <see cref="MAX_EXPANSION"/> 之後就不再往下乘，避免很多欄時溢位。</remarks>
+        /// <remarks>超過 <see cref="MAX_EXPANDED_PATHS"/> 之後就不再往下乘，避免很多欄時溢位。</remarks>
         internal static long CountCombinations(IEnumerable<string[]> alternatives)
         {
             var total = 1L;
             foreach (var options in alternatives)
             {
                 total *= options.Length;
-                if (total > MAX_EXPANSION) return total;
+                if (total > MAX_EXPANDED_PATHS) return total;
             }
             return total;
         }
@@ -218,7 +218,7 @@ namespace CascadeControl.Models
         /// 把樹寫成壓縮後的資料列：相鄰且子樹完全相同的兄弟節點合併成同一格。
         /// </summary>
         /// <param name="tree">要寫出的樹。</param>
-        /// <returns>資料列，欄數一律補到 <see cref="MenuTree.MaxDepth"/>。</returns>
+        /// <returns>資料列，欄數一律補到 <see cref="MenuTree.Height"/>。</returns>
         /// <remarks>
         /// 產生的是標準形，不追求最少列數：
         /// <list type="number">
@@ -234,10 +234,10 @@ namespace CascadeControl.Models
         /// 依第一次出現排出的順序，會和原本的樹完全相同。
         /// 走訪一律用明確的堆疊而不是遞迴，因為深度沒有上限。
         /// </remarks>
-        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="SEPARATOR"/>。</exception>
-        internal static string[][] Compress(MenuTree tree)
+        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="SIBLING_SEPARATOR"/>。</exception>
+        internal static string[][] ToCompactRows(MenuTree tree)
         {
-            var width = Math.Max(1, tree.MaxDepth);
+            var width = Math.Max(1, tree.Height);
             var shapeOf = BuildShapes(tree.Root);
 
             var rows = new List<string[]>();
@@ -261,7 +261,7 @@ namespace CascadeControl.Models
 
                 var names = new string[end - start];
                 for (var i = start; i < end; i++) names[i - start] = siblings[i].Name;
-                cells[cursor.Depth] = Join(names);
+                cells[cursor.Depth] = JoinSiblings(names);
 
                 var representative = siblings[start];
                 if (representative.IsLeaf)
@@ -284,12 +284,12 @@ namespace CascadeControl.Models
         /// 把樹寫成大綱形式的資料列：每個中間節點一列，列出它底下的全部子節點，最接近手寫的寫法。
         /// </summary>
         /// <param name="tree">要寫出的樹。</param>
-        /// <returns>資料列，欄數一律補到 <see cref="MenuTree.MaxDepth"/>。</returns>
+        /// <returns>資料列，欄數一律補到 <see cref="MenuTree.Height"/>。</returns>
         /// <remarks>
         /// 讀回時「先寫成葉節點，後來又往下延伸」會直接合併（見 <see cref="MenuTree.FromRows(IEnumerable{string[]}, out IList{string})"/>），
         /// 所以中間節點可以先出現在父節點那一列，再用自己的一列補上下一層。規則：
         /// <list type="number">
-        /// <item><description>形狀的算法和 <see cref="Compress"/> 相同：形狀相同就代表子樹完全相同。</description></item>
+        /// <item><description>形狀的算法和 <see cref="ToCompactRows"/> 相同：形狀相同就代表子樹完全相同。</description></item>
         /// <item><description>
         /// 依深度優先順序走訪中間節點（同一組只走代表節點）：先寫出「路徑 + 全部子節點」這一列，
         /// 再把有下一層、而且形狀相同的子節點收成一組，以整組當作路徑的下一格繼續往下。
@@ -301,13 +301,13 @@ namespace CascadeControl.Models
         /// </list>
         /// 結果是：同一棵樹只有一種寫法、每個中間節點組剛好一列，第一層相鄰的葉節點另外合成一列。
         /// 列與列會重疊（中間節點同時出現在父節點那一列和自己那一列），所以展開後的路徑數比葉節點多，
-        /// 大約是節點總數；寫出前要另外檢查是否超過 <see cref="MAX_EXPANSION"/>。
+        /// 大約是節點總數；寫出前要另外檢查是否超過 <see cref="MAX_EXPANDED_PATHS"/>。
         /// 走訪一律用明確的堆疊而不是遞迴，因為深度沒有上限。
         /// </remarks>
-        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="SEPARATOR"/>。</exception>
-        internal static string[][] Outline(MenuTree tree)
+        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="SIBLING_SEPARATOR"/>。</exception>
+        internal static string[][] ToOutlineRows(MenuTree tree)
         {
-            var width = Math.Max(1, tree.MaxDepth);
+            var width = Math.Max(1, tree.Height);
             var shapeOf = BuildShapes(tree.Root);
 
             var rows = new List<string[]>();
@@ -323,7 +323,7 @@ namespace CascadeControl.Models
 
                 var names = new string[end - start];
                 for (var i = start; i < end; i++) names[i - start] = top[i].Name;
-                topGroups.Add(new OutlineGroup(new[] { Join(names) }, top[start]));
+                topGroups.Add(new OutlineGroup(new[] { JoinSiblings(names) }, top[start]));
 
                 start = end;
             }
@@ -344,7 +344,7 @@ namespace CascadeControl.Models
                 var children = node.Children;
                 var childNames = new string[children.Count];
                 for (var i = 0; i < children.Count; i++) childNames[i] = children[i].Name;
-                rows.Add(Pad(Append(group.Cells, Join(childNames)), width));
+                rows.Add(Pad(Append(group.Cells, JoinSiblings(childNames)), width));
 
                 // 有下一層的子節點依形狀分組，組的順序取第一次出現的位置。
                 var members = new Dictionary<int, List<MenuNode>>();
@@ -367,7 +367,7 @@ namespace CascadeControl.Models
                 foreach (var shape in order)
                 {
                     var list = members[shape];
-                    var cell = Join(list.Select(member => member.Name));
+                    var cell = JoinSiblings(list.Select(member => member.Name));
                     childGroups.Add(new OutlineGroup(Append(group.Cells, cell), list[0]));
                 }
                 PushReversed(stack, childGroups);

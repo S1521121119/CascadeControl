@@ -32,34 +32,34 @@ namespace CascadeControl.Views
         {
             if (!(sender is ListBox list) || e.Index < 0 || e.Index >= list.Items.Count) return;
 
-            var item = list.Items[e.Index] as ICascadeItem;
-            var level = _lists.IndexOf(list);
+            var node = list.Items[e.Index] as ICascadeNode;
+            var columnIndex = _lists.IndexOf(list);
             var isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
-            var remembered = level >= 0 ? _navigator.RememberedAt(level) : null;
+            var trailNode = columnIndex >= 0 ? _navigator.GetTrailNodeAt(columnIndex) : null;
 
-            var args = new CascadeDrawItemEventArgs(
+            var args = new CascadeDrawNodeEventArgs(
                 e.Graphics,
                 e.Font,
                 e.Bounds,
-                item,
-                level,
+                node,
+                columnIndex,
                 isSelected,
                 list.Focused,
                 list.Enabled,
-                !isSelected && item != null && Equals(item, remembered));
+                !isSelected && node != null && Equals(node, trailNode));
 
-            OnDrawItem(args);
+            OnDrawNode(args);
 
             if (!args.Handled && args.IsSelected && args.IsFocusedColumn) e.DrawFocusRectangle();
         }
 
         /// <summary>
         /// 預設外觀：焦點欄的選取項用系統選取色，其他欄的選取項用調淡的選取色，
-        /// 記憶項目用淺灰底，停用時整欄顯示灰字。
+        /// 記憶軌跡項目用淺灰底，停用時整欄顯示灰字。
         /// </summary>
-        private void DrawDefaultItem(CascadeDrawItemEventArgs e)
+        private void DrawDefaultNode(CascadeDrawNodeEventArgs e)
         {
-            var list = e.Level >= 0 && e.Level < _lists.Count ? _lists[e.Level] : null;
+            var list = e.ColumnIndex >= 0 && e.ColumnIndex < _lists.Count ? _lists[e.ColumnIndex] : null;
             var listBack = list?.BackColor ?? SystemColors.Window;
             var listFore = list?.ForeColor ?? SystemColors.WindowText;
 
@@ -82,10 +82,10 @@ namespace CascadeControl.Views
                 back = InactiveSelectionBackColor;
                 fore = listFore;
             }
-            else if (e.IsRemembered)
+            else if (e.IsTrailNode)
             {
-                // 記憶項目不算選取，用不帶藍色的淺灰，避免和選取路徑混在一起。
-                back = RememberedBackColor;
+                // 記憶軌跡項目不算選取，用不帶藍色的淺灰，避免和選取路徑混在一起。
+                back = TrailBackColor;
                 fore = listFore;
             }
             else
@@ -98,7 +98,7 @@ namespace CascadeControl.Views
 
             TextRenderer.DrawText(
                 e.Graphics,
-                e.Item?.Text ?? string.Empty,
+                e.Node?.DisplayText ?? string.Empty,
                 e.Font,
                 e.Bounds,
                 fore,

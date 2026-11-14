@@ -24,13 +24,13 @@ namespace CascadeControl.Views
         {
             if (_syncing) return;
 
-            var level = _lists.IndexOf(sender as ListBox);
-            if (level < 0) return;
+            var columnIndex = _lists.IndexOf(sender as ListBox);
+            if (columnIndex < 0) return;
 
-            var item = ItemAt(_lists[level]);
-            if (item == null) return;
+            var node = NodeAt(_lists[columnIndex]);
+            if (node == null) return;
 
-            ApplyNavigation(_navigator.Select(level, item));
+            ApplyNavigation(_navigator.SelectNodeAt(columnIndex, node));
         }
 
         /// <summary>
@@ -45,36 +45,36 @@ namespace CascadeControl.Views
         private void SyncColumns()
         {
             var hadFocus = ContainsFocus;
-            var active = _navigator.ActiveLevel;
+            var active = _navigator.ActiveColumnIndex;
             var count = VisibleColumnCount();
 
             BeginColumnUpdate();
             _syncing = true;
             try
             {
-                for (var level = 0; level < count; level++)
+                for (var columnIndex = 0; columnIndex < count; columnIndex++)
                 {
-                    var source = ColumnSource(level);
-                    if (level >= _lists.Count)
+                    var source = ColumnSource(columnIndex);
+                    if (columnIndex >= _lists.Count)
                     {
-                        AddColumn(ColumnItems(level), source);
+                        AddColumn(ColumnNodes(columnIndex), source);
                     }
-                    else if (!Equals(_lists[level].Tag, source))
+                    else if (!Equals(_lists[columnIndex].Tag, source))
                     {
-                        ReplaceItems(_lists[level], ColumnItems(level));
-                        _lists[level].Tag = source;
+                        ReplaceNodes(_lists[columnIndex], ColumnNodes(columnIndex));
+                        _lists[columnIndex].Tag = source;
                     }
 
-                    var list = _lists[level];
-                    var selected = level < _navigator.Depth ? _navigator.Record[level] : null;
-                    if (!Equals(ItemAt(list), selected))
+                    var list = _lists[columnIndex];
+                    var selected = columnIndex < _navigator.SelectedDepth ? _navigator.PathWithTrail[columnIndex] : null;
+                    if (!Equals(NodeAt(list), selected))
                         list.SelectedIndex = selected == null ? -1 : list.Items.IndexOf(selected);
 
                     // 只有操作欄能用 Tab 進入，焦點才不會停在其他欄。
-                    list.TabStop = level == active;
+                    list.TabStop = columnIndex == active;
                 }
 
-                // 先排好位置（Window 模式也在這裡決定哪幾欄要顯示）再移焦點：欄位取得焦點時，外層會把它捲進可視範圍，
+                // 先排好位置（Sliding 模式也在這裡決定哪幾欄要顯示）再移焦點：欄位取得焦點時，外層會把它捲進可視範圍，
                 // 用的是當下的位置，新長出來的欄位還在舊位置的話，會把剛算好的捲動位置蓋掉。
                 Relayout();
 
@@ -98,40 +98,40 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 依導覽狀態與 <see cref="ShowRememberedPath"/> 算出要建立的欄數。
+        /// 依導覽狀態與 <see cref="ShowTrail"/> 算出要建立的欄數。
         /// </summary>
         /// <remarks>
         /// 畫到最後一個要顯示的項目為止，它有子節點時再多一欄。
-        /// <see cref="CascadeColumnSizeMode.Window"/> 不能捲動，看不到比操作欄的下一欄更深的欄位，所以一律照不顯示記憶的規則建立欄位。
+        /// <see cref="CascadeColumnLayoutMode.Sliding"/> 不能捲動，看不到比操作欄的下一欄更深的欄位，所以一律照不顯示記憶軌跡的規則建立欄位。
         /// </remarks>
         private int VisibleColumnCount()
         {
-            var showTrail = _showRememberedPath && !IsWindowMode;
-            var last = showTrail ? _navigator.Record.Count : _navigator.Depth;
+            var showTrail = _showTrail && !IsSlidingMode;
+            var last = showTrail ? _navigator.PathWithTrail.Count : _navigator.SelectedDepth;
 
-            if (last == 0) return _roots.Count > 0 ? 1 : 0;
+            if (last == 0) return _topLevelNodes.Count > 0 ? 1 : 0;
 
-            return last + (CascadeNavigator.ChildrenOf(_navigator.Record[last - 1]).Count > 0 ? 1 : 0);
+            return last + (CascadeNavigator.ChildrenOf(_navigator.PathWithTrail[last - 1]).Count > 0 ? 1 : 0);
         }
 
-        // 第 level 欄內容的來源：第一欄是這次 SetRoots 的代表物件，其他欄是上一層的項目。
-        private object ColumnSource(int level) => level == 0 ? _rootsKey : _navigator.Record[level - 1];
+        // 第 columnIndex 欄內容的來源：第一欄是這次 SetTopLevelNodes 的代表物件，其他欄是上一層的節點。
+        private object ColumnSource(int columnIndex) => columnIndex == 0 ? _topLevelKey : _navigator.PathWithTrail[columnIndex - 1];
 
-        private IReadOnlyList<ICascadeItem> ColumnItems(int level)
+        private IReadOnlyList<ICascadeNode> ColumnNodes(int columnIndex)
         {
-            return level == 0 ? _roots : CascadeNavigator.ChildrenOf(_navigator.Record[level - 1]);
+            return columnIndex == 0 ? _topLevelNodes : CascadeNavigator.ChildrenOf(_navigator.PathWithTrail[columnIndex - 1]);
         }
 
         /// <summary>
         /// 換掉既有欄位的內容；捲動位置會回到頂端，和新建的欄位一樣。
         /// </summary>
-        private static void ReplaceItems(ListBox list, IReadOnlyList<ICascadeItem> items)
+        private static void ReplaceNodes(ListBox list, IReadOnlyList<ICascadeNode> nodes)
         {
             list.BeginUpdate();
             try
             {
                 list.Items.Clear();
-                list.Items.AddRange(items.Cast<object>().ToArray());
+                list.Items.AddRange(nodes.Cast<object>().ToArray());
             }
             finally
             {
@@ -185,30 +185,30 @@ namespace CascadeControl.Views
         /// <summary>
         /// 在最右側新增一欄。
         /// </summary>
-        private void AddColumn(IReadOnlyList<ICascadeItem> items, object source)
+        private void AddColumn(IReadOnlyList<ICascadeNode> nodes, object source)
         {
-            var level = _lists.Count;
+            var columnIndex = _lists.Count;
             var list = new ListBox
             {
-                Name = $"lstColumn{level + 1:00}",
-                Location = ColumnLocation(level),
+                Name = $"lstColumn{columnIndex + 1:00}",
+                Location = ColumnLocation(columnIndex),
                 Size = new Size(ActualColumnWidth, ColumnHeight),
-                TabIndex = level,
+                TabIndex = columnIndex,
                 Tag = source,
 
                 // ListBox 預設會把高度湊成整數列，關掉才能讓每一欄都等高。
                 IntegralHeight = false,
 
-                // 失去焦點後選取項仍是標準藍底，多欄一起看就分不出鍵盤在哪一欄，記憶項目也要另外上色，所以改為自繪。
+                // 失去焦點後選取項仍是標準藍底，多欄一起看就分不出鍵盤在哪一欄，記憶軌跡項目也要另外上色，所以改為自繪。
                 DrawMode = DrawMode.OwnerDrawFixed,
                 ItemHeight = ItemHeight,
 
-                // 讓 GetItemText（打字跳到項目、無障礙功能）也使用 ICascadeItem.Text，而不是各實作自己的 ToString。
+                // 讓 GetItemText（打字跳到項目、無障礙功能）也使用 ICascadeNode.DisplayText，而不是各實作自己的 ToString。
                 FormattingEnabled = true,
             };
 
             list.Format += OnColumnFormat;
-            list.Items.AddRange(items.Cast<object>().ToArray());
+            list.Items.AddRange(nodes.Cast<object>().ToArray());
 
             list.SelectedIndexChanged += OnColumnSelectedIndexChanged;
             list.KeyDown += OnColumnKeyDown;
@@ -256,7 +256,7 @@ namespace CascadeControl.Views
 
         private static void OnColumnFormat(object sender, ListControlConvertEventArgs e)
         {
-            if (e.ListItem is ICascadeItem item) e.Value = item.Text;
+            if (e.ListItem is ICascadeNode node) e.Value = node.DisplayText;
         }
 
         /// <summary>
@@ -264,10 +264,10 @@ namespace CascadeControl.Views
         /// </summary>
         private void TrimColumns(int keep)
         {
-            for (var level = _lists.Count - 1; level >= keep; level--)
+            for (var columnIndex = _lists.Count - 1; columnIndex >= keep; columnIndex--)
             {
-                var list = _lists[level];
-                _lists.RemoveAt(level);
+                var list = _lists[columnIndex];
+                _lists.RemoveAt(columnIndex);
                 Controls.Remove(list);
                 list.Dispose();
             }
@@ -281,34 +281,34 @@ namespace CascadeControl.Views
         /// 選到葉節點時欄數不變（操作欄移到原本的下一欄），← 從葉節點退回時欄數也不變，畫面都不會移動；
         /// 只有選到有子節點的項目、真的長出新的一欄時，畫面才往左移一格。
         /// 連兩欄都放不下時，改為讓操作欄靠左，以免把操作欄本身捲出畫面。
-        /// <see cref="CascadeColumnSizeMode.Fill"/> 的平均欄寬放得下時，捲動位置對齊欄位邊界，一次正好看到 <see cref="DisplayColumnCount"/> 欄。
-        /// <see cref="CascadeColumnSizeMode.Window"/> 改用隱藏欄位的方式呈現，不需要捲動。
+        /// <see cref="CascadeColumnLayoutMode.Fill"/> 的平均欄寬放得下時，捲動位置對齊欄位邊界，一次正好看到 <see cref="DisplayColumnCount"/> 欄。
+        /// <see cref="CascadeColumnLayoutMode.Sliding"/> 改用隱藏欄位的方式呈現，不需要捲動。
         /// 沒有欄位時（包含設計階段）捲動範圍要歸零，否則設計工具會把非預設的 AutoScrollMinSize 寫進 Designer.cs。
         /// </remarks>
         private void ScrollToActive()
         {
-            if (IsWindowMode || _lists.Count == 0)
+            if (IsSlidingMode || _lists.Count == 0)
             {
                 if (AutoScrollMinSize != Size.Empty) AutoScrollMinSize = Size.Empty;
                 if (AutoScrollPosition != Point.Empty) AutoScrollPosition = Point.Empty;
                 return;
             }
 
-            var level = FocusedLevel;
+            var activeColumnIndex = ActiveColumnIndex;
             var width = ActualColumnWidth;
-            var step = width + ColumnGap;
+            var step = width + ColumnSpacing;
             var clientWidth = ClientSize.Width;
 
             int wanted;
-            var window = WindowColumns;
-            if (window > 0)
+            var viewportColumns = ViewportColumnCount;
+            if (viewportColumns > 0)
             {
-                wanted = WindowStart(_lists.Count, level, window) * step;
+                wanted = ViewportStartColumn(_lists.Count, activeColumnIndex, viewportColumns) * step;
             }
             else
             {
-                var left = ColumnLeft(level);
-                var right = ColumnLeft(RightEdgeLevel(_lists.Count, level)) + width;
+                var left = ColumnLeft(activeColumnIndex);
+                var right = ColumnLeft(RightEdgeColumn(_lists.Count, activeColumnIndex)) + width;
                 wanted = Math.Max(0, Math.Min(left, right - clientWidth));
             }
 
@@ -322,46 +322,46 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 第 <paramref name="level"/> 欄該放的位置。
+        /// 第 <paramref name="columnIndex"/> 欄該放的位置。
         /// </summary>
         /// <remarks>
         /// Location 是相對於「捲動後」的工作區原點，不是內容的左上角。已經捲動過時
         /// 如果直接填未捲動的座標，欄位會整個被推到右邊，捲動範圍也跟著暴增，所以要補上
         /// <see cref="ScrollableControl.AutoScrollPosition"/>（已捲動時為負值）。
         /// </remarks>
-        private Point ColumnLocation(int level)
+        private Point ColumnLocation(int columnIndex)
         {
             var scroll = AutoScrollPosition;
-            return new Point(ColumnLeft(level) + scroll.X, MARGIN + scroll.Y);
+            return new Point(ColumnLeft(columnIndex) + scroll.X, MARGIN + scroll.Y);
         }
 
         /// <summary>
-        /// 第 <paramref name="level"/> 欄左緣的 X 座標（以未捲動時為準）。
+        /// 第 <paramref name="columnIndex"/> 欄左緣的 X 座標（以未捲動時為準）。
         /// </summary>
         /// <remarks>
-        /// <see cref="CascadeColumnSizeMode.Window"/> 時從顯示範圍的第一欄開始排；範圍外的欄位是隱藏的，一律放在最左邊。
+        /// <see cref="CascadeColumnLayoutMode.Sliding"/> 時從顯示範圍的第一欄開始排；範圍外的欄位是隱藏的，一律放在最左邊。
         /// </remarks>
-        private int ColumnLeft(int level)
+        private int ColumnLeft(int columnIndex)
         {
-            var step = ActualColumnWidth + ColumnGap;
+            var step = ActualColumnWidth + ColumnSpacing;
 
-            if (!IsWindowMode) return MARGIN + (level * step);
+            if (!IsSlidingMode) return MARGIN + (columnIndex * step);
 
-            var start = WindowStart(_lists.Count, FocusedLevel, WindowColumns);
-            var offset = level - start;
-            return offset >= 0 && offset < WindowColumns ? MARGIN + (offset * step) : MARGIN;
+            var start = ViewportStartColumn(_lists.Count, ActiveColumnIndex, ViewportColumnCount);
+            var offset = columnIndex - start;
+            return offset >= 0 && offset < ViewportColumnCount ? MARGIN + (offset * step) : MARGIN;
         }
 
         /// <summary>
-        /// 依 <see cref="ColumnSizeMode"/> 算出的實際欄寬，不會小於 <see cref="ColumnWidth"/>。
+        /// 依 <see cref="ColumnLayoutMode"/> 算出的實際欄寬，不會小於 <see cref="ColumnWidth"/>。
         /// </summary>
         private int ActualColumnWidth
         {
             get
             {
-                if (IsWindowMode) return Math.Max(ColumnWidth, FillWidth(WindowColumns));
+                if (IsSlidingMode) return Math.Max(ColumnWidth, FillWidth(ViewportColumnCount));
 
-                if (_columnSizeMode == CascadeColumnSizeMode.Fill && _displayColumnCount > 0)
+                if (_columnLayoutMode == CascadeColumnLayoutMode.Fill && _displayColumnCount > 0)
                     return Math.Max(ColumnWidth, FillWidth(_displayColumnCount));
 
                 return ColumnWidth;
@@ -369,33 +369,33 @@ namespace CascadeControl.Views
         }
 
         // 讓 count 欄（含欄距與左右邊距）剛好填滿寬度時的欄寬。
-        private int FillWidth(int count) => (ClientSize.Width - (MARGIN * 2) - ((count - 1) * ColumnGap)) / count;
+        private int FillWidth(int count) => (ClientSize.Width - (MARGIN * 2) - ((count - 1) * ColumnSpacing)) / count;
 
-        private bool IsWindowMode => _columnSizeMode == CascadeColumnSizeMode.Window;
+        private bool IsSlidingMode => _columnLayoutMode == CascadeColumnLayoutMode.Sliding;
 
         /// <summary>
         /// 畫面上一次要看到的欄數；0 表示不分頁，照 <see cref="ColumnWidth"/> 排列並捲動。
         /// </summary>
         /// <remarks>
-        /// <see cref="CascadeColumnSizeMode.Fill"/>：平均欄寬放得下時是 <see cref="DisplayColumnCount"/>，
+        /// <see cref="CascadeColumnLayoutMode.Fill"/>：平均欄寬放得下時是 <see cref="DisplayColumnCount"/>，
         /// 放不下（只能改用最小欄寬）時為 0。
-        /// <see cref="CascadeColumnSizeMode.Window"/>：<see cref="DisplayColumnCount"/>（0 當成 1），
+        /// <see cref="CascadeColumnLayoutMode.Sliding"/>：<see cref="DisplayColumnCount"/>（0 當成 1），
         /// 平均欄寬放不下時減少到放得下的欄數，至少 1 欄。
         /// </remarks>
-        private int WindowColumns
+        private int ViewportColumnCount
         {
             get
             {
-                switch (_columnSizeMode)
+                switch (_columnLayoutMode)
                 {
-                    case CascadeColumnSizeMode.Fill:
+                    case CascadeColumnLayoutMode.Fill:
                         return _displayColumnCount > 0 && FillWidth(_displayColumnCount) >= ColumnWidth ? _displayColumnCount : 0;
 
-                    case CascadeColumnSizeMode.Window:
+                    case CascadeColumnLayoutMode.Sliding:
                         var count = Math.Max(1, _displayColumnCount);
                         if (FillWidth(count) >= ColumnWidth) return count;
 
-                        var fits = (ClientSize.Width - (MARGIN * 2) + ColumnGap) / (ColumnWidth + ColumnGap);
+                        var fits = (ClientSize.Width - (MARGIN * 2) + ColumnSpacing) / (ColumnWidth + ColumnSpacing);
                         return Math.Max(1, Math.Min(count, fits));
 
                     default:
@@ -408,27 +408,27 @@ namespace CascadeControl.Views
         /// 畫面右緣要對齊的欄位：操作欄的下一欄存在時是下一欄，否則是操作欄本身。
         /// </summary>
         /// <param name="columnCount">目前建立的欄數。</param>
-        /// <param name="activeLevel">操作欄的索引。</param>
-        internal static int RightEdgeLevel(int columnCount, int activeLevel)
+        /// <param name="activeColumnIndex">操作欄的索引。</param>
+        internal static int RightEdgeColumn(int columnCount, int activeColumnIndex)
         {
-            return Math.Max(0, Math.Min(columnCount - 1, activeLevel + 1));
+            return Math.Max(0, Math.Min(columnCount - 1, activeColumnIndex + 1));
         }
 
         /// <summary>
-        /// 一次顯示 <paramref name="window"/> 欄時，畫面最左邊那一欄的索引。
+        /// 一次顯示 <paramref name="viewportColumns"/> 欄時，畫面最左邊那一欄的索引。
         /// </summary>
         /// <param name="columnCount">目前建立的欄數。</param>
-        /// <param name="activeLevel">操作欄的索引。</param>
-        /// <param name="window">一次顯示的欄數，至少 1。</param>
+        /// <param name="activeColumnIndex">操作欄的索引。</param>
+        /// <param name="viewportColumns">一次顯示的欄數，至少 1。</param>
         /// <remarks>
-        /// 右緣對齊 <see cref="RightEdgeLevel"/>，但不讓操作欄被推出左邊：只顯示一欄時，顯示的是操作欄而不是它的下一欄。
+        /// 右緣對齊 <see cref="RightEdgeColumn"/>，但不讓操作欄被推出左邊：只顯示一欄時，顯示的是操作欄而不是它的下一欄。
         /// </remarks>
-        internal static int WindowStart(int columnCount, int activeLevel, int window)
+        internal static int ViewportStartColumn(int columnCount, int activeColumnIndex, int viewportColumns)
         {
-            if (window <= 0) return 0;
+            if (viewportColumns <= 0) return 0;
 
-            var right = RightEdgeLevel(columnCount, activeLevel);
-            return Math.Max(0, Math.Min(activeLevel, right - window + 1));
+            var right = RightEdgeColumn(columnCount, activeColumnIndex);
+            return Math.Max(0, Math.Min(activeColumnIndex, right - viewportColumns + 1));
         }
 
         /// <summary>
@@ -464,25 +464,25 @@ namespace CascadeControl.Views
         /// </summary>
         /// <remarks>
         /// 沒有欄位時仍要修正捲動範圍，否則清空後會留下舊的水平捲軸。
-        /// <see cref="CascadeColumnSizeMode.Window"/> 一次顯示的欄數會隨控制項寬度改變，所以顯示與否也在這裡決定，而不是只在改選時。
+        /// <see cref="CascadeColumnLayoutMode.Sliding"/> 一次顯示的欄數會隨控制項寬度改變，所以顯示與否也在這裡決定，而不是只在改選時。
         /// </remarks>
         private void Relayout()
         {
             if (_lists.Count > 0)
             {
                 var size = new Size(ActualColumnWidth, ColumnHeight);
-                var windowed = IsWindowMode;
-                var window = WindowColumns;
-                var start = windowed ? WindowStart(_lists.Count, FocusedLevel, window) : 0;
+                var sliding = IsSlidingMode;
+                var viewportColumns = ViewportColumnCount;
+                var start = sliding ? ViewportStartColumn(_lists.Count, ActiveColumnIndex, viewportColumns) : 0;
 
                 SuspendLayout();
                 try
                 {
-                    for (var level = 0; level < _lists.Count; level++)
+                    for (var columnIndex = 0; columnIndex < _lists.Count; columnIndex++)
                     {
-                        var list = _lists[level];
-                        list.Bounds = new Rectangle(ColumnLocation(level), size);
-                        list.Visible = !windowed || (level >= start && level < start + window);
+                        var list = _lists[columnIndex];
+                        list.Bounds = new Rectangle(ColumnLocation(columnIndex), size);
+                        list.Visible = !sliding || (columnIndex >= start && columnIndex < start + viewportColumns);
                     }
                 }
                 finally

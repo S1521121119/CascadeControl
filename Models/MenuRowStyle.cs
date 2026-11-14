@@ -15,7 +15,7 @@
     public enum MenuRowStyle
     {
         /// <summary>
-        /// 展開：每個葉節點一列，不使用 <see cref="AlternativeCell.SEPARATOR"/>。
+        /// 展開：每個葉節點一列，不使用 <see cref="SiblingCellSyntax.SIBLING_SEPARATOR"/>。
         /// </summary>
         Expanded,
 

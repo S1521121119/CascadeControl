@@ -7,7 +7,7 @@ namespace CascadeControl.Views
     // 鍵盤與滑鼠操作。焦點固定在操作欄，所以按鍵一律以導覽狀態為準，不看是哪一欄收到的。
     public partial class CascadeView
     {
-        // ← 退回上一層、→ 進入下一層、Enter 在葉節點上觸發 ItemActivated；↑↓ 交給 ListBox 原生處理。
+        // ← 退回上一層、→ 進入下一層、Enter 在葉節點上觸發 NodeActivated；↑↓ 交給 ListBox 原生處理。
         private void OnColumnKeyDown(object sender, KeyEventArgs e)
         {
             if (_lists.IndexOf(sender as ListBox) < 0) return;
@@ -30,7 +30,7 @@ namespace CascadeControl.Views
                     break;
 
                 case Keys.Enter:
-                    if (IsLeafSelected) OnItemActivated(CreateItemEventArgs());
+                    if (IsLeafSelected) OnNodeActivated(CreateNodeEventArgs());
                     else ApplyNavigation(_navigator.StepForward());
                     break;
             }
@@ -69,22 +69,22 @@ namespace CascadeControl.Views
         {
             if (e.Button != MouseButtons.Left || !(sender is ListBox list)) return;
 
-            var level = _lists.IndexOf(list);
-            if (level < 0) return;
+            var columnIndex = _lists.IndexOf(list);
+            if (columnIndex < 0) return;
 
             var index = list.IndexFromPoint(e.Location);
-            if (index >= 0 && index < list.Items.Count && list.Items[index] is ICascadeItem item)
-                ApplyNavigation(_navigator.Select(level, item));
+            if (index >= 0 && index < list.Items.Count && list.Items[index] is ICascadeNode node)
+                ApplyNavigation(_navigator.SelectNodeAt(columnIndex, node));
 
             FocusActiveColumn();
         }
 
         private void OnColumnDoubleClick(object sender, EventArgs e)
         {
-            // 第一下點擊已經把選取移到這一欄，所以只要它是操作欄且有選取項目就觸發。
-            var level = _lists.IndexOf(sender as ListBox);
-            if (level >= 0 && level == _navigator.Depth - 1 && SelectedItem != null)
-                OnItemActivated(CreateItemEventArgs());
+            // 第一下點擊已經把選取移到這一欄，所以只要它是操作欄且有選取節點就觸發。
+            var columnIndex = _lists.IndexOf(sender as ListBox);
+            if (columnIndex >= 0 && columnIndex == _navigator.SelectedDepth - 1 && SelectedNode != null)
+                OnNodeActivated(CreateNodeEventArgs());
         }
 
         // 焦點只影響選取項的配色與焦點框，只重畫那一列；整欄重畫會讓整欄跟著閃一下。

@@ -13,7 +13,7 @@ namespace CascadeControl.Models
     /// 如果改成不分大小寫，來源資料中的 Reboot 和 reboot 會在沒有任何提示的情況下合併成一項，
     /// 對 debug 選單來說等於少了一個選項。
     /// </remarks>
-    public sealed class MenuNode : ICascadeItem
+    public sealed class MenuNode : ICascadeNode
     {
         private readonly List<MenuNode> _children = new List<MenuNode>();
         private readonly Dictionary<string, MenuNode> _index = new Dictionary<string, MenuNode>(StringComparer.Ordinal);
@@ -43,13 +43,13 @@ namespace CascadeControl.Models
         public int Depth { get; private set; }
 
         /// <summary>
-        /// 在同一個父節點底下的序號，由 1 起算；樹根為 0。
+        /// 在同一個父節點底下的兄弟顯示序號，由 1 起算；樹根為 0。
         /// </summary>
         /// <remarks>
         /// 序號只在同一層的兄弟節點之間計算，不是全樹的流水號，每一層都從 1 開始。
-        /// 數字取決於 <see cref="GetOrAddChild"/> 的呼叫順序，不是來源資料裡的欄位。
+        /// 數字取決於子節點排列順序，不是來源資料裡的欄位。
         /// </remarks>
-        public int Index { get; private set; }
+        public int SiblingNumber { get; private set; }
 
         /// <summary>
         /// 子節點，依第一次加入的順序排列。
@@ -67,7 +67,7 @@ namespace CascadeControl.Models
         /// 畫面上的顯示文字，格式為 &lt;序號&gt;名稱，有子節點時再加上 " [+]"，例如 &lt;01&gt;A [+]、&lt;01&gt;A11。樹根為空字串。
         /// </summary>
         /// <remarks>
-        /// 第一次讀取時才組字串並快取；子節點增加時由 <see cref="GetOrAddChild"/> 清除快取。
+        /// 第一次讀取時才組字串並快取；子節點或名稱、序號改變時清除快取。
         /// </remarks>
         public string DisplayText
         {
@@ -83,21 +83,19 @@ namespace CascadeControl.Models
         {
             return Parent == null
                 ? string.Empty
-                : $"<{Index:00}>{Name}{(_children.Count > 0 ? " [+]" : string.Empty)}";
+                : $"<{SiblingNumber:00}>{Name}{(_children.Count > 0 ? " [+]" : string.Empty)}";
         }
 
-        // 顯示文字會隨 _children 是否為空而改變，所以 _children 增加時要呼叫。
-        // Name 不可變；Parent / Index 只在 GetOrAddChild 建立節點時設定一次，當時還沒有快取，不必呼叫。
         private void InvalidateDisplayText()
         {
             _displayText = null;
         }
 
         /// <summary>
-        /// 從第一層到本節點的路徑字串，只含名稱、不含序號，例如 A &gt; A1 &gt; A11。
+        /// 從第一層到本節點的完整路徑字串，只含名稱、不含序號，例如 A &gt; A1 &gt; A11。
         /// </summary>
         /// <remarks>內容和來源資料寫的一樣，所以用在警告訊息裡，使用者可以直接拿去找出有問題的那一筆。</remarks>
-        public string FullPath => BuildPath(node => node.Name);
+        public string FullPathText => BuildPath(node => node.Name);
 
         /// <summary>
         /// 從第一層到本節點經過的所有節點，由淺到深排列，不含樹根；樹根本身回傳空集合。
@@ -105,7 +103,7 @@ namespace CascadeControl.Models
         /// <remarks>
         /// 呼叫端拿到節點就能直接用 foreach 逐層處理，不必自己沿著 <see cref="Parent"/> 往上找再反轉順序。
         /// </remarks>
-        public IReadOnlyList<MenuNode> PathFromRoot
+        public IReadOnlyList<MenuNode> FullPath
         {
             get
             {
@@ -119,7 +117,7 @@ namespace CascadeControl.Models
 
         private string BuildPath(Func<MenuNode, string> selector)
         {
-            return string.Join(" > ", PathFromRoot.Select(selector));
+            return string.Join(" > ", FullPath.Select(selector));
         }
 
         /// <summary>
@@ -133,7 +131,7 @@ namespace CascadeControl.Models
 
             if (_index.TryGetValue(key, out MenuNode existing)) return existing;
 
-            var child = new MenuNode(key) { Parent = this, Depth = Depth + 1, Index = _children.Count + 1 };
+            var child = new MenuNode(key) { Parent = this, Depth = Depth + 1, SiblingNumber = _children.Count + 1 };
             _children.Add(child);
             _index.Add(key, child);
             InvalidateDisplayText(); // 本節點可能剛從葉節點變成中間節點，" [+]" 要重算
@@ -182,14 +180,14 @@ namespace CascadeControl.Models
         }
 
         /// <summary>
-        /// 建立本節點及其所有子孫節點的深層複本（脫離原本的父節點）。
+        /// 深層複製本節點及其整棵子樹（脫離原本的父節點）。
         /// </summary>
         /// <param name="newName">複本的新名稱；傳 null 則沿用本節點名稱。</param>
-        /// <returns>獨立的節點複本。</returns>
-        public MenuNode Copy(string newName = null)
+        /// <returns>獨立的節點子樹複本。</returns>
+        public MenuNode CopySubtree(string newName = null)
         {
             var copy = new MenuNode(newName ?? Name);
-            copy.MergeFrom(this);
+            copy.MergeSubtreeFrom(this);
             return copy;
         }
 
@@ -198,7 +196,7 @@ namespace CascadeControl.Models
         /// </summary>
         /// <param name="source">來源節點。</param>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> 為 null。</exception>
-        public void MergeFrom(MenuNode source)
+        public void MergeSubtreeFrom(MenuNode source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
 
@@ -225,48 +223,48 @@ namespace CascadeControl.Models
         }
 
         /// <summary>
-        /// 在本節點上方（同層前一個位置）插入 <paramref name="source"/> 的深層複本；
+        /// 在同層本節點上方（前一個位置）插入 <paramref name="source"/> 的深層複本；
         /// 若同層已有同名節點，則將 <paramref name="source"/> 的子孫節點往下疊合併至該既有節點。
         /// </summary>
         /// <param name="source">要插入的來源節點。</param>
-        /// <param name="overrideName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
+        /// <param name="newName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
         /// <returns>插入或合併後的節點。</returns>
-        public MenuNode InsertBefore(MenuNode source, string overrideName = null)
+        public MenuNode InsertSiblingBefore(MenuNode source, string newName = null)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             if (Parent == null) throw new InvalidOperationException("無法在樹根節點同層插入節點。");
 
             var position = Parent._children.IndexOf(this);
-            return Parent.InsertChildAt(position, source, overrideName);
+            return Parent.InsertChildAt(position, source, newName);
         }
 
         /// <summary>
-        /// 在本節點下方（同層後一個位置）插入 <paramref name="source"/> 的深層複本；
+        /// 在同層本節點下方（後一個位置）插入 <paramref name="source"/> 的深層複本；
         /// 若同層已有同名節點，則將 <paramref name="source"/> 的子孫節點往下疊合併至該既有節點。
         /// </summary>
         /// <param name="source">要插入的來源節點。</param>
-        /// <param name="overrideName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
+        /// <param name="newName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
         /// <returns>插入或合併後的節點。</returns>
-        public MenuNode InsertAfter(MenuNode source, string overrideName = null)
+        public MenuNode InsertSiblingAfter(MenuNode source, string newName = null)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             if (Parent == null) throw new InvalidOperationException("無法在樹根節點同層插入節點。");
 
             var position = Parent._children.IndexOf(this) + 1;
-            return Parent.InsertChildAt(position, source, overrideName);
+            return Parent.InsertChildAt(position, source, newName);
         }
 
-        private MenuNode InsertChildAt(int position, MenuNode source, string overrideName)
+        private MenuNode InsertChildAt(int position, MenuNode source, string newName)
         {
-            var key = ValidateNodeName(overrideName ?? source.Name);
+            var key = ValidateNodeName(newName ?? source.Name);
 
             if (_index.TryGetValue(key, out MenuNode existing))
             {
-                existing.MergeFrom(source);
+                existing.MergeSubtreeFrom(source);
                 return existing;
             }
 
-            var child = source.Copy(key);
+            var child = source.CopySubtree(key);
             child.Parent = this;
             child.UpdateDepthRecursive(Depth + 1);
 
@@ -278,10 +276,10 @@ namespace CascadeControl.Models
         }
 
         /// <summary>
-        /// 將本節點從父節點中刪除，並重新計算同層兄弟節點的序號。
+        /// 將本節點從父節點底下移除，並重新計算同層兄弟節點的序號。
         /// </summary>
         /// <returns>成功移除時為 true；本節點為樹根或不在父節點底下時為 false。</returns>
-        public bool Remove()
+        public bool RemoveFromParent()
         {
             if (Parent == null) return false;
 
@@ -312,8 +310,8 @@ namespace CascadeControl.Models
             var parent = Parent;
             if (parent._index.TryGetValue(key, out MenuNode existing))
             {
-                existing.MergeFrom(this);
-                Remove();
+                existing.MergeSubtreeFrom(this);
+                RemoveFromParent();
                 return existing;
             }
 
@@ -330,8 +328,8 @@ namespace CascadeControl.Models
                 throw new ArgumentException("節點名稱不可為空白。", nameof(name));
 
             var trimmed = name.Trim();
-            if (trimmed.IndexOf(AlternativeCell.SEPARATOR) >= 0)
-                throw new ArgumentException($"節點名稱不可含有保留字元 '{AlternativeCell.SEPARATOR}'。", nameof(name));
+            if (trimmed.IndexOf(SiblingCellSyntax.SIBLING_SEPARATOR) >= 0)
+                throw new ArgumentException($"節點名稱不可含有保留字元 '{SiblingCellSyntax.SIBLING_SEPARATOR}'。", nameof(name));
 
             return trimmed;
         }
@@ -341,10 +339,10 @@ namespace CascadeControl.Models
             for (var i = 0; i < _children.Count; i++)
             {
                 var child = _children[i];
-                var newIndex = i + 1;
-                if (child.Index != newIndex)
+                var newNumber = i + 1;
+                if (child.SiblingNumber != newNumber)
                 {
-                    child.Index = newIndex;
+                    child.SiblingNumber = newNumber;
                     child.InvalidateDisplayText();
                 }
             }
@@ -372,17 +370,12 @@ namespace CascadeControl.Models
             }
         }
 
-        /// <summary>
-        /// 在 <see cref="CascadeView"/> 上顯示的文字，與 <see cref="DisplayText"/> 相同。
-        /// </summary>
-        string ICascadeItem.Text => DisplayText;
-
-        IReadOnlyList<ICascadeItem> ICascadeItem.Children => _children;
+        IReadOnlyList<ICascadeNode> ICascadeNode.Children => _children;
 
         /// <summary>
         /// 回傳 <see cref="Name"/>，方便除錯與記錄。
         /// </summary>
-        /// <remarks>欄位上的顯示文字由 <see cref="ICascadeItem.Text"/> 決定，不受這裡影響。</remarks>
+        /// <remarks>欄位上的顯示文字由 <see cref="ICascadeNode.DisplayText"/> 決定，不受這裡影響。</remarks>
         public override string ToString() => Name;
     }
 }
