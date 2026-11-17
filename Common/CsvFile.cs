@@ -26,6 +26,7 @@
 //  2026-11-06      0.00.012        Jeff.WK.Lin             1. Add ParseRows overload that reports each row's source line number
 //                                                          2. Add static FormatRowsWithHeader; WriteFileWithHeader reuses it
 //                                                          3. Skip a whitespace-only last row, same as the other rows
+//  2026-11-17      0.00.013        Jeff.WK.Lin             Move to namespace CascadeControl.Common (shared by trees and graphs)
 //
 //=============================================================================================================================
 
@@ -35,7 +36,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace CascadeControl.Utilities
+namespace CascadeControl.Common
 {
     /// <summary>
     /// CSV 檔案的讀寫工具，支援 RFC 4180；寫檔時使用帶 BOM 的 UTF-8，讓 Excel 能正確開啟。

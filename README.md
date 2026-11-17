@@ -15,12 +15,12 @@
 ```
 
 `[ ]` 是選取路徑上的項目（淡藍），`# #` 是鍵盤焦點所在欄的選取項（實心藍），
-第 4 欄是 `Jog` 的子節點。`Forward` 沒有下一層，選到它再按 Enter 就會觸發 `NodeActivated`。
+第 4 欄是 `Jog` 的子節點。選到任何一項再按 Enter 都會觸發 `NodeActivated`；進入下一層用 →。
 
 - **需求**：.NET Framework 4.8、Windows Forms，不需要第三方套件。
-- **命名空間**：`CascadeControl.Views`（控制項）、`CascadeControl.Models`（選單樹與 `|` 語法）、`CascadeControl.Services`（文字與 CSV 讀寫）。
+- **命名空間**：`CascadeControl.Views`（控制項）、`CascadeControl.Trees`（選單樹與勾選）、`CascadeControl.Trees.Csv`（樹的文字與 CSV 讀寫）、`CascadeControl.Graphs`／`CascadeControl.Graphs.Csv`（有向圖與其 CSV 讀寫）、`CascadeControl.Common`（`ICascadeNode`、`|` 語法等共用部分）。
 
-**目錄**：[快速開始](#快速開始) · [常見任務](#常見任務) · [CSV 格式](#csv-格式) · [操作方式](#操作方式) · [API 速查](#api-速查) · [注意事項](#注意事項)
+**目錄**：[快速開始](#快速開始) · [常見任務](#常見任務) · [CSV 格式](#csv-格式) · [操作方式](#操作方式) · [勾選](#勾選) · [API 速查](#api-速查) · [注意事項](#注意事項)
 
 ---
 
@@ -64,8 +64,8 @@ Motor,Axis X|Axis Y,Jog,Forward|Backward
 ### 4. 載入選單並處理執行
 
 ```csharp
-using CascadeControl.Models;
-using CascadeControl.Services;
+using CascadeControl.Trees;
+using CascadeControl.Trees.Csv;
 using CascadeControl.Views;
 
 public MainForm()
@@ -79,9 +79,10 @@ public MainForm()
     cascadeView1.SetTree(menu);
 }
 
-// 使用者在節點上雙擊或在葉節點上按 Enter 時觸發。
+// 使用者在選取的節點上雙擊或按 Enter 時觸發，不論是不是終點。
 private void CascadeView1_NodeActivated(object sender, CascadeNodeEventArgs e)
 {
+    if (!e.IsLeaf) return;   // 只執行終點
     var node = (MenuNode)e.Node;
     MessageBox.Show($"執行：{node.FullPathText}");   // 例如「Motor > Axis X > Jog > Forward」
 }
@@ -112,7 +113,7 @@ MenuTreeCsvFile.Save(menu, "menu.csv");   // 需要的話存成檔案
 
 ```csharp
 menu.ExpandAndAddPaths("Motor", "Axis X|Axis Y", "Jog", "Forward|Backward");   // 加入 4 條路徑
-menu.ExpandAndAddPaths("IO", "Input", SiblingCellSyntax.JoinSiblings(inputNames)); // 名稱清單來自程式時
+menu.ExpandAndAddPaths("IO", "Input", MultiNameCellSyntax.JoinNames(inputNames)); // 名稱清單來自程式時
 ```
 
 和 `AddPath` 不同，`ExpandAndAddPaths` 會先去除每個名稱前後的空白；有任何一格不合法時丟 `ArgumentException`，整列都不會加入。
@@ -215,7 +216,13 @@ cascadeView1.DisplayColumnCount = menu.Height;   // 資料有幾層就設幾層
 ```
 
 - `DisplayColumnCount` 預設為 `0`：`Fill` 時等同 `Fixed`，`Sliding` 時當成 `1`。不可設為負數。
-- `Sliding` 的畫面右緣對齊操作欄的下一欄（沒有下一欄時對齊操作欄本身），但操作欄不會被推出左邊：只顯示一欄時，看到的是操作欄而不是它的下一欄。
+- 畫面右緣（`Fixed` 捲動時、`Fill`、`Sliding` 都一樣）：操作欄裡**有任何一項有下一層**時，右邊一律預留一欄，即使選到的是終點、下一欄還沒長出來也留白，所以在同一欄上下改選時畫面不會左右跳；操作欄**全是終點**時不留白，右緣就是操作欄本身。不論哪一種，操作欄都不會被推出左邊：只顯示一欄時，看到的是操作欄而不是它的下一欄。
+
+```
+操作欄全是終點：不留白                     操作欄有節點：選到終點也留白
+| ... | Node A   | | Leaf A   |           | ... | Node A   | |          |
+| ... |[Leaf B ] | |[Leaf B  ]|           | ... |[Leaf B  ]| |          |
+```
 - 平均後的欄寬小於 `ColumnWidth` 時，`Fill` 改用 `ColumnWidth` 並出現水平捲軸；`Sliding` 則自動減少顯示的欄數（至少 1 欄）。
 
 ### 退回與記憶軌跡
@@ -264,7 +271,7 @@ cascadeView1.DrawNode += (s, e) =>
 - **表頭**：第一列是 `Level1,Level2,…`（不分大小寫）。讀檔時如果第一列不是表頭，會被當成資料並發出警告；`MenuTreeCsvText.Parse` 則不要求表頭。
 - **一列一條路徑**：由左至右是第 1 層、第 2 層…，深度不足的尾欄留空。深度沒有上限。
 - **用 `|` 列舉同層項目**：`Axis X|Axis Y` 代表兩個兄弟節點；同一列有好幾格這樣寫時，會依笛卡兒積展開成多條路徑（越右邊的欄位變化越快）。
-  程式中組這種字串可以用 `SiblingCellSyntax.JoinSiblings`。
+  程式中組這種字串可以用 `MultiNameCellSyntax.JoinNames`（`CascadeControl.Common`）。
 - **名稱**：前後空白會自動去除；**區分大小寫**，所以 `Reboot` 和 `reboot` 是兩個不同的項目。
 - **重複與延伸**：完全相同的路徑會合併。`A,B` 和 `A,B,C` 同時存在時，`B` 會變成中間節點，不算錯誤。
 - **顯示文字**：`MenuNode.DisplayText` 在畫面上顯示成 `<01>Name`，有子節點時再加上 ` [+]`；序號（`SiblingNumber`，由 1 起算）是它在同一層中第一次出現的順序。顯示文字只用在欄位上，路徑與記錄一律使用 `Name`。
@@ -273,7 +280,7 @@ cascadeView1.DrawNode += (s, e) =>
 
 - 中間缺一層，例如 `A,,C`：空欄之後的欄位會被忽略。
 - `|` 用法錯誤，例如 `A||B`、`|A`、`A|`，或某一段只有空白：整列跳過。
-- 單列展開超過 65,535 條（`SiblingCellSyntax.MAX_EXPANDED_PATHS`）：整列跳過。
+- 單列展開超過 65,535 條（`MultiNameCellSyntax.MAX_EXPANDED_ROWS`）：整列跳過。
 - 整份展開累計超過 65,535 條：整份放棄，回傳空樹。
 
 警告訊息中的「第 N 列」是檔案（或文字）中的實際行號。
@@ -330,14 +337,88 @@ ActionStep,ActionBurnIn,Init|Stop,
 | ↑ ↓ | 在同一欄內移動，也就是改選這一層；其他分支的記憶軌跡保留 |
 | → | 進入下一欄：有記憶軌跡時選上次的項目，沒有時選第一項 |
 | ← | 退回上一欄，**選取也跟著退回**；更深的那一段留作記憶軌跡 |
-| Enter | 在終點上觸發 `NodeActivated`；不是終點時等同 → |
+| Enter | 在選取的節點上觸發 `NodeActivated`，不論是不是終點（用 `e.IsLeaf` 判斷）；沒有選取時不觸發 |
 | Esc | 清除選取（記憶軌跡保留），焦點回到第一欄 |
 | 滑鼠點選 | 點不同的項目等同改選；點路徑或記憶軌跡中的同一項，等同連按 ← 或 → 到那一欄 |
 | 雙擊 | 在操作欄的節點上觸發 `NodeActivated` |
 
 - 鍵盤焦點固定在目前操作的那一欄（`ActiveColumnIndex`，最深選取項所在的欄），點在其他欄的空白處後，焦點會回到這一欄。
 - 只要焦點在控制項的欄位上，←、→、Enter、Esc 一律由控制項處理。所以表單的 `CancelButton` 在這時候不會被 Esc 觸發。
-- `Fixed` 模式下欄位多到放不下時會出現水平捲軸，並自動捲到操作欄，讓它的右邊剛好留得下一欄；`Fill` 與 `Sliding` 的行為見[欄寬與顯示欄數](#欄寬與顯示欄數)。
+- `Fixed` 模式下欄位多到放不下時會出現水平捲軸，並自動捲到操作欄，操作欄有任何一項有下一層時，讓它的右邊剛好留得下一欄；`Fill` 與 `Sliding` 的行為見[欄寬與顯示欄數](#欄寬與顯示欄數)。
+
+---
+
+## 勾選
+
+`CascadeCheckboxView` 是每一列前面多一個勾選框的 `CascadeView`，用來在樹上**勾選多個節點**，再一次輸出勾選的部分。
+選取（目前走到哪裡）和勾選（選了哪些）是兩回事：勾選狀態存在 `MenuCheckSet`，不存在節點上，所以 `MenuNode` 與 `MenuTree` 都不必改。
+
+```csharp
+// 用法和 CascadeView 一樣；SetTree 會自動建立一份針對這棵樹的 MenuCheckSet。
+cascadeCheckboxView1.SetTree(menu);
+cascadeCheckboxView1.CheckedChanged += (s, e) =>
+    Debug.WriteLine($"{e.Reason}：+{e.Added.Count} / -{e.Removed.Count}");
+
+MenuCheckSet checks = cascadeCheckboxView1.CheckSet;
+
+// 取得勾選的節點（依樹的順序）
+foreach (MenuNode node in checks.CheckedNodes) Debug.WriteLine(node.FullPathText);
+
+// 輸出：先變成一棵只含勾選節點的樹，再用既有的方式寫出
+MenuTree picked = checks.ToTree();
+string[][] rows = picked.ToRows(MenuRowStyle.Compact);
+MenuTreeCsvFile.Save(picked, "picked.csv", MenuRowStyle.Compact);
+
+// 還原：把先前存下來的結果讀回來，套回同一棵樹
+MenuTree saved = MenuTreeCsvFile.Load("picked.csv", out IList<string> loadWarnings);
+checks.Apply(saved, out IList<string> applyWarnings);   // 原樹裡找不到的路徑會寫進 applyWarnings
+```
+
+### 勾選的規則
+
+勾選集合永遠**向上封閉**：一個節點被勾選，它的所有祖先就一定也被勾選。
+
+| 動作 | 結果 |
+|---|---|
+| 勾選一個節點 | 自動補勾它的所有祖先；兄弟與子孫不動 |
+| 取消一個節點 | 連同它的所有子孫一起取消；祖先不動 |
+| 只勾中間節點、不勾它的子節點 | 可以，代表「輸出到這一層為止」 |
+
+勾選框有三種外觀：☐ 未勾選、☑ 自己和所有子孫都勾了、▣ 勾了但子孫沒有全勾。
+第三種只是提示，狀態仍然是已勾選（`IsChecked` 為 true、`IsFullyChecked` 為 false）。
+
+### 勾選的操作方式
+
+| 按鍵 / 動作 | 行為 |
+|---|---|
+| 點勾選框 | 只切換那個節點的勾選，不改選取（`Sliding` 時畫面也不會滑動） |
+| Shift＋點勾選框 | 連同所有子節點一起勾選；已經全勾時改為取消 |
+| 點文字 | 只選取，不切換 |
+| Space | 切換目前選取節點的勾選 |
+| Shift+Space | 目前選取的節點連同所有子節點一起勾選；已經全勾時改為取消（和 Shift＋點勾選框相同） |
+| Ctrl+Z | 復原；之後選取會跳到那一步針對的節點 |
+| Ctrl+Y、Ctrl+Shift+Z | 重做 |
+| 右鍵點節點 | 不改選取，開啟節點功能表：「勾選(含所有子節點)」 |
+| 右鍵點欄位空白處 | 不改選取，開啟欄位功能表（對象是那一欄全部）：「全部勾選」（子節點不動）、「全部勾選(含子節點)」、「全部取消」（連同子節點） |
+
+- 每一次操作算一個復原步驟（功能表的一個項目也是一步），最多保留 50 步（`HistoryCapacity`），超過時丟掉最舊的。沒有造成任何改變的操作不算一步；做了新的操作，重做的步驟就清掉。
+- 欄位功能表要點在最後一列下方的空白處；欄位排滿、沒有空白處時開不了。整棵樹的 `CheckAll()` / `UncheckAll()` 沒有放進功能表，需要時自己呼叫。
+- 不要功能表就把 `ShowCheckContextMenu` 設為 false；要改文字用 `CheckSubtreeMenuText` 等四個屬性；要加自己的項目，加到 `NodeContextMenu` 或 `ColumnContextMenu` 後面，用 `ContextMenuNode` 取得功能表針對的節點（欄位功能表是那一欄的第一個節點）。
+- 焦點在欄位上時輸入法會被關掉：中文輸入法開著的話，Space 會先被輸入法收走。
+- 列高至少放得下勾選框，字型很小時不會跟著縮到比勾選框還矮。
+
+### 樹被編輯之後
+
+插入、刪除、改名之後，除了 `RefreshColumns`，還要呼叫 `CheckSet.Reconcile()`：
+它會丟掉已經不在樹裡的節點、補勾缺少的祖先，並清除復原歷史（舊步驟可能指向已經不存在的節點）。新加入的節點預設不勾選。
+
+```csharp
+node.RemoveFromParent();
+cascadeCheckboxView1.CheckSet.Reconcile();
+cascadeCheckboxView1.RefreshColumns();
+```
+
+`SetTree` 每次都會換上一份全新的 `MenuCheckSet`。想保留勾選（例如重新載入同一棵樹），先用 `ToTree()` 存下來，`SetTree` 之後再 `Apply` 回去。
 
 ---
 
@@ -350,8 +431,9 @@ ActionStep,ActionBurnIn,Init|Stop,
 | `SetTree(tree)` / `SetTopLevelNodes(nodes)` / `Clear()` | 以選單樹或第一層節點集合重設，或清空 |
 | `RefreshColumns([selectPath])` | 底層節點結構異動後重新整理欄位清單並選取指定路徑 |
 | `TrySelectNode(node)` / `TrySelectPath(path)` | 選取指定節點或依序選取一條路徑 |
-| `CopySelectedNode()` / `CopiedNode` | 複製目前選取的節點子樹至 `CopiedNode` |
-| `FocusActiveColumn()` | 把焦點放到目前操作的那一欄 |
+| `CopySelectedNode()` / `CutSelectedNode()` / `ClearClipboard()` | 複製選取節點的子樹複本、剪下（只標記，貼上時才由呼叫端移走原節點）或清空剪貼簿 |
+| `ClipboardNode` / `IsClipboardCut` / `HasClipboard` | 剪貼簿內容：複製時是複本，剪下時是原節點本身；`IsClipboardCut` 為 true 代表貼上即移動 |
+| `FocusActiveColumn()` | 把焦點放到目前操作的那一欄；控制項本身取得焦點（`Focus()`、設成 `ActiveControl`）時也會自動轉交 |
 | `SelectedNode` / `SelectedPath` / `SelectedPathText` | 目前的選取（不含記憶軌跡） |
 | `IsLeafSelected` | 是否已選到終點 |
 | `ActiveColumnIndex` | 目前操作中的欄位索引（0-based） |
@@ -360,11 +442,53 @@ ActionStep,ActionBurnIn,Init|Stop,
 | `ClearTrail()` | 忘掉所有分支的記憶軌跡，只留目前的選取路徑 |
 | `ColumnWidth` / `ColumnSpacing` / `InactiveSelectionBackColor` / `TrailBackColor` / `PathSeparator` | 外觀設定 |
 | `SelectedPathChanged` | 選取路徑改變後觸發 |
-| `NodeActivated` | 在節點上雙擊或在葉節點上按 Enter 時觸發 |
+| `NodeActivated` | 在選取的節點上雙擊或按 Enter 時觸發，不論是不是終點 |
+| `NodeMouseClick` | 用左鍵或右鍵點了某個節點之後觸發；右鍵不改選取 |
+| `ClipboardChanged` | 剪貼簿內容改變後觸發，可用來切換貼上按鈕的可用狀態 |
 | `DrawNode` | 繪製每一列節點之前觸發，用於自繪 |
 | `ColumnWidthChanged` | `ColumnWidth` 改變後觸發，供資料繫結使用 |
+| `InvalidateNodes()` | 讓所有欄位重畫，不重建欄位；自繪的外觀取決於外部狀態、而那份狀態改變時呼叫 |
 
-**`MenuTree` / `MenuNode` / `SiblingCellSyntax`**（`CascadeControl.Models`）
+給衍生類別用的 protected 成員：`DrawDefaultNode(e)`（可覆寫，畫預設外觀）、`DrawDefaultNode(e, textBounds)`（把文字畫在指定範圍）、
+`IsColumnFocused`、`MinimumItemHeight`（可覆寫）、`OnNodeMouseClick`、
+`SelectsOnLeftClick(node, bounds, location)`（可覆寫，回傳 false 的位置左鍵不改選取，例如勾選框）、
+`OnColumnBlankMouseClick(columnIndex, nodes, button, screenLocation)`（可覆寫，點欄位空白處時呼叫）；`SetTree` 是 virtual。
+
+**`CascadeCheckboxView`**（`CascadeControl.Views`，繼承自 `CascadeView`）
+
+| 成員 | 說明 |
+|---|---|
+| `CheckSet` | 目前顯示的勾選狀態；`SetTree` 會自動換上新的，設為 null 就不顯示勾選框 |
+| `CheckedChanged` | `CheckSet` 的勾選狀態改變後觸發 |
+| `ShowCheckContextMenu` | 是否顯示內建的右鍵功能表 |
+| `NodeContextMenu` / `ColumnContextMenu` | 右鍵點節點／欄位空白處時開啟的功能表，可以加自己的項目 |
+| `ContextMenuNode` | 功能表針對的節點：被點的節點，或那一欄的第一個節點 |
+| `CheckSubtreeMenuText` / `CheckSiblingsMenuText` / `CheckSiblingSubtreesMenuText` / `UncheckSiblingsMenuText` | 功能表四個項目的文字 |
+| `GetCheckBoxBounds(rowBounds)` | 勾選框在某一列裡的位置 |
+
+**`MenuCheckSet`**（`CascadeControl.Trees`，不相依 WinForms）
+
+| 成員 | 說明 |
+|---|---|
+| `new MenuCheckSet(tree)` / `Tree` | 針對一棵樹建立一份空的勾選 |
+| `IsChecked(node)` / `IsFullyChecked(node)` / `Contains(node)` | 是否勾選、是否連同子孫全勾、節點是否屬於這棵樹 |
+| `CheckedNodes` / `Count` | 依樹的順序列舉勾選的節點；勾選的節點數 |
+| `Check(node)` / `Uncheck(node)` / `Toggle(node)` | 勾選（補祖先）、取消（連同子孫）、切換 |
+| `CheckSubtree(node)` | 勾選節點與它的全部子孫（補祖先） |
+| `CheckSiblings(node)` | 勾選同一層的全部節點（補祖先），它們的子孫不動 |
+| `CheckSiblingSubtrees(node)` | 勾選同一層的全部節點與它們的子孫（補祖先） |
+| `UncheckSiblings(node)` | 取消同一層的全部節點與它們的子孫 |
+| `CheckAll()` / `UncheckAll()` | 整棵樹 |
+| `ToTree()` | 產生只含勾選節點的新樹，交給 `ToRows`、`MenuTreeCsvText.Format`、`MenuTreeCsvFile.Save` 輸出 |
+| `Apply(subset, out warnings)` | 把勾選狀態換成 `subset` 裡有的節點（依名稱路徑對應），算一個復原步驟 |
+| `Undo()` / `Redo()` / `CanUndo` / `CanRedo` / `UndoCount` / `RedoCount` | 復原與重做；`Undo`、`Redo` 回傳那一步針對的節點 |
+| `HistoryCapacity` / `ClearHistory()` | 保留的步驟數（預設 50）；清除歷史 |
+| `Reconcile()` | 樹的結構被編輯後呼叫 |
+| `Changed` | 勾選狀態改變後觸發，參數有 `Added`、`Removed`、`Target`、`Reason` |
+
+異動方法都回傳「有沒有實際改變」；傳入不屬於這棵樹的節點會丟 `ArgumentException`。
+
+**`MenuTree` / `MenuNode`**（`CascadeControl.Trees`）與 **`MultiNameCellSyntax`**（`CascadeControl.Common`）
 
 | 成員 | 說明 |
 |---|---|
@@ -374,8 +498,8 @@ ActionStep,ActionBurnIn,Init|Stop,
 | `MenuTree.ExpandAndAddPaths(cells)` | 加入一整列（格子可含 `\|`），回傳各條路徑的終點節點 |
 | `MenuTree.GetLeaves()` / `Height` / `IsEmpty` | 查詢葉節點、高度與是否為空 |
 | `MenuTree.FromRows(rows, out warnings)` / `ToRows(style)` | 與二維字串陣列互轉 |
-| `SiblingCellSyntax.SIBLING_SEPARATOR` / `MAX_EXPANDED_PATHS` | `\|` 與展開上限 65,535 |
-| `SiblingCellSyntax.JoinSiblings(names)` | 把多個同層名稱串成一格 |
+| `MultiNameCellSyntax.NAME_SEPARATOR` / `MAX_EXPANDED_ROWS` | `\|` 與展開上限 65,535 |
+| `MultiNameCellSyntax.JoinNames(names)` | 把多個名稱串成一格 |
 | `MenuNode.Name` / `DisplayText` | 原始名稱與欄位顯示文字 |
 | `MenuNode.FullPath` / `FullPathText` | 由第一層到本節點的節點序列與路徑字串 |
 | `MenuNode.Parent` / `Depth` / `SiblingNumber` / `IsLeaf` | 位置資訊 |
@@ -383,7 +507,7 @@ ActionStep,ActionBurnIn,Init|Stop,
 | `MenuNode.InsertSiblingBefore(source, [newName])` / `InsertSiblingAfter(source, [newName])` | 同層上方／下方插入兄弟節點 |
 | `MenuNode.RemoveFromParent()` / `Rename(newName)` | 刪除與重新命名節點 |
 
-**`MenuTreeCsvText`**（`CascadeControl.Services`，純文字、不碰檔案）
+**`MenuTreeCsvText`**（`CascadeControl.Trees.Csv`，純文字、不碰檔案）
 
 | 成員 | 說明 |
 |---|---|
@@ -392,12 +516,41 @@ ActionStep,ActionBurnIn,Init|Stop,
 | `NormalizeRows(rows, [style,] out warnings)` | 整理並正規化資料列 |
 | `CreateHeader(columnCount)` | 產生 `Level1…LevelN` 表頭 |
 
-**`MenuTreeCsvFile`**（`CascadeControl.Services`，檔案）
+**`MenuTreeCsvFile`**（`CascadeControl.Trees.Csv`，檔案）
 
 | 成員 | 說明 |
 |---|---|
 | `Load(filePath, out warnings)` | 讀取 CSV，不丟例外 |
 | `Save(tree, filePath, [style])` | 寫出 CSV（預設展開），目錄不存在時會自動建立 |
+
+**`MenuGraph` / `MenuVertex` / `MenuEdge` / `MenuGraphNode`**（`CascadeControl.Graphs`）
+
+有向圖：頂點名稱全圖唯一，同名就是同一個頂點，多個前驅可以共用同一個頂點；允許自我迴圈與環。CSV 固定兩欄 `From,To`，每列是一組有向邊，兩格都可以用 `|` 列舉多個頂點。
+
+```csv
+From,To
+Main,System|Motor
+System,Info|Status
+Info|Status,Version|Uptime
+```
+
+| 成員 | 說明 |
+|---|---|
+| `MenuGraph.GetOrAddVertex(name)` / `TryGetVertex` / `ContainsVertex` / `RemoveVertex(vertex)` | 頂點的增刪查 |
+| `MenuGraph.AddEdge(from, to)` / `RemoveEdge(from, to)` / `IsAdjacent(from, to)` | 邊的增刪查；重複的邊會合併 |
+| `MenuGraph.ExpandAndAddEdges(fromCell, toCell)` | 加入一整列（格子可含 `\|`），左格每個頂點都連向右格每個頂點 |
+| `MenuGraph.Vertices` / `Edges` / `Sources` / `Sinks` / `VertexCount` / `EdgeCount` | 查詢；`Sources`（入度 0）就是選單的第一層 |
+| `MenuGraph.GetDistances(start, [maxDistance])` / `IsAcyclic()` | 最少邊數、是否無環 |
+| `MenuGraph.FromRows(rows, out warnings)` / `ToRows(style)` | 與 `From,To` 二維字串陣列互轉，寫法見 `MenuGraphRowStyle`（`Expanded` / `Compact` / `Outline`） |
+| `MenuGraph.FromTree(tree)` / `ToTree([start,] out warnings)` | 與樹互轉：同名節點合併成一個頂點；展開成樹時共用頂點會被複製，環會被略過並警告 |
+| `MenuGraph.CreateTopLevelNodes()` | 建立 `MenuGraphNode`（實作 `ICascadeNode`），可交給 `CascadeView.SetTopLevelNodes` 顯示 |
+| `MenuVertex.Successors` / `Predecessors` / `InDegree` / `OutDegree` / `IsSource` / `IsSink` / `IsConvergent` / `HasLoop` | 頂點的鄰接資訊 |
+| `MenuVertex.Rename(newName)` | 改名；改成既有名稱時把邊轉接過去並合併 |
+| `MenuGraphNode.SiblingNumber` / `Depth` / `FullPathText` / `IsRepeatedOnPath` | 依走進來的路徑決定的序號、深度、路徑，以及是否走進了環 |
+
+**`MenuGraphCsvText`** / **`MenuGraphCsvFile`**（`CascadeControl.Graphs.Csv`）
+
+成員與樹的版本相同：`Parse` / `Format(graph, [style])` / `NormalizeRows` / `CreateHeader()`，以及 `Load` / `Save(graph, filePath, [style])`。
 
 ---
 
@@ -407,6 +560,7 @@ ActionStep,ActionBurnIn,Init|Stop,
 - **`SetTree`、`SetTopLevelNodes`、`Clear` 也會觸發 `SelectedPathChanged`**（未選取的狀態）。在表單建構式裡呼叫時，事件處理常式也會跑一次。
 - **按 ← 會改變選取**，`SelectedPathChanged` 跟著觸發。依賴「← 只移動焦點」的舊程式要留意。
 - **`DrawNode` 和 `ColumnWidthChanged` 不在屬性視窗裡**，需要時請在程式碼中訂閱。
+- **用 `CascadeCheckboxView` 時，樹被編輯後要呼叫 `CheckSet.Reconcile()`**，見[樹被編輯之後](#樹被編輯之後)。
 - **更新 dll 時要連同 `CascadeControl.xml` 一起換**，否則 IntelliSense 顯示的會是舊的說明。
 - 控制項用 `WS_EX_COMPOSITED` 做雙緩衝，避免改選時閃爍。一般大小的選單感覺不出額外負擔；
   如果單欄有上千項，請留意重繪效能。

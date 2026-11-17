@@ -31,7 +31,7 @@ namespace CascadeControl.Views
 
             TextRenderer.DrawText(
                 pe.Graphics,
-                $"{nameof(CascadeView)}（{Control.Name}）",
+                $"{Control.GetType().Name}（{Control.Name}）",
                 Control.Font,
                 bounds,
                 SystemColors.GrayText,

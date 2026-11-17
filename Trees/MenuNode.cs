@@ -1,9 +1,9 @@
-﻿using CascadeControl.Views;
+﻿using CascadeControl.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CascadeControl.Models
+namespace CascadeControl.Trees
 {
     /// <summary>
     /// 選單樹中的一個節點。子節點依第一次加入的順序排列，同名的子節點只會有一個。
@@ -328,8 +328,8 @@ namespace CascadeControl.Models
                 throw new ArgumentException("節點名稱不可為空白。", nameof(name));
 
             var trimmed = name.Trim();
-            if (trimmed.IndexOf(SiblingCellSyntax.SIBLING_SEPARATOR) >= 0)
-                throw new ArgumentException($"節點名稱不可含有保留字元 '{SiblingCellSyntax.SIBLING_SEPARATOR}'。", nameof(name));
+            if (trimmed.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0)
+                throw new ArgumentException($"節點名稱不可含有保留字元 '{MultiNameCellSyntax.NAME_SEPARATOR}'。", nameof(name));
 
             return trimmed;
         }

@@ -1,4 +1,5 @@
-using CascadeControl.Models;
+using CascadeControl.Common;
+using CascadeControl.Trees;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,7 +17,7 @@ namespace CascadeControl.Views
     /// 記憶逐節點記住，切換分支不會忘掉其他分支走過的路線，只用來讓使用者退回或切換後還能往右走回去。
     /// 欄位 ListBox 只負責呈現：每次狀態改變都由 SyncColumns 依狀態重建欄位、選取與排版，不反過來從 ListBox 讀狀態。
     /// 鍵盤操作：↑↓ 改選目前這一欄（ListBox 原生行為），← 退回上一層，→ 沿記憶或第一個子節點進入下一層，
-    /// Enter 在葉節點上觸發 <see cref="NodeActivated"/>、不是葉節點時等同 →，Esc 清除選取（記憶保留）。
+    /// Enter 在選取的節點上觸發 <see cref="NodeActivated"/>（不論是不是葉節點），Esc 清除選取（記憶保留）。
     /// 鍵盤焦點固定在目前操作的那一欄，所以按鍵一律以選取深度為準，不看是哪一欄收到按鍵。
     /// 欄位 ListBox 一律由控制項自己建立和移除，不接受從外部加入子控制項：
     /// 設計階段由 <see cref="CascadeViewDesigner"/> 取消容器行為，執行階段由 <see cref="CreateControlsInstance"/> 擋下。
@@ -250,7 +251,7 @@ namespace CascadeControl.Views
         /// 設定要顯示的選單樹，以 <see cref="MenuTree.TopLevelNodes"/> 作為第一欄的內容。
         /// </summary>
         /// <param name="tree">要顯示的選單樹；傳 null 表示清空。</param>
-        public void SetTree(MenuTree tree)
+        public virtual void SetTree(MenuTree tree)
         {
             SetTopLevelNodes(tree?.TopLevelNodes);
         }
@@ -297,24 +298,66 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 最近一次呼叫 <see cref="CopySelectedNode"/> 所複製的節點子樹複本。
+        /// 剪貼簿裡等待貼上的節點；剪貼簿是空的時為 null。
         /// </summary>
+        /// <remarks>
+        /// <see cref="CopySelectedNode"/> 放進來的是當下的深層複本，之後原節點再怎麼改都不影響它；
+        /// <see cref="CutSelectedNode"/> 放進來的是原節點本身，它仍留在樹裡，由貼上的一方負責把它移走（見 <see cref="IsClipboardCut"/>）。
+        /// </remarks>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public MenuNode CopiedNode { get; private set; }
+        public MenuNode ClipboardNode { get; private set; }
 
         /// <summary>
-        /// 複製目前選取的 <see cref="MenuNode"/>（含其下所有子孫節點的深層複本），並存入 <see cref="CopiedNode"/>。
+        /// <see cref="ClipboardNode"/> 是否由 <see cref="CutSelectedNode"/> 放入。為 true 時貼上代表「移動」：
+        /// 先把原節點從樹中移除再插入，貼完後應呼叫 <see cref="ClearClipboard"/>，同一份剪下只能貼一次。
         /// </summary>
-        /// <returns>複製出的節點複本；目前未選取或選取項不是 <see cref="MenuNode"/> 時回傳 null。</returns>
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public bool IsClipboardCut { get; private set; }
+
+        /// <summary>
+        /// 剪貼簿裡是否有可貼上的節點。
+        /// </summary>
+        [Browsable(false)]
+        public bool HasClipboard => ClipboardNode != null;
+
+        /// <summary>
+        /// 複製目前選取的 <see cref="MenuNode"/>（含其下所有子孫節點的深層複本），存入 <see cref="ClipboardNode"/>，並取消先前的剪下。
+        /// </summary>
+        /// <returns>複製出的節點複本；目前未選取或選取項不是 <see cref="MenuNode"/> 時回傳 null，剪貼簿維持原狀。</returns>
         public MenuNode CopySelectedNode()
         {
-            if (SelectedNode is MenuNode node)
-            {
-                CopiedNode = node.CopySubtree();
-                return CopiedNode;
-            }
+            if (!(SelectedNode is MenuNode node)) return null;
 
-            return null;
+            SetClipboard(node.CopySubtree(), isCut: false);
+            return ClipboardNode;
+        }
+
+        /// <summary>
+        /// 剪下目前選取的 <see cref="MenuNode"/>：只做標記，節點仍留在樹裡，等貼上時才移走；在那之前改按複製或再剪下別的節點，就等於取消這次剪下。
+        /// </summary>
+        /// <returns>被剪下的原節點；目前未選取或選取項不是 <see cref="MenuNode"/> 時回傳 null，剪貼簿維持原狀。</returns>
+        public MenuNode CutSelectedNode()
+        {
+            if (!(SelectedNode is MenuNode node)) return null;
+
+            SetClipboard(node, isCut: true);
+            return ClipboardNode;
+        }
+
+        /// <summary>
+        /// 清空剪貼簿。剪貼簿原本就是空的時不觸發 <see cref="ClipboardChanged"/>。
+        /// </summary>
+        public void ClearClipboard()
+        {
+            if (ClipboardNode == null) return;
+            SetClipboard(null, isCut: false);
+        }
+
+        private void SetClipboard(MenuNode node, bool isCut)
+        {
+            ClipboardNode = node;
+            IsClipboardCut = node != null && isCut;
+            OnClipboardChanged(EventArgs.Empty);
         }
 
         /// <summary>
@@ -422,6 +465,26 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
+        /// 讓所有欄位重畫，不重建欄位、不改選取。
+        /// </summary>
+        /// <remarks>
+        /// 節點的外觀由控制項以外的狀態決定（例如自繪時依外部資料上色）而那份狀態改變時呼叫。
+        /// 節點結構或顯示文字改變時要用 <see cref="RefreshColumns"/>。
+        /// </remarks>
+        public void InvalidateNodes()
+        {
+            foreach (var list in _lists) list.Invalidate();
+        }
+
+        /// <summary>
+        /// 鍵盤焦點是否在控制項的某一欄上。
+        /// </summary>
+        /// <remarks>
+        /// 衍生類別在 <see cref="ProcessCmdKey"/> 加按鍵時用它判斷，條件和基底攔 Esc 時相同。
+        /// </remarks>
+        protected bool IsColumnFocused => _lists.Any(list => list.Focused);
+
+        /// <summary>
         /// 把鍵盤焦點移到目前操作的那一欄（<see cref="ActiveColumnIndex"/>）；未選取時就是第一欄。
         /// 沒有欄位，或那一欄無法取得焦點（例如控制項已停用）時，不做任何事。
         /// </summary>
@@ -449,10 +512,22 @@ namespace CascadeControl.Views
         public event EventHandler<CascadeNodeEventArgs> SelectedPathChanged;
 
         /// <summary>
-        /// 使用者在節點上雙擊或在葉節點上按 Enter 時觸發。參數型別與 <see cref="SelectedPathChanged"/> 相同。
+        /// 使用者在選取的節點上雙擊或按 Enter 時觸發，不論是不是葉節點；需要時請用 <see cref="CascadeNodeEventArgs.IsLeaf"/> 判斷。參數型別與 <see cref="SelectedPathChanged"/> 相同。
         /// </summary>
         [Category("Cascade")]
         public event EventHandler<CascadeNodeEventArgs> NodeActivated;
+
+        /// <summary>
+        /// 使用者用滑鼠左鍵或右鍵點了某個節點之後觸發；左鍵觸發時選取通常已經移到該節點，右鍵不改選取。
+        /// </summary>
+        /// <remarks>
+        /// 右鍵不改選取，欄位才不會在開快顯功能表時滑動；要知道點了哪個節點，用 <see cref="CascadeNodeMouseEventArgs.Node"/>。
+        /// 點在欄位的空白處不會觸發。
+        /// 左鍵點在衍生類別保留的位置（<see cref="SelectsOnLeftClick"/> 為 false，例如 <see cref="CascadeCheckboxView"/> 的勾選框）時，
+        /// 選取也不變，而且按下與放開要在同一列的那個位置才會觸發。
+        /// </remarks>
+        [Category("Cascade")]
+        public event EventHandler<CascadeNodeMouseEventArgs> NodeMouseClick;
 
         /// <summary>
         /// <see cref="ColumnWidth"/> 改變後觸發。
@@ -471,6 +546,12 @@ namespace CascadeControl.Views
         public event EventHandler<CascadeDrawNodeEventArgs> DrawNode;
 
         /// <summary>
+        /// 剪貼簿內容（<see cref="ClipboardNode"/> 或 <see cref="IsClipboardCut"/>）改變後觸發，可用來切換貼上按鈕的可用狀態。
+        /// </summary>
+        [Category("Cascade")]
+        public event EventHandler ClipboardChanged;
+
+        /// <summary>
         /// 觸發 <see cref="SelectedPathChanged"/>。
         /// </summary>
         protected virtual void OnSelectedPathChanged(CascadeNodeEventArgs e) => SelectedPathChanged?.Invoke(this, e);
@@ -479,6 +560,16 @@ namespace CascadeControl.Views
         /// 觸發 <see cref="NodeActivated"/>。
         /// </summary>
         protected virtual void OnNodeActivated(CascadeNodeEventArgs e) => NodeActivated?.Invoke(this, e);
+
+        /// <summary>
+        /// 觸發 <see cref="NodeMouseClick"/>。
+        /// </summary>
+        protected virtual void OnNodeMouseClick(CascadeNodeMouseEventArgs e) => NodeMouseClick?.Invoke(this, e);
+
+        /// <summary>
+        /// 觸發 <see cref="ClipboardChanged"/>。
+        /// </summary>
+        protected virtual void OnClipboardChanged(EventArgs e) => ClipboardChanged?.Invoke(this, e);
 
         /// <summary>
         /// 觸發 <see cref="ColumnWidthChanged"/> 並重新排版。

@@ -1,3 +1,4 @@
+using CascadeControl.Common;
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -54,11 +55,27 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 預設外觀：焦點欄的選取項用系統選取色，其他欄的選取項用調淡的選取色，
-        /// 記憶軌跡項目用淺灰底，停用時整欄顯示灰字。
+        /// 畫出這一列的預設外觀；<see cref="DrawNode"/> 的訂閱端沒有自行繪製時由 <see cref="OnDrawNode"/> 呼叫。
         /// </summary>
-        private void DrawDefaultNode(CascadeDrawNodeEventArgs e)
+        /// <param name="e">這一列的繪製參數。</param>
+        /// <remarks>
+        /// 衍生類別要在預設外觀上多畫東西（例如勾選框）時覆寫它，文字的部分交給
+        /// <see cref="DrawDefaultNode(CascadeDrawNodeEventArgs, Rectangle)"/>。
+        /// </remarks>
+        protected virtual void DrawDefaultNode(CascadeDrawNodeEventArgs e) => DrawDefaultNode(e, e.Bounds);
+
+        /// <summary>
+        /// 畫出預設外觀，但文字只畫在 <paramref name="textBounds"/> 裡；背景仍然填滿整個 <see cref="CascadeDrawNodeEventArgs.Bounds"/>。
+        /// </summary>
+        /// <param name="e">這一列的繪製參數。</param>
+        /// <param name="textBounds">文字的範圍；衍生類別要在列的前面多畫東西（例如勾選框）時，把它往右縮。</param>
+        /// <remarks>
+        /// 配色規則：焦點欄的選取項用系統選取色，其他欄的選取項用調淡的選取色，記憶軌跡項目用淺灰底，停用時整欄顯示灰字。
+        /// </remarks>
+        protected void DrawDefaultNode(CascadeDrawNodeEventArgs e, Rectangle textBounds)
         {
+            if (e == null) throw new ArgumentNullException(nameof(e));
+
             var list = e.ColumnIndex >= 0 && e.ColumnIndex < _lists.Count ? _lists[e.ColumnIndex] : null;
             var listBack = list?.BackColor ?? SystemColors.Window;
             var listFore = list?.ForeColor ?? SystemColors.WindowText;
@@ -100,7 +117,7 @@ namespace CascadeControl.Views
                 e.Graphics,
                 e.Node?.DisplayText ?? string.Empty,
                 e.Font,
-                e.Bounds,
+                textBounds,
                 fore,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
@@ -115,12 +132,14 @@ namespace CascadeControl.Views
     }
 
     /// <summary>
-    /// 防止閃爍與暫停繪製期間移動焦點用到的 Win32 API。
+    /// 防止閃爍、暫停繪製期間移動焦點、攔下欄位滑鼠訊息用到的 Win32 API。
     /// </summary>
     internal static class NativeMethods
     {
         internal const int WS_EX_COMPOSITED = 0x02000000;
         internal const int WM_SETREDRAW = 0x000B;
+        internal const int WM_LBUTTONDOWN = 0x0201;
+        internal const int WM_LBUTTONDBLCLK = 0x0203;
 
         internal const uint RDW_INVALIDATE = 0x0001;
         internal const uint RDW_ERASE = 0x0004;

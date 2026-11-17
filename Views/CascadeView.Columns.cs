@@ -1,3 +1,4 @@
+using CascadeControl.Common;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -188,7 +189,7 @@ namespace CascadeControl.Views
         private void AddColumn(IReadOnlyList<ICascadeNode> nodes, object source)
         {
             var columnIndex = _lists.Count;
-            var list = new ListBox
+            var list = new ColumnListBox(this)
             {
                 Name = $"lstColumn{columnIndex + 1:00}",
                 Location = ColumnLocation(columnIndex),
@@ -213,6 +214,7 @@ namespace CascadeControl.Views
             list.SelectedIndexChanged += OnColumnSelectedIndexChanged;
             list.KeyDown += OnColumnKeyDown;
             list.MouseUp += OnColumnMouseUp;
+            list.MouseCaptureChanged += OnColumnMouseCaptureChanged;
             list.DoubleClick += OnColumnDoubleClick;
             list.DrawItem += OnColumnDrawItem;
             list.GotFocus += OnColumnGotFocus;
@@ -274,12 +276,12 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 捲動到能看見操作欄，而且右緣剛好是「操作欄的下一欄」的位置；下一欄不存在時，右緣就是操作欄本身。
+        /// 捲動到能看見操作欄，而且右緣剛好是 <see cref="RightEdgeColumn"/> 的位置。
         /// </summary>
         /// <remarks>
-        /// 右緣只在下一欄真的存在時才預留，所以資料有 N 層、一次顯示 N 欄時，停在最深一層不會在右邊空一格。
-        /// 選到葉節點時欄數不變（操作欄移到原本的下一欄），← 從葉節點退回時欄數也不變，畫面都不會移動；
-        /// 只有選到有子節點的項目、真的長出新的一欄時，畫面才往左移一格。
+        /// 操作欄裡有任何一項有子節點時，右緣一律預留到下一欄，即使選到的是葉節點、下一欄還沒長出來，
+        /// 所以在同一欄內上下改選（節點與葉節點之間切換）時畫面不會左右跳動，只在下一欄的位置留白。
+        /// 操作欄全是葉節點時不預留，所以資料有 N 層、一次顯示 N 欄時，停在最深一層不會在右邊空一格。
         /// 連兩欄都放不下時，改為讓操作欄靠左，以免把操作欄本身捲出畫面。
         /// <see cref="CascadeColumnLayoutMode.Fill"/> 的平均欄寬放得下時，捲動位置對齊欄位邊界，一次正好看到 <see cref="DisplayColumnCount"/> 欄。
         /// <see cref="CascadeColumnLayoutMode.Sliding"/> 改用隱藏欄位的方式呈現，不需要捲動。
@@ -295,6 +297,7 @@ namespace CascadeControl.Views
             }
 
             var activeColumnIndex = ActiveColumnIndex;
+            var reserveNext = ActiveColumnHasBranch();
             var width = ActualColumnWidth;
             var step = width + ColumnSpacing;
             var clientWidth = ClientSize.Width;
@@ -303,12 +306,12 @@ namespace CascadeControl.Views
             var viewportColumns = ViewportColumnCount;
             if (viewportColumns > 0)
             {
-                wanted = ViewportStartColumn(_lists.Count, activeColumnIndex, viewportColumns) * step;
+                wanted = ViewportStartColumn(_lists.Count, activeColumnIndex, viewportColumns, reserveNext) * step;
             }
             else
             {
                 var left = ColumnLeft(activeColumnIndex);
-                var right = ColumnLeft(RightEdgeColumn(_lists.Count, activeColumnIndex)) + width;
+                var right = ColumnLeft(RightEdgeColumn(_lists.Count, activeColumnIndex, reserveNext)) + width;
                 wanted = Math.Max(0, Math.Min(left, right - clientWidth));
             }
 
@@ -347,7 +350,7 @@ namespace CascadeControl.Views
 
             if (!IsSlidingMode) return MARGIN + (columnIndex * step);
 
-            var start = ViewportStartColumn(_lists.Count, ActiveColumnIndex, ViewportColumnCount);
+            var start = ViewportStartColumn(_lists.Count, ActiveColumnIndex, ViewportColumnCount, ActiveColumnHasBranch());
             var offset = columnIndex - start;
             return offset >= 0 && offset < ViewportColumnCount ? MARGIN + (offset * step) : MARGIN;
         }
@@ -405,13 +408,24 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 畫面右緣要對齊的欄位：操作欄的下一欄存在時是下一欄，否則是操作欄本身。
+        /// 操作欄裡是否有任何一項有子節點，也就是這一層選到別項時可能長出下一欄。
+        /// </summary>
+        private bool ActiveColumnHasBranch()
+        {
+            return ColumnNodes(ActiveColumnIndex).Any(node => CascadeNavigator.ChildrenOf(node).Count > 0);
+        }
+
+        /// <summary>
+        /// 畫面右緣要對齊的欄位：操作欄的下一欄存在，或 <paramref name="reserveNext"/> 為 true 時是下一欄，否則是操作欄本身。
         /// </summary>
         /// <param name="columnCount">目前建立的欄數。</param>
         /// <param name="activeColumnIndex">操作欄的索引。</param>
-        internal static int RightEdgeColumn(int columnCount, int activeColumnIndex)
+        /// <param name="reserveNext">下一欄還沒長出來時是否仍要預留它的位置；操作欄裡有任何一項有子節點時為 true。</param>
+        /// <remarks>預留的下一欄可能不存在，所以回傳值可以等於 <paramref name="columnCount"/>。</remarks>
+        internal static int RightEdgeColumn(int columnCount, int activeColumnIndex, bool reserveNext)
         {
-            return Math.Max(0, Math.Min(columnCount - 1, activeColumnIndex + 1));
+            var next = activeColumnIndex + 1;
+            return reserveNext ? next : Math.Max(0, Math.Min(columnCount - 1, next));
         }
 
         /// <summary>
@@ -420,14 +434,15 @@ namespace CascadeControl.Views
         /// <param name="columnCount">目前建立的欄數。</param>
         /// <param name="activeColumnIndex">操作欄的索引。</param>
         /// <param name="viewportColumns">一次顯示的欄數，至少 1。</param>
+        /// <param name="reserveNext">見 <see cref="RightEdgeColumn"/>。</param>
         /// <remarks>
         /// 右緣對齊 <see cref="RightEdgeColumn"/>，但不讓操作欄被推出左邊：只顯示一欄時，顯示的是操作欄而不是它的下一欄。
         /// </remarks>
-        internal static int ViewportStartColumn(int columnCount, int activeColumnIndex, int viewportColumns)
+        internal static int ViewportStartColumn(int columnCount, int activeColumnIndex, int viewportColumns, bool reserveNext)
         {
             if (viewportColumns <= 0) return 0;
 
-            var right = RightEdgeColumn(columnCount, activeColumnIndex);
+            var right = RightEdgeColumn(columnCount, activeColumnIndex, reserveNext);
             return Math.Max(0, Math.Min(activeColumnIndex, right - viewportColumns + 1));
         }
 
@@ -455,9 +470,19 @@ namespace CascadeControl.Views
         /// </summary>
         /// <remarks>
         /// OwnerDrawFixed 的 ItemHeight 不會隨字型自動調整（固定是預設的 13），
-        /// 字型放大後文字會被上下裁掉，所以改用控制項字型的高度。ListBox 的 ItemHeight 上限是 255。
+        /// 字型放大後文字會被上下裁掉，所以改用控制項字型的高度，但不低於 <see cref="MinimumItemHeight"/>。
+        /// ListBox 的 ItemHeight 上限是 255。
         /// </remarks>
-        private int ItemHeight => Math.Min(255, Font.Height);
+        private int ItemHeight => Math.Min(255, Math.Max(Font.Height, MinimumItemHeight));
+
+        /// <summary>
+        /// 每一列至少要多高（像素）；預設為 0，也就是完全由字型決定。
+        /// </summary>
+        /// <remarks>
+        /// 衍生類別在列裡多畫了比文字還高的東西（例如勾選框）時覆寫它，小字型下才不會被上下裁掉。
+        /// 回傳值應該固定不變；列高只在建立欄位與字型改變時重新計算。
+        /// </remarks>
+        protected virtual int MinimumItemHeight => 0;
 
         /// <summary>
         /// 依目前的欄寬與欄高重新擺放所有欄位，決定哪幾欄要顯示，並修正捲動範圍。
@@ -473,7 +498,7 @@ namespace CascadeControl.Views
                 var size = new Size(ActualColumnWidth, ColumnHeight);
                 var sliding = IsSlidingMode;
                 var viewportColumns = ViewportColumnCount;
-                var start = sliding ? ViewportStartColumn(_lists.Count, ActiveColumnIndex, viewportColumns) : 0;
+                var start = sliding ? ViewportStartColumn(_lists.Count, ActiveColumnIndex, viewportColumns, ActiveColumnHasBranch()) : 0;
 
                 SuspendLayout();
                 try

@@ -1,4 +1,6 @@
-﻿namespace CascadeControl.Models
+﻿using CascadeControl.Common;
+
+namespace CascadeControl.Trees
 {
     /// <summary>
     /// 把選單樹寫成資料列時的寫法。三種寫法讀回來都是同一棵樹，只差在列數與好不好手動維護。
@@ -15,7 +17,7 @@
     public enum MenuRowStyle
     {
         /// <summary>
-        /// 展開：每個葉節點一列，不使用 <see cref="SiblingCellSyntax.SIBLING_SEPARATOR"/>。
+        /// 展開：每個葉節點一列，不使用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。
         /// </summary>
         Expanded,
 

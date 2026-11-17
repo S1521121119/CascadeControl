@@ -1,10 +1,10 @@
-﻿using CascadeControl.Models;
+﻿using CascadeControl.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace CascadeControl.Services
+namespace CascadeControl.Trees.Csv
 {
     /// <summary>
     /// 選單樹的 CSV 檔案讀寫。每一列由左至右是第 1 層、第 2 層…，深度不足的尾欄留空；寫出時的寫法見 <see cref="MenuRowStyle"/>。
@@ -13,7 +13,7 @@ namespace CascadeControl.Services
     /// 這裡只負責檔案：編碼、目錄與範本檔。文字與樹之間的轉換都交給 <see cref="MenuTreeCsvText"/>，
     /// 所以檔案內容與 <see cref="MenuTreeCsvText.Parse(string, out IList{string})"/>／<see cref="MenuTreeCsvText.Format(MenuTree, MenuRowStyle)"/> 的文字完全相同。
     /// 深度沒有上限：讀取時 CSV 有幾欄就是幾層，寫出時依最深的路徑決定欄數。
-    /// 同一格可以用 <see cref="SiblingCellSyntax.SIBLING_SEPARATOR"/> 列舉多個兄弟節點，整列會依各欄的笛卡兒積展開成多條路徑。
+    /// 同一格可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個兄弟節點，整列會依各欄的笛卡兒積展開成多條路徑。
     /// </remarks>
     public static class MenuTreeCsvFile
     {

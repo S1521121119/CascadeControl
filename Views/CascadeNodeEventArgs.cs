@@ -1,3 +1,4 @@
+using CascadeControl.Common;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -65,6 +66,55 @@ namespace CascadeControl.Views
         /// <see cref="Node"/> 是否為葉節點，也就是整條路徑已經選到底；未選取時為 false。
         /// </summary>
         public bool IsLeaf => Node != null && Children.Count == 0;
+    }
+
+    /// <summary>
+    /// <see cref="CascadeView.NodeMouseClick"/> 的事件參數：被點的節點，以及點在哪裡。
+    /// </summary>
+    public class CascadeNodeMouseEventArgs : EventArgs
+    {
+        /// <summary>
+        /// 建立事件參數。
+        /// </summary>
+        /// <param name="node">被點的節點。</param>
+        /// <param name="columnIndex">節點所在的欄位索引（0-based）。</param>
+        /// <param name="button">按下的滑鼠鍵。</param>
+        /// <param name="location">點擊位置，欄位內的座標。</param>
+        /// <param name="bounds">被點那一列的矩形，欄位內的座標。</param>
+        /// <param name="screenLocation">點擊位置的螢幕座標。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
+        public CascadeNodeMouseEventArgs(
+            ICascadeNode node, int columnIndex, System.Windows.Forms.MouseButtons button,
+            Point location, Rectangle bounds, Point screenLocation)
+        {
+            Node = node ?? throw new ArgumentNullException(nameof(node));
+            ColumnIndex = columnIndex;
+            Button = button;
+            Location = location;
+            Bounds = bounds;
+            ScreenLocation = screenLocation;
+        }
+
+        /// <summary>被點的節點。</summary>
+        public ICascadeNode Node { get; }
+
+        /// <summary>節點所在的欄位索引（0-based）。</summary>
+        public int ColumnIndex { get; }
+
+        /// <summary>按下的滑鼠鍵：左鍵或右鍵。</summary>
+        public System.Windows.Forms.MouseButtons Button { get; }
+
+        /// <summary>點擊位置，欄位內的座標，和 <see cref="Bounds"/> 同一個座標系。</summary>
+        public Point Location { get; }
+
+        /// <summary>被點那一列的矩形，欄位內的座標。</summary>
+        public Rectangle Bounds { get; }
+
+        /// <summary>
+        /// 點擊位置的螢幕座標，用來顯示快顯功能表。
+        /// </summary>
+        /// <remarks>改選後欄位可能移動，欄位內的座標就對不回螢幕上的位置，所以另外提供。</remarks>
+        public Point ScreenLocation { get; }
     }
 
     /// <summary>

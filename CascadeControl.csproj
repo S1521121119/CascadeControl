@@ -46,6 +46,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Common\TreeDrawer.cs" />
+    <Compile Include="Views\CascadeCheckboxView.cs" />
     <Compile Include="Views\CascadeColumnLayoutMode.cs" />
     <Compile Include="Views\CascadeNodeEventArgs.cs" />
     <Compile Include="Views\CascadeNavigator.cs" />
@@ -54,15 +56,26 @@
     <Compile Include="Views\CascadeView.Input.cs" />
     <Compile Include="Views\CascadeView.Rendering.cs" />
     <Compile Include="Views\CascadeViewDesigner.cs" />
-    <Compile Include="Views\ICascadeNode.cs" />
-    <Compile Include="Models\SiblingCellSyntax.cs" />
-    <Compile Include="Models\MenuNode.cs" />
-    <Compile Include="Models\MenuRowStyle.cs" />
-    <Compile Include="Models\MenuTree.cs" />
+    <Compile Include="Common\CsvFile.cs" />
+    <Compile Include="Common\ICascadeNode.cs" />
+    <Compile Include="Common\MultiNameCellSyntax.cs" />
+    <Compile Include="Trees\MenuCheckChangedEventArgs.cs" />
+    <Compile Include="Trees\MenuCheckSet.cs" />
+    <Compile Include="Trees\MenuNode.cs" />
+    <Compile Include="Trees\MenuRowStyle.cs" />
+    <Compile Include="Trees\MenuTree.cs" />
+    <Compile Include="Trees\MenuTreeRowWriter.cs" />
+    <Compile Include="Trees\Csv\MenuTreeCsvFile.cs" />
+    <Compile Include="Trees\Csv\MenuTreeCsvText.cs" />
+    <Compile Include="Graphs\MenuEdge.cs" />
+    <Compile Include="Graphs\MenuGraph.cs" />
+    <Compile Include="Graphs\MenuGraphNode.cs" />
+    <Compile Include="Graphs\MenuGraphRowStyle.cs" />
+    <Compile Include="Graphs\MenuGraphRowWriter.cs" />
+    <Compile Include="Graphs\MenuVertex.cs" />
+    <Compile Include="Graphs\Csv\MenuGraphCsvFile.cs" />
+    <Compile Include="Graphs\Csv\MenuGraphCsvText.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utilities\CsvFile.cs" />
-    <Compile Include="Services\MenuTreeCsvFile.cs" />
-    <Compile Include="Services\MenuTreeCsvText.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
