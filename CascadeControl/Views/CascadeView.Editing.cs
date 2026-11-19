@@ -605,14 +605,14 @@ namespace CascadeControl.Views
             if (Tree == null || columnIndex < 0) return null;
             if (columnIndex == 0) return Tree.Root;
 
-            var path = _navigator.PathWithTrail;
+            var path = _state.PathWithTrail;
             return columnIndex - 1 < path.Count ? path[columnIndex - 1] as MenuNode : null;
         }
 
         // 和 ColumnNodes 相同，但欄位索引超出範圍時回傳空集合。
         private IReadOnlyList<ICascadeNode> SafeColumnNodes(int columnIndex)
         {
-            if (columnIndex < 0 || columnIndex > _navigator.PathWithTrail.Count) return NoNodes;
+            if (columnIndex < 0 || columnIndex > _state.PathWithTrail.Count) return NoNodes;
             return ColumnNodes(columnIndex);
         }
 
@@ -1277,6 +1277,7 @@ namespace CascadeControl.Views
         {
             if (disposing)
             {
+                DetachState(_state);
                 _edit = null;
                 NodeContextMenu.Dispose();
                 ColumnContextMenu.Dispose();

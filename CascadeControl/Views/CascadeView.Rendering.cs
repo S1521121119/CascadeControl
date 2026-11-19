@@ -36,7 +36,7 @@ namespace CascadeControl.Views
 
             var node = list.Items[e.Index] as ICascadeNode;
             var columnIndex = _lists.IndexOf(list);
-            var trailNode = columnIndex >= 0 ? _navigator.GetTrailNodeAt(columnIndex) : null;
+            var trailNode = columnIndex >= 0 ? _state.GetTrailNodeAt(columnIndex) : null;
 
             // 多選的那一欄只看多選：多選的節點畫成 MultiSelectBackColor，一眼就看得出 Copy / Cut / Delete 會作用在哪些節點。
             var marking = IsMarkingColumn(columnIndex);

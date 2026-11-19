@@ -190,7 +190,7 @@ namespace CascadeControl.Views
             }
 
             ClearMultiSelection();
-            ApplyNavigation(_navigator.SelectNodeAt(columnIndex, node));
+            _state.SelectNodeAt(columnIndex, node);
             FocusActiveColumn();
 
             _digitBuffer = candidate;
@@ -229,7 +229,7 @@ namespace CascadeControl.Views
             }
 
             ClearMultiSelection();
-            ApplyNavigation(_navigator.SelectNodeAt(columnIndex, node));
+            _state.SelectNodeAt(columnIndex, node);
             FocusActiveColumn();
 
             _textBuffer = candidate;
@@ -294,7 +294,7 @@ namespace CascadeControl.Views
                 {
                     case Keys.Escape:
                         if (_marks.Count > 0) ClearMultiSelection();
-                        else ApplyNavigation(_navigator.ClearSelection());
+                        else _state.ClearSelection();
                         FocusActiveColumn();
                         return true;
 
@@ -599,7 +599,7 @@ namespace CascadeControl.Views
         {
             // 第一下點擊已經把選取移到這一欄，所以只要它是操作欄且有選取節點就觸發。
             var columnIndex = _lists.IndexOf(sender as ListBox);
-            if (columnIndex >= 0 && columnIndex == _navigator.SelectedDepth - 1 && SelectedNode != null)
+            if (columnIndex >= 0 && columnIndex == _state.SelectedDepth - 1 && SelectedNode != null)
                 OnNodeActivated(CreateNodeEventArgs());
         }
 

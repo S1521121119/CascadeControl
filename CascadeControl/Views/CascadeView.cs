@@ -40,14 +40,9 @@ namespace CascadeControl.Views
         private static readonly IReadOnlyList<ICascadeNode> NoNodes = new ICascadeNode[0];
 
         private readonly List<ListBox> _lists = new List<ListBox>();
-        private readonly CascadeNavigator _navigator = new CascadeNavigator();
 
-        // 第一欄的內容。_topLevelKey 每次 SetTopLevelNodes 都換一個，當作第一欄的「來源」，用來判斷第一欄要不要換內容。
-        private IEnumerable<ICascadeNode> _topLevelSource;
-
-        private IReadOnlyList<ICascadeNode> _topLevelNodes = NoNodes;
-
-        private object _topLevelKey = new object();
+        private CascadeState _state;
+        private bool _preserveMultiSelection;
 
         private int _columnWidth = DEFAULT_COLUMN_WIDTH;
         private int _columnSpacing = DEFAULT_COLUMN_SPACING;
@@ -59,7 +54,6 @@ namespace CascadeControl.Views
         private Color _inactiveSelectionBackColor = Color.Empty;
         private Color _trailBackColor = Color.Empty;
         private Color _multiSelectBackColor = Color.Empty;
-        private string _pathSeparator = CascadeNavigator.DEFAULT_PATH_SEPARATOR;
 
         /// <summary>
         /// 建立控制項。欄位多到放不下時會出現水平捲軸。
@@ -67,8 +61,109 @@ namespace CascadeControl.Views
         public CascadeView()
         {
             AutoScroll = true;
+            _state = CreateDefaultState() ?? throw new InvalidOperationException($"{nameof(CreateDefaultState)} 不可回傳 null。");
+            AttachState(_state);
             InitializeContextMenus();
         }
+
+        /// <summary>
+        /// 建立這個控制項預設使用的 <see cref="CascadeState"/>；衍生類別需要自訂狀態型別（例如 <see cref="CascadeCheckableState"/>）時覆寫。
+        /// </summary>
+        protected virtual CascadeState CreateDefaultState() => new CascadeState();
+
+        /// <summary>
+        /// 目前綁定的共享狀態：樹、頂層節點、選取路徑、記憶軌跡與 <see cref="PathSeparator"/> 都存在這裡。
+        /// </summary>
+        /// <remarks>
+        /// 預設每個控制項各自持有一份；把同一份 <see cref="CascadeState"/> 指派給多個控制項即可自動同步。不可設為 null。
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">設為 null。</exception>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public CascadeState State
+        {
+            get => _state;
+            set
+            {
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                if (ReferenceEquals(_state, value)) return;
+
+                var oldState = _state;
+                DetachState(oldState);
+                _state = value;
+                AttachState(_state);
+
+                ClearMultiSelection();
+                _anchorNode = _state.SelectedNode;
+                History.Clear();
+                foreach (var list in _lists) list.Tag = null;
+                SyncColumns();
+                OnStateChanged(oldState, _state);
+            }
+        }
+
+        /// <summary>
+        /// <see cref="State"/> 換成另一份之後呼叫；衍生類別在這裡切換額外事件訂閱。
+        /// </summary>
+        /// <param name="oldState">原本綁定的狀態。</param>
+        /// <param name="newState">新綁定的狀態。</param>
+        protected virtual void OnStateChanged(CascadeState oldState, CascadeState newState)
+        {
+        }
+
+        private void AttachState(CascadeState state)
+        {
+            state.Invalidated += OnStateInvalidated;
+            state.SelectedPathChanged += OnStateSelectedPathChanged;
+        }
+
+        private void DetachState(CascadeState state)
+        {
+            if (state == null) return;
+
+            state.Invalidated -= OnStateInvalidated;
+            state.SelectedPathChanged -= OnStateSelectedPathChanged;
+        }
+
+        private void OnStateInvalidated(CascadeStateInvalidation kind)
+        {
+            switch (kind)
+            {
+                case CascadeStateInvalidation.Reset:
+                    ClearMultiSelection();
+                    _anchorNode = null;
+
+                    // 舊的步驟指向舊的樹，換了內容就沒有意義。
+                    History.Clear();
+                    SyncColumns();
+                    break;
+
+                case CascadeStateInvalidation.Refreshed:
+                    ClearMultiSelection();
+                    _anchorNode = _state.SelectedNode;
+
+                    // 清除既有欄位的來源標記，強制 SyncColumns 重建每一欄的項目清單與顯示文字。
+                    foreach (var list in _lists) list.Tag = null;
+                    SyncColumns();
+                    break;
+
+                case CascadeStateInvalidation.SelectionChanged:
+                    if (!_preserveMultiSelection)
+                    {
+                        ClearMultiSelection();
+                        _anchorNode = _state.SelectedNode;
+                    }
+
+                    SyncColumns();
+                    break;
+
+                case CascadeStateInvalidation.TrailCleared:
+                    SyncColumns();
+                    break;
+            }
+        }
+
+        private void OnStateSelectedPathChanged(object sender, CascadeNodeEventArgs e) => OnSelectedPathChanged(e);
 
         #region 外觀
 
@@ -324,8 +419,8 @@ namespace CascadeControl.Views
         [DefaultValue(CascadeNavigator.DEFAULT_PATH_SEPARATOR)]
         public string PathSeparator
         {
-            get => _pathSeparator;
-            set => _pathSeparator = value ?? string.Empty;
+            get => _state.PathSeparator;
+            set => _state.PathSeparator = value;
         }
 
         #endregion 外觀
@@ -336,77 +431,33 @@ namespace CascadeControl.Views
         /// 設定要顯示的選單樹，以 <see cref="MenuTree.TopLevelNodes"/> 作為第一欄的內容。
         /// </summary>
         /// <param name="tree">要顯示的選單樹；傳 null 表示清空。</param>
-        public virtual void SetTree(MenuTree tree)
-        {
-            ResetTopLevelNodes(tree?.TopLevelNodes, tree);
-        }
+        public virtual void SetTree(MenuTree tree) => _state.SetTree(tree);
 
         /// <summary>
         /// 重新設定第一層的頂層節點集合：第一欄換成新內容，其他欄位全部移除，選取與記憶都清除；沒有內容時一欄都不留。
         /// </summary>
         /// <param name="topLevelNodes">第一層節點；傳 null 或空集合表示清空。</param>
         /// <remarks>執行後會觸發一次 <see cref="SelectedPathChanged"/>（未選取的狀態）。<see cref="Tree"/> 會變成 null。</remarks>
-        public void SetTopLevelNodes(IEnumerable<ICascadeNode> topLevelNodes)
-        {
-            ResetTopLevelNodes(topLevelNodes, null);
-        }
+        public void SetTopLevelNodes(IEnumerable<ICascadeNode> topLevelNodes) => _state.SetTopLevelNodes(topLevelNodes);
 
         /// <summary>
         /// 目前顯示的選單樹：由 <see cref="SetTree"/> 設定；以 <see cref="SetTopLevelNodes"/> 顯示其他資料或 <see cref="Clear"/> 後為 null。
         /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public MenuTree Tree { get; private set; }
-
-        // Tree 要在觸發 SelectedPathChanged 之前換好，事件處理常式（例如 CascadeTreeImageView）才拿得到新的樹。
-        private void ResetTopLevelNodes(IEnumerable<ICascadeNode> topLevelNodes, MenuTree tree)
-        {
-            Tree = tree;
-            _topLevelSource = topLevelNodes;
-            _topLevelNodes = topLevelNodes?.ToList() ?? NoNodes;
-            _topLevelKey = new object();
-            _navigator.Clear();
-            ClearMultiSelection();
-            _anchorNode = null;
-
-            // 舊的步驟指向舊的樹，換了內容就沒有意義。
-            History.Clear();
-
-            SyncColumns();
-            OnSelectedPathChanged(CreateNodeEventArgs());
-        }
+        public MenuTree Tree => _state.Tree;
 
         /// <summary>
         /// 當底層節點結構（插入、刪除、改名）變更後，重新整理所有欄位內容與顯示文字，並選取指定路徑。
         /// </summary>
         /// <param name="selectPath">更新後要選取的路徑；傳 null 則保留目前仍存在的選取路徑，傳空集合則清除選取。</param>
         /// <remarks>多選與進行中的就地編輯會一併取消。</remarks>
-        public void RefreshColumns(IEnumerable<ICascadeNode> selectPath = null)
-        {
-            var targetPath = (selectPath ?? _navigator.SelectedPath).ToList();
-            ClearMultiSelection();
-            _topLevelNodes = _topLevelSource?.ToList() ?? NoNodes;
-            _topLevelKey = new object();
-
-            // 清除既有欄位的來源標記，強制 SyncColumns 重建每一欄的項目清單與顯示文字。
-            foreach (var list in _lists) list.Tag = null;
-
-            if (targetPath.Count > 0)
-            {
-                TrySelectPath(targetPath);
-            }
-            else
-            {
-                _navigator.ClearSelection();
-                SyncColumns();
-                OnSelectedPathChanged(CreateNodeEventArgs());
-            }
-        }
+        public void RefreshColumns(IEnumerable<ICascadeNode> selectPath = null) => _state.Refresh(selectPath);
 
         /// <summary>
         /// 移除所有欄位並清除選取。
         /// </summary>
-        public void Clear() => SetTopLevelNodes(null);
+        public void Clear() => _state.Clear();
 
         #endregion 資料輸入
 
@@ -416,19 +467,19 @@ namespace CascadeControl.Views
         /// 目前選取的最深節點；未選取時為 null。
         /// </summary>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public ICascadeNode SelectedNode => _navigator.SelectedNode;
+        public ICascadeNode SelectedNode => _state.SelectedNode;
 
         /// <summary>
         /// 由淺至深的選取路徑；未選取時為空集合。不包含退回後留下的記憶軌跡。
         /// </summary>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public IReadOnlyList<ICascadeNode> SelectedPath => _navigator.SelectedPath.ToList();
+        public IReadOnlyList<ICascadeNode> SelectedPath => _state.SelectedPath;
 
         /// <summary>
         /// 目前選取路徑上各層的 <see cref="ICascadeNode.Name"/>，以 <see cref="PathSeparator"/> 串接；未選取時為空字串。
         /// </summary>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public string SelectedPathText => string.Join(_pathSeparator, _navigator.SelectedPath.Select(node => node.Name));
+        public string SelectedPathText => _state.SelectedPathText;
 
         /// <summary>
         /// 目前的選取是否停在葉節點，也就是整條路徑已經選到底。
@@ -437,14 +488,14 @@ namespace CascadeControl.Views
         /// 每條路徑的深度可以不同：在 A &gt; A1 &gt; A11 中，如果 A11 沒有子節點，選到第三層就算完成。
         /// </remarks>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public bool IsLeafSelected => IsLeaf(SelectedNode);
+        public bool IsLeafSelected => _state.IsLeafSelected;
 
         /// <summary>
         /// 目前操作中的欄位索引（0-based）：最深選取項所在的欄；未選取時為 0。
         /// </summary>
         /// <remarks>鍵盤焦點固定在這一欄，所以它和選取深度一致，不受控制項是否有焦點影響。</remarks>
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public int ActiveColumnIndex => _navigator.ActiveColumnIndex;
+        public int ActiveColumnIndex => _state.ActiveColumnIndex;
 
         #endregion 選取查詢
 
@@ -456,11 +507,7 @@ namespace CascadeControl.Views
         /// <param name="node">要選取的節點。</param>
         /// <returns>成功選取時為 true。</returns>
         /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
-        public bool TrySelectNode(MenuNode node)
-        {
-            if (node == null) throw new ArgumentNullException(nameof(node));
-            return TrySelectPath(node.FullPath);
-        }
+        public bool TrySelectNode(MenuNode node) => _state.TrySelectNode(node);
 
         /// <summary>
         /// 從第一欄開始，依序選取 <paramref name="path"/> 中的節點。
@@ -472,65 +519,26 @@ namespace CascadeControl.Views
         /// 不管選了幾層，<see cref="SelectedPathChanged"/> 都只觸發一次。
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="path"/> 為 null。</exception>
-        public bool TrySelectPath(IEnumerable<ICascadeNode> path)
-        {
-            if (path == null) throw new ArgumentNullException(nameof(path));
-
-            var steps = path.ToList();
-            var matched = new List<ICascadeNode>();
-            var nodes = _topLevelNodes;
-
-            foreach (var step in steps)
-            {
-                // 存入清單中的那一個實例，而不是呼叫端傳入的，之後在欄位裡找選取項時才對得上。
-                var found = nodes.FirstOrDefault(node => node != null && Equals(node, step));
-                if (found == null) break;
-
-                matched.Add(found);
-                nodes = CascadeNavigator.ChildrenOf(found);
-            }
-
-            _navigator.SelectPath(matched);
-            ClearMultiSelection();
-            _anchorNode = _navigator.SelectedNode;
-            SyncColumns();
-
-            OnSelectedPathChanged(CreateNodeEventArgs());
-            return matched.Count == steps.Count;
-        }
+        public bool TrySelectPath(IEnumerable<ICascadeNode> path) => _state.TrySelectPath(path);
 
         /// <summary>
         /// 往左退一層，和按 ← 相同；退回的那一層留在記憶軌跡裡，之後 <see cref="StepForward"/> 會走回去。不會移動鍵盤焦點。
         /// </summary>
         /// <returns>選取有改變時為 true；已在第一層或未選取時不動作，回傳 false。</returns>
-        public bool StepBack()
-        {
-            var changed = _navigator.StepBack();
-            ApplyNavigation(changed);
-            return changed;
-        }
+        public bool StepBack() => _state.StepBack();
 
         /// <summary>
         /// 往右進一層，和按 → 相同：有記憶軌跡時選上次的節點；沒有記憶而選取的節點有子節點時，選它的第一個子節點。
         /// 未選取時，第一層有記憶就選上次的節點。不會移動鍵盤焦點。
         /// </summary>
         /// <returns>選取有改變時為 true。</returns>
-        public bool StepForward()
-        {
-            var changed = _navigator.StepForward();
-            ApplyNavigation(changed);
-            return changed;
-        }
+        public bool StepForward() => _state.StepForward();
 
         /// <summary>
         /// 忘掉所有分支的記憶軌跡，只保留目前的選取路徑；選取不變，所以不會觸發 <see cref="SelectedPathChanged"/>。
         /// </summary>
         /// <remarks>呼叫 <see cref="SetTopLevelNodes"/>、<see cref="SetTree"/> 或 <see cref="Clear"/> 時記憶也會一併清除，不需要另外呼叫。</remarks>
-        public void ClearTrail()
-        {
-            _navigator.ClearTrail();
-            SyncColumns();
-        }
+        public void ClearTrail() => _state.ClearTrail();
 
         /// <summary>
         /// 讓所有欄位重畫，不重建欄位、不改選取。
@@ -558,7 +566,7 @@ namespace CascadeControl.Views
         /// </summary>
         public void FocusActiveColumn()
         {
-            var columnIndex = _navigator.ActiveColumnIndex;
+            var columnIndex = _state.ActiveColumnIndex;
             if (columnIndex >= _lists.Count) return;
 
             var list = _lists[columnIndex];
@@ -666,32 +674,7 @@ namespace CascadeControl.Views
 
         #endregion 事件
 
-        /// <summary>
-        /// 導覽狀態改變後，重建欄位並觸發 <see cref="SelectedPathChanged"/>；沒有改變時不做任何事。
-        /// </summary>
-        private void ApplyNavigation(bool changed)
-        {
-            if (!changed) return;
-
-            ClearMultiSelection();
-
-            // 一般導覽：Shift 範圍選取的起點跟著焦點走。
-            _anchorNode = _navigator.SelectedNode;
-            SyncColumns();
-            OnSelectedPathChanged(CreateNodeEventArgs());
-        }
-
-        /// <summary>
-        /// 依目前的選取狀態組出 <see cref="SelectedPathChanged"/> 與 <see cref="NodeActivated"/> 共用的事件參數。
-        /// </summary>
-        /// <remarks>第一欄的內容只在未選取時才需要，有選取時不去複製它。</remarks>
-        private CascadeNodeEventArgs CreateNodeEventArgs()
-        {
-            var path = _navigator.SelectedPath.ToList();
-            return new CascadeNodeEventArgs(path, path.Count == 0 ? _topLevelNodes : null);
-        }
-
-        private static bool IsLeaf(ICascadeNode node) => node != null && CascadeNavigator.ChildrenOf(node).Count == 0;
+        private CascadeNodeEventArgs CreateNodeEventArgs() => _state.CreateNodeEventArgs();
 
         // 沒有佔位項，SelectedIndex 為 -1 就是這一欄沒有選取。
         private static ICascadeNode NodeAt(ListBox list)

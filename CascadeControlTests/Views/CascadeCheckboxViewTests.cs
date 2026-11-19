@@ -103,6 +103,67 @@ namespace CascadeControlTests.Views
             }
         }
 
+        [TestMethod]
+        public void SharedState_SynchronizesTwoViews_AndDetachesOnDispose()
+        {
+            var tree = TestTrees.Template();
+            var axisX = tree.TopLevelNodes[1].Children[0];
+            var shared = new CascadeCheckableState();
+            shared.SetTree(tree);
+            shared.TrySelectNode(axisX);
+
+            using (var first = new CascadeCheckboxView())
+            {
+                var firstSelectedEvents = 0;
+                var firstCheckedEvents = 0;
+                first.SelectedPathChanged += (sender, e) => firstSelectedEvents++;
+                first.CheckedChanged += (sender, e) => firstCheckedEvents++;
+
+                first.State = shared;
+                Assert.AreSame(tree, first.Tree);
+                Assert.AreSame(axisX, first.SelectedNode);
+                Assert.AreEqual(3, first.Controls.OfType<ListBox>().Count(), "綁上已選取的 State 會立刻重建對應欄位");
+
+                using (var second = new CascadeCheckboxView { State = shared })
+                {
+                    var secondSelectedEvents = 0;
+                    var secondCheckedEvents = 0;
+                    second.SelectedPathChanged += (sender, e) => secondSelectedEvents++;
+                    second.CheckedChanged += (sender, e) => secondCheckedEvents++;
+
+                    Assert.IsTrue(first.StepBack());
+                    Assert.AreSame(tree.TopLevelNodes[1], second.SelectedNode);
+                    Assert.AreEqual(1, firstSelectedEvents);
+                    Assert.AreEqual(1, secondSelectedEvents);
+
+                    shared.CheckSet.Check(axisX);
+                    Assert.AreEqual(1, firstCheckedEvents);
+                    Assert.AreEqual(1, secondCheckedEvents);
+                    Assert.IsTrue(second.CheckSet.IsChecked(axisX));
+                }
+
+                // second 已 Dispose，繼續操作 shared 與 first 不應出錯。
+                Assert.IsTrue(shared.StepForward());
+                Assert.AreSame(axisX, first.SelectedNode);
+                Assert.AreEqual(2, firstSelectedEvents);
+            }
+        }
+
+        [TestMethod]
+        public void State_RejectsNull_AndPlainStateRejectsCheckSetAssignment()
+        {
+            using (var view = new CascadeCheckboxView())
+            {
+                Assert.ThrowsException<System.ArgumentNullException>(() => view.State = null);
+
+                view.State = new CascadeState();
+                Assert.IsNull(view.CheckSet);
+
+                var tree = TestTrees.Template();
+                Assert.ThrowsException<System.InvalidOperationException>(() => view.CheckSet = new MenuCheckSet(tree));
+            }
+        }
+
         #endregion CheckSet
 
         #region 滑鼠

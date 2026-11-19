@@ -188,7 +188,7 @@ namespace CascadeControl.Views
             {
                 case SelectionGesture.Plain:
                     ClearMultiSelection();
-                    ApplyNavigation(_navigator.SelectNodeAt(columnIndex, node));
+                    _state.SelectNodeAt(columnIndex, node);
                     _anchorNode = node;
                     return;
 
@@ -231,10 +231,15 @@ namespace CascadeControl.Views
         /// </summary>
         private void MoveFocus(int columnIndex, ICascadeNode node)
         {
-            if (!_navigator.SelectNodeAt(columnIndex, node)) return;
-
-            SyncColumns();
-            OnSelectedPathChanged(CreateNodeEventArgs());
+            _preserveMultiSelection = true;
+            try
+            {
+                _state.SelectNodeAt(columnIndex, node);
+            }
+            finally
+            {
+                _preserveMultiSelection = false;
+            }
         }
 
         /// <summary>
@@ -243,7 +248,7 @@ namespace CascadeControl.Views
         private void ToggleFocusedNode()
         {
             var columnIndex = ActiveColumnIndex;
-            if (SelectedNode == null || columnIndex >= _navigator.SelectedDepth) return;
+            if (SelectedNode == null || columnIndex >= _state.SelectedDepth) return;
 
             ApplySelectionGesture(columnIndex, SelectedNode, SelectionGesture.Toggle);
         }
@@ -256,9 +261,9 @@ namespace CascadeControl.Views
             var index = _anchorNode == null ? -1 : list.Items.IndexOf(_anchorNode);
             if (index >= 0) return index;
 
-            if (columnIndex < _navigator.SelectedDepth)
+            if (columnIndex < _state.SelectedDepth)
             {
-                index = list.Items.IndexOf(_navigator.PathWithTrail[columnIndex]);
+                index = list.Items.IndexOf(_state.PathWithTrail[columnIndex]);
                 if (index >= 0) return index;
             }
 
@@ -277,7 +282,7 @@ namespace CascadeControl.Views
             if (IsMarkingColumn(columnIndex)) return MultiSelectedNodes.ToList();
 
             var seed = new List<ICascadeNode>();
-            if (columnIndex < _navigator.SelectedDepth) seed.Add(_navigator.PathWithTrail[columnIndex]);
+            if (columnIndex < _state.SelectedDepth) seed.Add(_state.PathWithTrail[columnIndex]);
             return seed;
         }
 

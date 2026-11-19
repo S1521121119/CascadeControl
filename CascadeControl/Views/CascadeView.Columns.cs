@@ -31,7 +31,7 @@ namespace CascadeControl.Views
             var node = NodeAt(_lists[columnIndex]);
             if (node == null || node is EditPlaceholder) return;
 
-            ApplyNavigation(_navigator.SelectNodeAt(columnIndex, node));
+            _state.SelectNodeAt(columnIndex, node);
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace CascadeControl.Views
             AbortEdit();
 
             var hadFocus = ContainsFocus;
-            var active = _navigator.ActiveColumnIndex;
+            var active = _state.ActiveColumnIndex;
             var count = VisibleColumnCount();
 
             BeginColumnUpdate();
@@ -71,7 +71,7 @@ namespace CascadeControl.Views
                     }
 
                     var list = _lists[columnIndex];
-                    var selected = columnIndex < _navigator.SelectedDepth ? _navigator.PathWithTrail[columnIndex] : null;
+                    var selected = columnIndex < _state.SelectedDepth ? _state.PathWithTrail[columnIndex] : null;
                     if (!Equals(NodeAt(list), selected))
                         list.SelectedIndex = selected == null ? -1 : list.Items.IndexOf(selected);
 
@@ -115,11 +115,11 @@ namespace CascadeControl.Views
         private int VisibleColumnCount()
         {
             var showTrail = _showTrail && !IsSlidingMode;
-            var last = showTrail ? _navigator.PathWithTrail.Count : _navigator.SelectedDepth;
+            var last = showTrail ? _state.PathWithTrail.Count : _state.SelectedDepth;
 
-            if (last == 0) return _topLevelNodes.Count > 0 || CanEdit ? 1 : 0;
+            if (last == 0) return _state.TopLevelNodes.Count > 0 || CanEdit ? 1 : 0;
 
-            var tail = _navigator.PathWithTrail[last - 1];
+            var tail = _state.PathWithTrail[last - 1];
             var grows = CascadeNavigator.ChildrenOf(tail).Count > 0
                 || (_pendingChildParent != null && ReferenceEquals(tail, _pendingChildParent));
 
@@ -127,11 +127,11 @@ namespace CascadeControl.Views
         }
 
         // 第 columnIndex 欄內容的來源：第一欄是這次 SetTopLevelNodes 的代表物件，其他欄是上一層的節點。
-        private object ColumnSource(int columnIndex) => columnIndex == 0 ? _topLevelKey : _navigator.PathWithTrail[columnIndex - 1];
+        private object ColumnSource(int columnIndex) => columnIndex == 0 ? _state.TopLevelKey : _state.PathWithTrail[columnIndex - 1];
 
         private IReadOnlyList<ICascadeNode> ColumnNodes(int columnIndex)
         {
-            return columnIndex == 0 ? _topLevelNodes : CascadeNavigator.ChildrenOf(_navigator.PathWithTrail[columnIndex - 1]);
+            return columnIndex == 0 ? _state.TopLevelNodes : CascadeNavigator.ChildrenOf(_state.PathWithTrail[columnIndex - 1]);
         }
 
         /// <summary>

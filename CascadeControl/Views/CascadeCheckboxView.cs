@@ -44,13 +44,13 @@ namespace CascadeControl.Views
         private readonly ToolStripMenuItem _checkSiblingSubtreesItem = new ToolStripMenuItem(CHECK_SIBLING_SUBTREES_TEXT);
         private readonly ToolStripMenuItem _uncheckSiblingsItem = new ToolStripMenuItem(UNCHECK_SIBLINGS_TEXT);
 
-        private MenuCheckSet _checkSet;
-
         /// <summary>
         /// 建立控制項。
         /// </summary>
         public CascadeCheckboxView()
         {
+            AttachCheckableState(State as CascadeCheckableState);
+
             _checkSubtreeItem.Click += (sender, e) => RunMenuCommand(set => set.CheckSubtree(ContextMenuNode));
             _checkSiblingsItem.Click += (sender, e) => RunMenuCommand(set => set.CheckSiblings(ContextMenuNode));
             _checkSiblingSubtreesItem.Click += (sender, e) => RunMenuCommand(set => set.CheckSiblingSubtrees(ContextMenuNode));
@@ -67,47 +67,71 @@ namespace CascadeControl.Views
             for (var index = 0; index < columnItems.Length; index++) ColumnContextMenu.Items.Insert(index, columnItems[index]);
         }
 
+        /// <inheritdoc />
+        protected override CascadeState CreateDefaultState() => new CascadeCheckableState();
+
+        /// <inheritdoc />
+        protected override void OnStateChanged(CascadeState oldState, CascadeState newState)
+        {
+            base.OnStateChanged(oldState, newState);
+
+            DetachCheckableState(oldState as CascadeCheckableState);
+            AttachCheckableState(newState as CascadeCheckableState);
+            SyncCheckSetWithHistory();
+        }
+
+        private void AttachCheckableState(CascadeCheckableState state)
+        {
+            if (state == null) return;
+
+            state.CheckedChanged += OnStateCheckedChanged;
+            state.CheckSetChanged += OnStateCheckSetChanged;
+        }
+
+        private void DetachCheckableState(CascadeCheckableState state)
+        {
+            if (state == null) return;
+
+            state.CheckedChanged -= OnStateCheckedChanged;
+            state.CheckSetChanged -= OnStateCheckSetChanged;
+        }
+
+        private void SyncCheckSetWithHistory()
+        {
+            var checkSet = CheckSet;
+            if (checkSet != null) checkSet.History = History;
+
+            History.Clear();
+            InvalidateNodes();
+        }
+
         #region 勾選狀態
 
         /// <summary>
         /// 目前顯示的勾選狀態；null 表示不顯示勾選框。
         /// </summary>
         /// <remarks>
-        /// <see cref="SetTree"/> 會自動換上一份新的；想保留先前的勾選，或讓好幾個控制項共用同一份時，才需要自己設定。
+        /// <see cref="CascadeView.SetTree"/> 會自動換上一份新的；想保留先前的勾選，或讓好幾個控制項共用同一份時，才需要自己設定。
         /// 它的 <see cref="MenuCheckSet.Tree"/> 應該就是目前顯示的樹，否則所有節點都不會有勾選框。
         /// 設定時會把它的 <see cref="MenuCheckSet.History"/> 換成這個控制項的 <see cref="CascadeView.History"/>，並清空歷史：
         /// 勾選與樹的編輯才會排在同一條時間軸上，舊步驟也不會作用到換下來的那一份。
         /// </remarks>
+        /// <exception cref="InvalidOperationException"><see cref="CascadeView.State"/> 不是 <see cref="CascadeCheckableState"/> 時指派非 null 的勾選狀態。</exception>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public MenuCheckSet CheckSet
         {
-            get => _checkSet;
+            get => (State as CascadeCheckableState)?.CheckSet;
             set
             {
-                if (ReferenceEquals(_checkSet, value)) return;
-
-                if (_checkSet != null) _checkSet.Changed -= OnCheckSetChanged;
-                _checkSet = value;
-                if (_checkSet != null)
+                if (!(State is CascadeCheckableState checkable))
                 {
-                    _checkSet.History = History;
-                    _checkSet.Changed += OnCheckSetChanged;
+                    if (value == null) return;
+                    throw new InvalidOperationException($"目前的 {nameof(State)} 不是 {nameof(CascadeCheckableState)}，無法設定 {nameof(CheckSet)}。");
                 }
 
-                History.Clear();
-                InvalidateNodes();
+                checkable.CheckSet = value;
             }
-        }
-
-        /// <summary>
-        /// 設定要顯示的選單樹，並換上一份針對它的全新 <see cref="CheckSet"/>（沒有任何勾選、沒有歷史）。
-        /// </summary>
-        /// <param name="tree">要顯示的選單樹；傳 null 表示清空，<see cref="CheckSet"/> 也變成 null。</param>
-        public override void SetTree(MenuTree tree)
-        {
-            CheckSet = tree == null ? null : new MenuCheckSet(tree);
-            base.SetTree(tree);
         }
 
         /// <summary>
@@ -122,11 +146,13 @@ namespace CascadeControl.Views
         /// </summary>
         protected virtual void OnCheckedChanged(MenuCheckChangedEventArgs e) => CheckedChanged?.Invoke(this, e);
 
-        private void OnCheckSetChanged(object sender, MenuCheckChangedEventArgs e)
+        private void OnStateCheckedChanged(object sender, MenuCheckChangedEventArgs e)
         {
             InvalidateNodes();
             OnCheckedChanged(e);
         }
+
+        private void OnStateCheckSetChanged(object sender, EventArgs e) => SyncCheckSetWithHistory();
 
         /// <summary>
         /// 剪下、刪除節點之後，先取消被移除節點（連同子孫）的勾選，再觸發 <see cref="CascadeView.TreeEdited"/>。
@@ -139,9 +165,10 @@ namespace CascadeControl.Views
         {
             if (e == null) throw new ArgumentNullException(nameof(e));
 
-            if (_checkSet != null && (e.Action == CascadeEditAction.Cut || e.Action == CascadeEditAction.Delete))
+            var checkSet = CheckSet;
+            if (checkSet != null && (e.Action == CascadeEditAction.Cut || e.Action == CascadeEditAction.Delete))
             {
-                _checkSet.UncheckRemoved(e.Nodes);
+                checkSet.UncheckRemoved(e.Nodes);
             }
 
             base.OnTreeEdited(e);
@@ -150,13 +177,14 @@ namespace CascadeControl.Views
         /// <summary>
         /// 有 <see cref="CheckSet"/> 時，唯讀也可以復原勾選，所以右鍵功能表一律顯示「復原」、「重做」。
         /// </summary>
-        internal override bool ShowsHistoryCommands => base.ShowsHistoryCommands || _checkSet != null;
+        internal override bool ShowsHistoryCommands => base.ShowsHistoryCommands || CheckSet != null;
 
         // 這個節點有沒有勾選框：要是目前這份勾選的樹裡的節點。
         private bool TryGetCheckableNode(ICascadeNode node, out MenuNode menuNode)
         {
             menuNode = node as MenuNode;
-            return menuNode != null && _checkSet != null && _checkSet.Contains(menuNode);
+            var checkSet = CheckSet;
+            return menuNode != null && checkSet != null && checkSet.Contains(menuNode);
         }
 
         #endregion 勾選狀態
@@ -213,8 +241,9 @@ namespace CascadeControl.Views
 
         private CheckBoxState CheckBoxStateOf(MenuNode node, bool enabled)
         {
-            if (!_checkSet.IsChecked(node)) return enabled ? CheckBoxState.UncheckedNormal : CheckBoxState.UncheckedDisabled;
-            if (_checkSet.IsFullyChecked(node)) return enabled ? CheckBoxState.CheckedNormal : CheckBoxState.CheckedDisabled;
+            var checkSet = CheckSet;
+            if (!checkSet.IsChecked(node)) return enabled ? CheckBoxState.UncheckedNormal : CheckBoxState.UncheckedDisabled;
+            if (checkSet.IsFullyChecked(node)) return enabled ? CheckBoxState.CheckedNormal : CheckBoxState.CheckedDisabled;
 
             return enabled ? CheckBoxState.MixedNormal : CheckBoxState.MixedDisabled;
         }
@@ -283,7 +312,8 @@ namespace CascadeControl.Views
         // 功能表開著的時候樹或勾選狀態可能被換掉，執行前再確認一次節點還在。
         private void RunMenuCommand(Action<MenuCheckSet> command)
         {
-            if (_checkSet != null && _checkSet.Contains(ContextMenuNode)) command(_checkSet);
+            var checkSet = CheckSet;
+            if (checkSet != null && checkSet.Contains(ContextMenuNode)) command(checkSet);
         }
 
         #endregion 滑鼠與快顯功能表
@@ -300,7 +330,7 @@ namespace CascadeControl.Views
         /// </remarks>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (_checkSet != null && IsColumnFocused)
+            if (CheckSet != null && IsColumnFocused)
             {
                 switch (keyData)
                 {
@@ -317,9 +347,12 @@ namespace CascadeControl.Views
         // 點勾選框與 Space 共用：一般是 Toggle；withSubtree（按住 Shift）時還沒全勾就連同子孫一起勾，已經全勾就取消。
         private void Toggle(MenuNode node, bool withSubtree)
         {
-            if (!withSubtree) _checkSet.Toggle(node);
-            else if (_checkSet.IsFullyChecked(node)) _checkSet.Uncheck(node);
-            else _checkSet.CheckSubtree(node);
+            var checkSet = CheckSet;
+            if (checkSet == null) return;
+
+            if (!withSubtree) checkSet.Toggle(node);
+            else if (checkSet.IsFullyChecked(node)) checkSet.Uncheck(node);
+            else checkSet.CheckSubtree(node);
         }
 
         /// <summary>
@@ -341,7 +374,7 @@ namespace CascadeControl.Views
         /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
-            if (disposing && _checkSet != null) _checkSet.Changed -= OnCheckSetChanged;
+            if (disposing) DetachCheckableState(State as CascadeCheckableState);
 
             base.Dispose(disposing);
         }
