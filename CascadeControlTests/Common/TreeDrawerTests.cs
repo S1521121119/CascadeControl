@@ -84,7 +84,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new CascadeTreeImageView { View = view })
+            using (var imageView = new CascadeTreeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 Assert.IsFalse(imageView.IsExpanded(Find(tree, "Motor")));
@@ -101,7 +101,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeCheckboxView())
-            using (var imageView = new CascadeTreeImageView { View = view })
+            using (var imageView = new CascadeTreeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -121,7 +121,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeCheckboxView())
-            using (var imageView = new CascadeTreeImageView { View = view })
+            using (var imageView = new CascadeTreeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -156,48 +156,113 @@ namespace CascadeControlTests.Common
 
         private static TreeImageNode LayoutNodeOf(CascadeTreeImageView imageView, MenuTree tree, MenuNode target)
         {
-            var checkSet = (imageView.View as ICascadeCheckableView)?.CheckSet;
+            var checkSet = (imageView.State as CascadeCheckableState)?.CheckSet;
             var isChecked = checkSet == null ? (System.Func<MenuNode, bool>)null : checkSet.IsChecked;
-            using (var layout = TreeDrawer.RenderImage(tree, imageView.Font, isChecked, imageView.DrawScope, imageView.UncheckedDisplay, imageView.View?.SelectedNode as MenuNode, imageView.IsExpanded))
+            using (var layout = TreeDrawer.RenderImage(tree, imageView.Font, isChecked, imageView.DrawScope, imageView.UncheckedDisplay, imageView.SelectedNode as MenuNode, imageView.IsExpanded))
             {
                 return layout.Nodes.Single(node => ReferenceEquals(node.Node, target));
             }
         }
 
         [TestMethod]
-        public void View_ReplaceAndDispose_DetachesOldSubscriptionsAndClearsImage()
+        public void State_SwapNullGuardAndDispose_DetachesOldSubscriptionsAndRedraws()
         {
             var firstTree = TestTrees.Template();
             var secondTree = TestTrees.Template();
+            var firstState = new CascadeCheckableState();
+            var secondState = new CascadeState();
+            firstState.SetTree(firstTree);
+            secondState.SetTree(secondTree);
 
-            using (var first = new CascadeCheckboxView())
-            using (var second = new CascadeView())
-            using (var imageView = new CascadeTreeImageView { View = first })
+            using (var imageView = new CascadeTreeImageView { State = firstState })
             {
-                first.SetTree(firstTree);
-                second.SetTree(secondTree);
+                Assert.ThrowsException<System.ArgumentNullException>(() => imageView.State = null);
 
                 var beforeCheck = imageView.Image;
                 Assert.IsTrue(beforeCheck.Width > 1 && beforeCheck.Height > 1);
 
-                first.CheckSet.Check(Find(firstTree, "Motor", "Axis X"));
+                firstState.CheckSet.Check(Find(firstTree, "Motor", "Axis X"));
                 var afterCheck = imageView.Image;
                 Assert.AreNotSame(beforeCheck, afterCheck, "勾選改變要自動重畫");
 
-                imageView.View = second;
+                firstState.CheckSet = new MenuCheckSet(firstTree);
+                var afterCheckSetSwap = imageView.Image;
+                Assert.AreNotSame(afterCheck, afterCheckSetSwap, "換上另一份 CheckSet 要自動重畫");
+
+                imageView.State = secondState;
                 var afterSwap = imageView.Image;
-                Assert.AreNotSame(afterCheck, afterSwap);
+                Assert.AreNotSame(afterCheckSetSwap, afterSwap);
 
-                first.TrySelectNode(Find(firstTree, "System"));
-                first.CheckSet.Check(Find(firstTree, "System"));
-                Assert.AreSame(afterSwap, imageView.Image, "換掉 View 後，舊 View 的選取與勾選不再觸發重畫");
+                firstState.TrySelectNode(Find(firstTree, "System"));
+                firstState.CheckSet.Check(Find(firstTree, "System"));
+                Assert.AreSame(afterSwap, imageView.Image, "換掉 State 後，舊 State 的選取與勾選不再觸發重畫");
 
-                second.TrySelectNode(Find(secondTree, "Motor"));
-                Assert.AreNotSame(afterSwap, imageView.Image, "新 View 的選取改變會重畫");
+                secondState.TrySelectNode(Find(secondTree, "Motor"));
+                Assert.AreNotSame(afterSwap, imageView.Image, "新 State 的選取改變會重畫");
+            }
 
-                second.Dispose();
-                Assert.IsNull(imageView.View, "View 釋放後自動解除綁定");
-                Assert.AreEqual(new Size(1, 1), imageView.Image.Size, "解除綁定後畫成 1x1 空白圖");
+            // imageView 已 Dispose，繼續操作 secondState 不應出錯。
+            Assert.IsTrue(secondState.TrySelectNode(Find(secondTree, "System")));
+        }
+
+        [TestMethod]
+        public void Standalone_SetTreeNavigateAndClear_WorksWithoutCascadeView()
+        {
+            var tree = TestTrees.Template();
+            using (var imageView = new ProbeImageView())
+            {
+                var pathEvents = 0;
+                imageView.SelectedPathChanged += (sender, e) => pathEvents++;
+
+                imageView.SetTree(tree);
+                Assert.AreSame(tree, imageView.Tree);
+                Assert.IsTrue(imageView.Image.Width > 1 && imageView.Image.Height > 1);
+                Assert.AreEqual(1, pathEvents);
+
+                imageView.Press(Keys.Down);
+                Assert.AreSame(Find(tree, "System"), imageView.SelectedNode);
+                Assert.IsFalse(imageView.IsLeafSelected);
+
+                imageView.Press(Keys.Space);
+                imageView.Press(Keys.Right);
+                var reboot = Find(tree, "System", "Reboot");
+                Assert.AreSame(reboot, imageView.SelectedNode);
+                Assert.IsTrue(imageView.IsLeafSelected);
+                Assert.AreEqual("System => Reboot", imageView.SelectedPathText);
+                CollectionAssert.AreEqual(reboot.FullPath.Cast<ICascadeNode>().ToList(), imageView.SelectedPath.ToList());
+
+                Assert.IsTrue(imageView.StepBack());
+                Assert.AreSame(Find(tree, "System"), imageView.SelectedNode);
+                Assert.IsTrue(imageView.StepForward());
+                Assert.AreSame(reboot, imageView.SelectedNode);
+
+                imageView.Clear();
+                Assert.IsNull(imageView.Tree);
+                Assert.IsNull(imageView.SelectedNode);
+                Assert.AreEqual(new Size(1, 1), imageView.Image.Size);
+            }
+        }
+
+        [TestMethod]
+        public void SharedCheckableState_SharesPathSeparatorAndAutoRedrawsOnCheckAndEdit()
+        {
+            var tree = TestTrees.Template();
+            using (var view = new CascadeCheckboxView { ReadOnly = false })
+            using (var imageView = new CascadeTreeImageView { State = view.State })
+            {
+                view.PathSeparator = "\\";
+                Assert.AreEqual("\\", imageView.PathSeparator, "共享 State 時 PathSeparator 兩邊一致");
+
+                view.SetTree(tree);
+                var reboot = Find(tree, "System", "Reboot");
+                view.TrySelectNode(reboot);
+                Assert.AreEqual("System\\Reboot", imageView.SelectedPathText);
+
+                imageView.SetExpanded(Find(tree, "System"), true);
+                var beforeEdit = imageView.Image;
+                reboot.Rename("Restart");
+                view.RefreshColumns();
+                Assert.AreNotSame(beforeEdit, imageView.Image, "RefreshColumns 透過 State 自動重畫樹圖");
             }
         }
 
@@ -206,7 +271,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 Assert.AreEqual(" => ", view.PathSeparator);
                 Assert.AreEqual(" => ", imageView.PathSeparator);
@@ -252,7 +317,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -279,12 +344,10 @@ namespace CascadeControlTests.Common
         }
 
         [TestMethod]
-        public void TreeContextMenu_ShowsUncheckedDisplayOnlyForCheckableView_AndUpdatesSettings()
+        public void TreeContextMenu_ShowsUncheckedDisplayOnlyForCheckableState_AndUpdatesSettings()
         {
             using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ClientSize = new Size(300, 200), ShowInTaskbar = false })
-            using (var plainView = new CascadeView())
-            using (var checkboxView = new CascadeCheckboxView())
-            using (var imageView = new CascadeTreeImageView { Dock = DockStyle.Fill, View = plainView })
+            using (var imageView = new CascadeTreeImageView { Dock = DockStyle.Fill })
             {
                 form.Controls.Add(imageView);
                 form.Show();
@@ -294,7 +357,7 @@ namespace CascadeControlTests.Common
                 imageView.TreeContextMenu.Close();
                 CollectionAssert.AreEqual(new[] { "範圍", "顯示" }, plainItems);
 
-                imageView.View = checkboxView;
+                imageView.State = new CascadeCheckableState();
                 imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
                 var checkboxItems = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
                 CollectionAssert.AreEqual(new[] { "範圍", "未勾選節點", "顯示" }, checkboxItems);
@@ -312,218 +375,6 @@ namespace CascadeControlTests.Common
             }
         }
 
-        [TestMethod]
-        public void View_BindsPureCSharpICascadeView_RendersNavigatesAndHidesUncheckedMenu()
-        {
-            var tree = TestTrees.Template();
-            var fake = new FakeCascadeView();
-            fake.SetTree(tree);
-
-            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ClientSize = new Size(300, 200), ShowInTaskbar = false })
-            using (var imageView = new ProbeImageView { Dock = DockStyle.Fill, View = fake })
-            {
-                form.Controls.Add(imageView);
-                form.Show();
-
-                Assert.IsTrue(imageView.Image.Width > 1 && imageView.Image.Height > 1);
-
-                var beforeSelect = imageView.Image;
-                imageView.Press(Keys.Down);
-                Assert.AreSame(Find(tree, "System"), fake.SelectedNode);
-                Assert.AreNotSame(beforeSelect, imageView.Image, "純 C# ICascadeView 觸發 SelectedPathChanged 後自動重畫");
-
-                imageView.Press(Keys.Space);
-                imageView.Press(Keys.Right);
-                Assert.AreSame(Find(tree, "System", "Reboot"), fake.SelectedNode);
-
-                imageView.Press(Keys.Left);
-                Assert.AreSame(Find(tree, "System"), fake.SelectedNode);
-
-                imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
-                var items = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
-                imageView.TreeContextMenu.Close();
-                CollectionAssert.AreEqual(new[] { "範圍", "顯示" }, items);
-            }
-        }
-
-        [TestMethod]
-        public void View_BindsPureCSharpICascadeCheckableView_TracksChecksAndShowsUncheckedMenu()
-        {
-            var tree = TestTrees.Template();
-            var fake = new FakeCheckableCascadeView();
-            fake.SetTree(tree);
-            var motor = Find(tree, "Motor");
-            var axisX = Find(tree, "Motor", "Axis X");
-
-            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ClientSize = new Size(300, 200), ShowInTaskbar = false })
-            using (var imageView = new CascadeTreeImageView { Dock = DockStyle.Fill, View = fake })
-            {
-                form.Controls.Add(imageView);
-                form.Show();
-
-                Assert.IsFalse(imageView.IsExpanded(motor));
-                var beforeCheck = imageView.Image;
-
-                fake.CheckSet.Check(axisX);
-                Assert.IsTrue(imageView.IsExpanded(motor), "純 C# ICascadeCheckableView 的 CheckSet 驅動展開狀態");
-                Assert.AreNotSame(beforeCheck, imageView.Image, "純 C# ICascadeCheckableView 的 CheckedChanged 觸發重畫");
-
-                imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
-                var items = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
-                imageView.TreeContextMenu.Close();
-                CollectionAssert.AreEqual(new[] { "範圍", "未勾選節點", "顯示" }, items);
-
-                imageView.View = null;
-                var afterDetach = imageView.Image;
-                fake.CheckSet.Uncheck(axisX);
-                Assert.AreSame(afterDetach, imageView.Image, "解除綁定後不再重畫");
-            }
-        }
-
-        [TestMethod]
-        public void ViewProperty_UsesReferenceConverter_AndListsICascadeViewComponents()
-        {
-            var property = System.ComponentModel.TypeDescriptor.GetProperties(typeof(CascadeTreeImageView))["View"];
-            Assert.IsNotNull(property);
-            Assert.IsInstanceOfType(property.Converter, typeof(System.ComponentModel.ReferenceConverter));
-
-            using (var plain = new CascadeView())
-            using (var checkable = new CascadeCheckboxView())
-            using (var unrelated = new Button())
-            {
-                var context = new ReferenceServiceContext(plain, checkable, unrelated);
-                Assert.IsTrue(property.Converter.GetStandardValuesSupported(context));
-
-                var values = property.Converter.GetStandardValues(context).Cast<object>().ToList();
-                Assert.IsTrue(values.Contains(plain), "設計工具下拉清單應包含 CascadeView");
-                Assert.IsTrue(values.Contains(checkable), "設計工具下拉清單應包含 CascadeCheckboxView");
-                Assert.IsFalse(values.Contains(unrelated), "不實作 ICascadeView 的控制項不可出現在清單中");
-            }
-        }
-
-        private class FakeCascadeView : ICascadeView
-        {
-            private MenuNode _selected;
-
-            public MenuTree Tree { get; private set; }
-
-            public ICascadeNode SelectedNode => _selected;
-
-            public System.Collections.Generic.IReadOnlyList<ICascadeNode> SelectedPath =>
-                _selected == null ? (System.Collections.Generic.IReadOnlyList<ICascadeNode>)new ICascadeNode[0] : _selected.FullPath.Cast<ICascadeNode>().ToList();
-
-            public string SelectedPathText => string.Join(PathSeparator, SelectedPath.Select(node => node.Name));
-
-            public bool IsLeafSelected => _selected != null && _selected.IsLeaf;
-
-            public string PathSeparator { get; set; } = " => ";
-
-            public event System.EventHandler<CascadeNodeEventArgs> SelectedPathChanged;
-
-            public event System.EventHandler<CascadeNodeEventArgs> NodeActivated;
-
-            public virtual void SetTree(MenuTree tree)
-            {
-                Tree = tree;
-                _selected = null;
-                RaiseSelectedPathChanged();
-            }
-
-            public void Clear() => SetTree(null);
-
-            public bool TrySelectNode(MenuNode node)
-            {
-                if (node == null) return false;
-
-                _selected = node;
-                RaiseSelectedPathChanged();
-                return true;
-            }
-
-            public bool TrySelectPath(System.Collections.Generic.IEnumerable<ICascadeNode> path)
-            {
-                var last = path?.LastOrDefault() as MenuNode;
-                return TrySelectNode(last);
-            }
-
-            public bool StepBack()
-            {
-                if (_selected == null || _selected.Parent == null || ReferenceEquals(_selected.Parent, Tree?.Root)) return false;
-
-                _selected = _selected.Parent;
-                RaiseSelectedPathChanged();
-                return true;
-            }
-
-            public bool StepForward()
-            {
-                if (_selected == null || _selected.Children.Count == 0) return false;
-
-                _selected = _selected.Children[0];
-                RaiseSelectedPathChanged();
-                return true;
-            }
-
-            protected void RaiseSelectedPathChanged()
-            {
-                SelectedPathChanged?.Invoke(this, new CascadeNodeEventArgs(SelectedPath, _selected == null ? Tree?.TopLevelNodes : null));
-            }
-
-            protected void RaiseNodeActivated()
-            {
-                NodeActivated?.Invoke(this, new CascadeNodeEventArgs(SelectedPath, _selected == null ? Tree?.TopLevelNodes : null));
-            }
-        }
-
-        private sealed class FakeCheckableCascadeView : FakeCascadeView, ICascadeCheckableView
-        {
-            private MenuCheckSet _checkSet;
-
-            public MenuCheckSet CheckSet
-            {
-                get => _checkSet;
-                set
-                {
-                    if (_checkSet != null) _checkSet.Changed -= OnCheckSetChanged;
-                    _checkSet = value;
-                    if (_checkSet != null) _checkSet.Changed += OnCheckSetChanged;
-                }
-            }
-
-            public event System.EventHandler<MenuCheckChangedEventArgs> CheckedChanged;
-
-            public override void SetTree(MenuTree tree)
-            {
-                CheckSet = tree == null ? null : new MenuCheckSet(tree);
-                base.SetTree(tree);
-            }
-
-            private void OnCheckSetChanged(object sender, MenuCheckChangedEventArgs e) => CheckedChanged?.Invoke(this, e);
-        }
-
-        private sealed class ReferenceServiceContext : System.ComponentModel.ITypeDescriptorContext, System.ComponentModel.Design.IReferenceService
-        {
-            private readonly object[] _components;
-
-            public ReferenceServiceContext(params object[] components)
-            {
-                _components = components;
-            }
-
-            public System.ComponentModel.IContainer Container => null;
-            public object Instance => null;
-            public System.ComponentModel.PropertyDescriptor PropertyDescriptor => null;
-            public bool OnComponentChanging() => true;
-            public void OnComponentChanged() { }
-            public object GetService(System.Type serviceType) => serviceType == typeof(System.ComponentModel.Design.IReferenceService) ? this : null;
-
-            public object[] GetReferences() => _components;
-            public object[] GetReferences(System.Type baseType) => _components.Where(baseType.IsInstanceOfType).ToArray();
-            public object GetReference(string name) => null;
-            public string GetName(object reference) => reference?.GetType().Name;
-            public System.ComponentModel.IComponent GetComponent(object reference) => reference as System.ComponentModel.IComponent;
-        }
-
         #endregion CascadeTreeImageView
 
         #region 鍵盤
@@ -533,7 +384,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 imageView.SetExpanded(Find(tree, "System"), true);
@@ -558,7 +409,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 imageView.Press(Keys.Down);
@@ -571,7 +422,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -592,7 +443,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 var activated = new System.Collections.Generic.List<CascadeTreeImageNodeEventArgs>();
@@ -620,7 +471,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 imageView.SetExpanded(Find(tree, "Motor"), true);
@@ -643,7 +494,7 @@ namespace CascadeControlTests.Common
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeView())
-            using (var imageView = new ProbeImageView { View = view })
+            using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
                 var system = Find(tree, "System");

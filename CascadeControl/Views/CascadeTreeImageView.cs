@@ -27,25 +27,26 @@ namespace CascadeControl.Views
     }
 
     /// <summary>
-    /// 把 <see cref="View"/> 目前顯示的選單樹用 <see cref="TreeDrawer"/> 畫出來，跟著選取與勾選自動重畫；點圖上的節點可以知道點到哪一個。
+    /// 把 <see cref="State"/> 目前顯示的選單樹用 <see cref="TreeDrawer"/> 畫出來，跟著選取與勾選自動重畫；點圖上的節點可以知道點到哪一個。
     /// </summary>
     /// <remarks>
     /// 取代「可捲動的 Panel 包一個 AutoSize 的 PictureBox」：控制項自己畫圖、自己管捲軸，所以可以直接 Dock = Fill。
-    /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="View"/> 實作 <see cref="ICascadeCheckableView"/> 時
+    /// 可以直接呼叫 <see cref="SetTree"/> 獨立顯示與導覽，也可以把與 <see cref="CascadeView"/> 或 <see cref="CascadeCheckboxView"/> 相同的 <see cref="CascadeState"/> 指派給 <see cref="State"/> 同步顯示。
+    /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="State"/> 是 <see cref="CascadeCheckableState"/> 時
     /// 多一組 <see cref="UncheckedDisplay"/>（沒有勾選資訊時用不到這個設定，所以不列出來）。
-    /// 會自動重畫的時機：<see cref="ICascadeView.SelectedPathChanged"/>（包含 <see cref="ICascadeView.SetTree"/>）、
-    /// <see cref="ICascadeCheckableView.CheckedChanged"/>；樹的結構被編輯但選取沒變，或直接換掉 <see cref="ICascadeCheckableView.CheckSet"/> 時，
+    /// 會自動重畫的時機：<see cref="CascadeState.SelectedPathChanged"/>（包含 <see cref="CascadeState.SetTree"/> 與 <see cref="CascadeState.Refresh"/>）、
+    /// <see cref="CascadeCheckableState.CheckedChanged"/> 與 <see cref="CascadeCheckableState.CheckSetChanged"/>；在外部直接修改節點而未呼叫 <see cref="CascadeState.Refresh"/> 時，
     /// 請自己呼叫 <see cref="Redraw"/>。
     /// <para>
     /// 有子節點的節點可以收合：左鍵點方塊右側的 [+] 展開（變成 [-]、畫出子節點），點 [-] 收合；點展開鈕不會觸發 <see cref="NodeMouseClick"/>。
     /// 沒點過的節點依勾選決定：有任何子節點被勾選就展開（勾選子孫會補勾祖先，所以祖先跟著展開），否則收合；
-    /// 沒有勾選資訊（<see cref="View"/> 未實作 <see cref="ICascadeCheckableView"/>）時一律收合。
+    /// 沒有勾選資訊（<see cref="State"/> 不是 <see cref="CascadeCheckableState"/>）時一律收合。
     /// 點過的節點記住使用者的選擇，換成另一棵樹時全部忘掉；選取的節點被收合藏起來時不會自動展開。
     /// </para>
     /// <para>
-    /// 取得焦點後可以用鍵盤操作，改的是 <see cref="View"/> 的選取，所以「進出記住位置」的記憶和 <see cref="View"/> 是同一份：
+    /// 取得焦點後可以用鍵盤操作，改的是 <see cref="State"/> 的選取，所以「進出記住位置」的記憶和共享同一份狀態的其他檢視一致：
     /// ↑↓ 在圖上看得到的同一層節點之間移動，可以跨父節點，被收合或隱藏的節點跳過；
-    /// ← 同 <see cref="ICascadeView.StepBack"/>；→ 同 <see cref="ICascadeView.StepForward"/>，但選取的節點收合（[+]）時不動作，要先展開；
+    /// ← 同 <see cref="StepBack"/>；→ 同 <see cref="StepForward"/>，但選取的節點收合（[+]）時不動作，要先展開；
     /// 空白鍵展開或收合選取的節點；Enter 觸發 <see cref="NodeActivated"/>（和雙擊同樣用途，由訂閱端決定做什麼）。原始尺寸下會捲動到選取的節點。
     /// <see cref="TreeDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
     /// </para>
@@ -57,12 +58,11 @@ namespace CascadeControl.Views
     {
         private readonly ContextMenuStrip _contextMenu = new ContextMenuStrip();
 
-        private ICascadeView _view;
+        private CascadeState _state;
         private TreeImage _image;
         private TreeDrawScope _drawScope = TreeDrawScope.WholeTree;
         private UncheckedNodeDisplay _uncheckedDisplay = UncheckedNodeDisplay.Dimmed;
         private TreeImageSizeMode _sizeMode = TreeImageSizeMode.ActualSize;
-        private string _pathSeparator = CascadeNavigator.DEFAULT_PATH_SEPARATOR;
 
         // 使用者點過展開鈕的節點；沒有的依勾選決定。屬於 _expandTree，換樹時清空。
         private readonly Dictionary<MenuNode, bool> _expandOverrides = new Dictionary<MenuNode, bool>();
@@ -80,35 +80,110 @@ namespace CascadeControl.Views
             BackColor = Color.White;
             AutoScroll = true;
 
+            _state = new CascadeState();
+            AttachState(_state);
+
             _contextMenu.Opening += ContextMenu_Opening;
             ContextMenuStrip = _contextMenu;
 
             UpdateImage(null);
         }
 
-        #region 設定
+        #region 設定與狀態
 
         /// <summary>
-        /// 要畫哪一個 <see cref="ICascadeView"/> 的樹；樹、選取與勾選都取自它。null 時畫成空白。
+        /// 目前綁定的共享狀態：樹、選取路徑、記憶軌跡、<see cref="PathSeparator"/> 與勾選狀態都取自這裡。不可設為 null。
         /// </summary>
-        [Category("Cascade")]
-        [Description("要畫哪一個 ICascadeView 的樹；樹、選取與勾選都取自它。")]
-        [DefaultValue(null)]
-        [TypeConverter(typeof(ReferenceConverter))]
-        public ICascadeView View
+        /// <exception cref="ArgumentNullException">設為 null。</exception>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public CascadeState State
         {
-            get => _view;
+            get => _state;
             set
             {
-                if (ReferenceEquals(_view, value)) return;
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                if (ReferenceEquals(_state, value)) return;
 
-                if (_view != null) Detach(_view);
-                _view = value;
-                if (_view != null) Attach(_view);
+                DetachState(_state);
+                _state = value;
+                AttachState(_state);
 
                 Redraw();
             }
         }
+
+        /// <summary>
+        /// 目前顯示的選單樹；尚未設定或已清空時為 null。
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public MenuTree Tree => _state.Tree;
+
+        /// <summary>
+        /// 目前選取的最深節點；未選取時為 null。
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public ICascadeNode SelectedNode => _state.SelectedNode;
+
+        /// <summary>
+        /// 由淺至深的選取路徑；未選取時為空集合。
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public IReadOnlyList<ICascadeNode> SelectedPath => _state.SelectedPath;
+
+        /// <summary>
+        /// 目前選取路徑上各層節點名稱以 <see cref="PathSeparator"/> 串接的字串；未選取時為空字串。
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public string SelectedPathText => _state.SelectedPathText;
+
+        /// <summary>
+        /// 目前的選取是否停在葉節點。
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public bool IsLeafSelected => _state.IsLeafSelected;
+
+        /// <summary>
+        /// 設定要顯示的選單樹；傳 null 表示清空。
+        /// </summary>
+        /// <param name="tree">要顯示的選單樹；傳 null 表示清空。</param>
+        public void SetTree(MenuTree tree) => _state.SetTree(tree);
+
+        /// <summary>
+        /// 清除目前顯示的樹與選取。
+        /// </summary>
+        public void Clear() => _state.Clear();
+
+        /// <summary>
+        /// 選取指定的 <see cref="MenuNode"/>。
+        /// </summary>
+        /// <param name="node">要選取的節點。</param>
+        /// <returns>成功選取時為 true。</returns>
+        public bool TrySelectNode(MenuNode node) => _state.TrySelectNode(node);
+
+        /// <summary>
+        /// 從第一層開始依序選取 <paramref name="path"/> 中的節點。
+        /// </summary>
+        /// <param name="path">由淺至深的節點序列。</param>
+        /// <returns>整條路徑都選到時為 true。</returns>
+        public bool TrySelectPath(IEnumerable<ICascadeNode> path) => _state.TrySelectPath(path);
+
+        /// <summary>
+        /// 往上一層退回一步。
+        /// </summary>
+        /// <returns>選取有改變時為 true。</returns>
+        public bool StepBack() => _state.StepBack();
+
+        /// <summary>
+        /// 往下一層前進一步。
+        /// </summary>
+        /// <returns>選取有改變時為 true。</returns>
+        public bool StepForward() => _state.StepForward();
 
         /// <summary>
         /// 要畫樹的哪個範圍。
@@ -129,10 +204,10 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 有勾選資訊（<see cref="View"/> 實作 <see cref="ICascadeCheckableView"/>）時，沒勾的節點怎麼呈現。
+        /// 有勾選資訊（<see cref="State"/> 是 <see cref="CascadeCheckableState"/>）時，沒勾的節點怎麼呈現。
         /// </summary>
         [Category("Cascade")]
-        [Description("View 實作 ICascadeCheckableView 時，沒勾的節點變淡或不畫。")]
+        [Description("State 是 CascadeCheckableState 時，沒勾的節點變淡或不畫。")]
         [DefaultValue(UncheckedNodeDisplay.Dimmed)]
         public UncheckedNodeDisplay UncheckedDisplay
         {
@@ -166,15 +241,15 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// <see cref="CascadeTreeImageNodeEventArgs.PathText"/> 使用的層級分隔字串。
+        /// <see cref="CascadeTreeImageNodeEventArgs.PathText"/> 與 <see cref="SelectedPathText"/> 使用的層級分隔字串。
         /// </summary>
         [Category("Cascade")]
-        [Description("NodeMouseClick 事件參數 PathText 使用的層級分隔字串。")]
+        [Description("NodeMouseClick 事件參數 PathText 與 SelectedPathText 使用的層級分隔字串。")]
         [DefaultValue(CascadeNavigator.DEFAULT_PATH_SEPARATOR)]
         public string PathSeparator
         {
-            get => _pathSeparator;
-            set => _pathSeparator = value ?? string.Empty;
+            get => _state.PathSeparator;
+            set => _state.PathSeparator = value;
         }
 
         /// <summary>
@@ -191,9 +266,15 @@ namespace CascadeControl.Views
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Image Image => _image?.Image;
 
-        #endregion 設定
+        #endregion 設定與狀態
 
         #region 事件
+
+        /// <summary>
+        /// 選取路徑改變後觸發，包含 <see cref="SetTree"/>、<see cref="Clear"/> 與導覽操作。
+        /// </summary>
+        [Category("Cascade")]
+        public event EventHandler<CascadeNodeEventArgs> SelectedPathChanged;
 
         /// <summary>
         /// 用滑鼠點了圖上的某個節點之後觸發（左鍵、右鍵都會）；點在空白處或 Root 上不會觸發。
@@ -222,6 +303,11 @@ namespace CascadeControl.Views
         public event EventHandler DrawSettingsChanged;
 
         /// <summary>
+        /// 觸發 <see cref="SelectedPathChanged"/>。
+        /// </summary>
+        protected virtual void OnSelectedPathChanged(CascadeNodeEventArgs e) => SelectedPathChanged?.Invoke(this, e);
+
+        /// <summary>
         /// 觸發 <see cref="NodeMouseClick"/>。
         /// </summary>
         protected virtual void OnNodeMouseClick(CascadeTreeImageNodeMouseEventArgs e) => NodeMouseClick?.Invoke(this, e);
@@ -246,20 +332,20 @@ namespace CascadeControl.Views
         #region 繪製
 
         /// <summary>
-        /// 依 <see cref="View"/> 目前的樹、選取與勾選重畫。
+        /// 依 <see cref="State"/> 目前的樹、選取與勾選重畫。
         /// </summary>
         /// <remarks>
-        /// <see cref="TreeDrawScope.SelectedSubtree"/> 沒有選取時畫成空白；<see cref="View"/> 的 <see cref="ICascadeView.Tree"/> 為 null 時也畫成空白。
+        /// <see cref="TreeDrawScope.SelectedSubtree"/> 沒有選取時畫成空白；<see cref="State"/> 的 <see cref="CascadeState.Tree"/> 為 null 時也畫成空白。
         /// </remarks>
         public void Redraw()
         {
-            var tree = _view?.Tree;
+            var tree = _state.Tree;
             SyncExpandTree();
 
-            var selected = _view?.SelectedNode as MenuNode;
+            var selected = _state.SelectedNode as MenuNode;
             if (_drawScope == TreeDrawScope.SelectedSubtree && selected == null) tree = null;
 
-            var checkSet = (_view as ICascadeCheckableView)?.CheckSet;
+            var checkSet = (_state as CascadeCheckableState)?.CheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
 
             UpdateImage(TreeDrawer.RenderImage(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded));
@@ -280,7 +366,7 @@ namespace CascadeControl.Views
             SyncExpandTree();
             if (_expandOverrides.TryGetValue(node, out var expanded)) return expanded;
 
-            var checkSet = (_view as ICascadeCheckableView)?.CheckSet;
+            var checkSet = (_state as CascadeCheckableState)?.CheckSet;
             return checkSet != null && node.Children.Any(checkSet.IsChecked);
         }
 
@@ -299,10 +385,10 @@ namespace CascadeControl.Views
             Redraw();
         }
 
-        // View 換成另一棵樹（或沒有樹）時，忘掉使用者點過的展開狀態。
+        // State 換成另一棵樹（或沒有樹）時，忘掉使用者點過的展開狀態。
         private void SyncExpandTree()
         {
-            var tree = _view?.Tree;
+            var tree = _state.Tree;
             if (ReferenceEquals(tree, _expandTree)) return;
 
             _expandOverrides.Clear();
@@ -452,7 +538,7 @@ namespace CascadeControl.Views
 
         private CascadeTreeImageNodeMouseEventArgs CreateMouseEventArgs(MenuNode node, MouseEventArgs e)
         {
-            return new CascadeTreeImageNodeMouseEventArgs(node, _pathSeparator, e.Button, e.Location, PointToScreen(e.Location));
+            return new CascadeTreeImageNodeMouseEventArgs(node, PathSeparator, e.Button, e.Location, PointToScreen(e.Location));
         }
 
         #endregion 滑鼠
@@ -480,20 +566,20 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// ↑↓ 在圖上看得到的同一層節點之間移動（可以跨父節點）；← 退回上一層、→ 進入下一層（記憶和 <see cref="View"/> 共用）；
-        /// 空白鍵展開或收合選取的節點；Enter 在選取的節點上觸發 <see cref="NodeActivated"/>。改的是 <see cref="View"/> 的選取，所以兩邊一起動。
+        /// ↑↓ 在圖上看得到的同一層節點之間移動（可以跨父節點）；← 退回上一層、→ 進入下一層（記憶與 <see cref="State"/> 共用）；
+        /// 空白鍵展開或收合選取的節點；Enter 在選取的節點上觸發 <see cref="NodeActivated"/>。改的是 <see cref="State"/> 的選取，所以共享狀態的檢視一起動。
         /// </summary>
         /// <param name="e">按鍵資料；有 Ctrl、Alt 或 Shift 時不處理。</param>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            if (e.Handled || e.Modifiers != Keys.None || _view == null) return;
+            if (e.Handled || e.Modifiers != Keys.None) return;
 
             switch (e.KeyCode)
             {
                 case Keys.Up: MoveVertical(-1); break;
                 case Keys.Down: MoveVertical(1); break;
-                case Keys.Left: _view.StepBack(); break;
+                case Keys.Left: _state.StepBack(); break;
                 case Keys.Right: StepIn(); break;
                 case Keys.Space: ToggleSelected(); break;
                 case Keys.Enter: ActivateSelected(); break;
@@ -505,7 +591,7 @@ namespace CascadeControl.Views
             EnsureVisible(SelectedMenuNode);
         }
 
-        private MenuNode SelectedMenuNode => _view?.SelectedNode as MenuNode;
+        private MenuNode SelectedMenuNode => _state.SelectedNode as MenuNode;
 
         // 節點畫在圖上的那一格；沒畫出來（被收合、隱藏，或不在範圍內）時為 null。
         private TreeImageNode FindImageNode(MenuNode node)
@@ -524,17 +610,17 @@ namespace CascadeControl.Views
             var current = FindImageNode(SelectedMenuNode);
             if (current == null)
             {
-                _view.TrySelectNode(_image.Nodes[0].Node);
+                _state.TrySelectNode(_image.Nodes[0].Node);
                 return;
             }
 
             var column = _image.Nodes.Where(imageNode => imageNode.Node.Depth == current.Node.Depth).ToList();
             var index = column.IndexOf(current) + direction;
-            if (index >= 0 && index < column.Count) _view.TrySelectNode(column[index].Node);
+            if (index >= 0 && index < column.Count) _state.TrySelectNode(column[index].Node);
         }
 
         /// <summary>
-        /// 進入下一層，照 <see cref="ICascadeView.StepForward"/> 的規則走（有記憶走記憶，否則第一個子節點）；
+        /// 進入下一層，照 <see cref="StepForward"/> 的規則走（有記憶走記憶，否則第一個子節點）；
         /// 選取的節點收合（[+]）時不動作，要先按空白鍵展開。
         /// </summary>
         /// <remarks>
@@ -545,18 +631,18 @@ namespace CascadeControl.Views
             var node = SelectedMenuNode;
             if (node != null && !node.Children.Any(child => FindImageNode(child) != null)) return;
 
-            if (!_view.StepForward() || node == null) return;
+            if (!_state.StepForward() || node == null) return;
             if (FindImageNode(SelectedMenuNode) != null) return;
 
             var firstDrawn = node.Children.FirstOrDefault(child => FindImageNode(child) != null);
-            if (firstDrawn != null) _view.TrySelectNode(firstDrawn);
+            if (firstDrawn != null) _state.TrySelectNode(firstDrawn);
         }
 
         // 和雙擊一樣只針對畫在圖上的節點；選取被收合藏起來或沒有選取時不觸發。
         private void ActivateSelected()
         {
             var node = SelectedMenuNode;
-            if (FindImageNode(node) != null) OnNodeActivated(new CascadeTreeImageNodeEventArgs(node, _pathSeparator));
+            if (FindImageNode(node) != null) OnNodeActivated(new CascadeTreeImageNodeEventArgs(node, PathSeparator));
         }
 
         private void ToggleSelected()
@@ -599,7 +685,7 @@ namespace CascadeControl.Views
 
         #region 右鍵功能表
 
-        // 每次開啟前依目前的 View 重建：沒有勾選能力時不列出「未勾選節點」。
+        // 每次開啟前依目前的 State 重建：沒有勾選能力時不列出「未勾選節點」。
         private void ContextMenu_Opening(object sender, CancelEventArgs e)
         {
             var items = _contextMenu.Items;
@@ -610,7 +696,7 @@ namespace CascadeControl.Views
             scopeMenu.DropDownItems.Add(CreateChoice("選取的子樹", _drawScope == TreeDrawScope.SelectedSubtree, () => DrawScope = TreeDrawScope.SelectedSubtree));
             items.Add(scopeMenu);
 
-            if (_view is ICascadeCheckableView)
+            if (_state is CascadeCheckableState)
             {
                 var uncheckedMenu = new ToolStripMenuItem("未勾選節點");
                 uncheckedMenu.DropDownItems.Add(CreateChoice("變淡", _uncheckedDisplay == UncheckedNodeDisplay.Dimmed, () => UncheckedDisplay = UncheckedNodeDisplay.Dimmed));
@@ -636,37 +722,48 @@ namespace CascadeControl.Views
 
         #endregion 右鍵功能表
 
-        #region View 的事件
+        #region State 的事件
 
-        private void Attach(ICascadeView view)
+        private void AttachState(CascadeState state)
         {
-            view.SelectedPathChanged += View_SelectedPathChanged;
-            if (view is IComponent component) component.Disposed += View_Disposed;
-            if (view is ICascadeCheckableView checkableView) checkableView.CheckedChanged += View_CheckedChanged;
+            state.SelectedPathChanged += State_SelectedPathChanged;
+            if (state is CascadeCheckableState checkableState)
+            {
+                checkableState.CheckedChanged += State_CheckedChanged;
+                checkableState.CheckSetChanged += State_CheckSetChanged;
+            }
         }
 
-        private void Detach(ICascadeView view)
+        private void DetachState(CascadeState state)
         {
-            view.SelectedPathChanged -= View_SelectedPathChanged;
-            if (view is IComponent component) component.Disposed -= View_Disposed;
-            if (view is ICascadeCheckableView checkableView) checkableView.CheckedChanged -= View_CheckedChanged;
+            if (state == null) return;
+
+            state.SelectedPathChanged -= State_SelectedPathChanged;
+            if (state is CascadeCheckableState checkableState)
+            {
+                checkableState.CheckedChanged -= State_CheckedChanged;
+                checkableState.CheckSetChanged -= State_CheckSetChanged;
+            }
         }
 
-        private void View_SelectedPathChanged(object sender, CascadeNodeEventArgs e) => Redraw();
+        private void State_SelectedPathChanged(object sender, CascadeNodeEventArgs e)
+        {
+            Redraw();
+            OnSelectedPathChanged(e);
+        }
 
-        private void View_CheckedChanged(object sender, MenuCheckChangedEventArgs e) => Redraw();
+        private void State_CheckedChanged(object sender, MenuCheckChangedEventArgs e) => Redraw();
 
-        private void View_Disposed(object sender, EventArgs e) => View = null;
+        private void State_CheckSetChanged(object sender, EventArgs e) => Redraw();
 
-        #endregion View 的事件
+        #endregion State 的事件
 
         /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                if (_view != null) Detach(_view);
-                _view = null;
+                DetachState(_state);
                 _image?.Dispose();
                 _image = null;
                 _contextMenu.Dispose();

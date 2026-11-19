@@ -31,6 +31,7 @@ namespace CascadeControlSelector
         public TreeSelector(string startupPath)
         {
             InitializeComponent();
+            treeImageView1.State = cascadeView1.State;
 
             // Demo 預設開啟編輯；勾選 ReadOnly 切回唯讀（只能點選、多選與複製）。
 
@@ -224,8 +225,6 @@ namespace CascadeControlSelector
             // 剪下與刪除的節點已經脫離樹，FullPathText 是空的，改寫名稱。
             var nodes = string.Join("、", e.Nodes.Select(node => node.Parent == null ? node.Name : node.FullPathText));
             LogMessage($"TreeEdited：{e.Action}｜{nodes}");
-
-            treeImageView1.Redraw();
         }
 
         private void CascadeView1_MultiSelectionChanged(object sender, EventArgs e)
