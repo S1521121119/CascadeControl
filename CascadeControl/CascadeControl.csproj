@@ -50,9 +50,11 @@
     <Compile Include="Common\TreeImage.cs" />
     <Compile Include="Views\CascadeTreeImageView.cs" />
     <Compile Include="Views\CascadeCheckboxView.cs" />
+    <Compile Include="Views\CascadeCheckableState.cs" />
     <Compile Include="Views\CascadeColumnLayoutMode.cs" />
     <Compile Include="Views\CascadeNodeEventArgs.cs" />
     <Compile Include="Views\CascadeNavigator.cs" />
+    <Compile Include="Views\CascadeState.cs" />
     <Compile Include="Views\CascadeTreeEditedEventArgs.cs" />
     <Compile Include="Views\ICascadeCheckableView.cs" />
     <Compile Include="Views\ICascadeView.cs" />

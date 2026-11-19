@@ -81,6 +81,7 @@
     <Compile Include="Views\CascadeCheckboxViewTests.cs" />
     <Compile Include="Views\CascadeNodeTests.cs" />
     <Compile Include="Views\CascadeNavigatorTests.cs" />
+    <Compile Include="Views\CascadeStateTests.cs" />
     <Compile Include="Views\CascadeViewHookTests.cs" />
     <Compile Include="Views\CascadeViewLayoutTests.cs" />
     <Compile Include="Views\CascadeViewMultiSelectTests.cs" />

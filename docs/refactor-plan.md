@@ -54,7 +54,7 @@ namespace CascadeControl.Views
 }
 ```
 
-## Plan B2 architecture sketch (pending confirmation)
+## Plan B2 architecture (confirmed)
 
 ### Design shapes compared
 
@@ -74,6 +74,7 @@ namespace CascadeControl.Views
 	{
 		Reset,
 		Refreshed,
+		SelectionChanged,
 		TrailCleared,
 	}
 
@@ -130,11 +131,12 @@ namespace CascadeControl.Views
 - **`CascadeCheckboxView`** overrides `CreateDefaultState()` to return `new CascadeCheckableState()` and overrides `OnStateChanged(oldState, newState)` to detach and attach `CheckedChanged` and `CheckSetChanged`. `CheckSet` delegates to `(State as CascadeCheckableState)?.CheckSet`; assigning a non-null `MenuCheckSet` while `State` is a plain `CascadeState` throws `InvalidOperationException`. When `CheckSetChanged` fires or a `CascadeCheckableState` attaches, `CascadeCheckboxView` wires `CheckSet.History = History`, clears `History`, and calls `InvalidateNodes()`. `OnTreeEdited` keeps calling `CheckSet?.UncheckRemoved(e.Nodes)` inside `CascadeView`'s `History.BeginGroup()` so cut or delete and uncheck remain a single undo step.
 - **`CascadeTreeImageView`** initializes `_state = new CascadeState()`, exposes `public CascadeState State { get; set; }` (non-null), and removes the legacy `ICascadeView View` property so each view has one binding mechanism. It adds standalone navigation members delegating to `_state` (`Tree`, `SelectedNode`, `SelectedPath`, `SelectedPathText`, `IsLeafSelected`, `PathSeparator`, `SetTree`, `Clear`, `TrySelectNode`, `TrySelectPath`, `StepBack`, `StepForward`, `SelectedPathChanged`), allowing `CascadeTreeImageView` to run standalone or synced via `treeImageView1.State = cascadeView1.State`. It redraws automatically on `_state.SelectedPathChanged`, `checkableState.CheckedChanged`, and `checkableState.CheckSetChanged`, and shows the unchecked-display menu item whenever `_state is CascadeCheckableState`. Diagram-local state (`_image`, `DrawScope`, `UncheckedDisplay`, `SizeMode`, `_expandOverrides`, `TreeContextMenu`) stays local to `CascadeTreeImageView`.
 
-### Open design confirmations before B2 implementation
+### Confirmed B2 design decisions
 
-1. **`CascadeTreeImageView.View` removal vs Designer binding.** Recommended choice is deleting `CascadeTreeImageView.View` in Plan B2 Stage 3 and binding `treeImageView1.State = cascadeView1.State;` in `TreeSelector.cs` and `TreeViewer.cs` constructors (removing the Designer lines). If WinForms Designer drag-and-drop binding is required, `CascadeState` can inherit `System.ComponentModel.Component` (still no WinForms dependency) so both controls select a tray component in PropertyGrid.
-2. **`CascadeTreeImageView : ICascadeView` timing with `NodeActivated`.** `ICascadeView.NodeActivated` uses `CascadeNodeEventArgs`, whereas `CascadeTreeImageView.NodeActivated` currently uses `CascadeTreeImageNodeEventArgs`. Recommended choice is keeping `ICascadeView` unchanged during Plan B2 and adding `: ICascadeView` to `CascadeTreeImageView` in Post-B2 Event Unification. Alternative is removing `NodeActivated` from `ICascadeView` in Plan B2 so all three controls implement `ICascadeView` immediately, then re-adding unified `NodeActivated` in Post-B2.
-3. **`PathSeparator` sharing.** With `PathSeparator` living on `CascadeState`, `TreeViewer` (`cascadeView1.PathSeparator = "\\"`) will automatically share `"\\"` with `treeImageView1` instead of drifting to `" => "`. Confirm whether shared `PathSeparator` is desired or whether each control should keep its own `PathSeparator`.
+1. **Delete `CascadeTreeImageView.View` in Plan B2 Stage 3.** Keep `CascadeState` a pure POCO without `Component` inheritance, and wire `treeImageView1.State = cascadeView1.State;` in `TreeSelector.cs` and `TreeViewer.cs` constructors.
+2. **Keep `ICascadeView` unchanged during Plan B2.** Add standalone navigation APIs to `CascadeTreeImageView` in B2, and add `: ICascadeView` to `CascadeTreeImageView` in Post-B2 Event Unification when `NodeActivated` switches to `CascadeNodeEventArgs`.
+3. **Share `PathSeparator` on `CascadeState`.** Synced views share the same separator, so `TreeViewer` (`cascadeView1.PathSeparator = "\\"`) applies `"\\"` to `treeImageView1` as well.
+4. **Emit `CascadeStateInvalidation.SelectionChanged` before `SelectedPathChanged`.** Accepted small refinement to the saved sketch so every bound `CascadeView` synchronizes its columns before any external `SelectedPathChanged` handler runs.
 
 ## Roadmap and status
 
@@ -142,8 +144,8 @@ namespace CascadeControl.Views
 - [x] **Plan A, Stage 2.** Remove dead and duplicate code. Delete unused `CascadeView1_CheckedChanged` and ineffective `UncheckedDisplay` assignment in `CascadeControlSelector/TreeSelector.cs`, and consolidate `DEFAULT_PATH_SEPARATOR` to a single source.
 - [x] **Plan A, Stage 3.** Add `ICascadeView.cs` and `ICascadeCheckableView.cs` under `CascadeControl/Views/`, register both in `CascadeControl/CascadeControl.csproj` with XML docs, implement `ICascadeView` on `CascadeView`, and implement `ICascadeCheckableView` on `CascadeCheckboxView`.
 - [x] **Plan A, Stage 4.** Change `CascadeTreeImageView.View` from `CascadeView` to `ICascadeView` with `[TypeConverter(typeof(ReferenceConverter))]`, replace all `CascadeCheckboxView` casts with `ICascadeCheckableView`, subscribe to `Disposed` through `IComponent`, verify WinForms Designer converter behavior, and add pure C# fake-view tests.
-- [x] **Plan B2 Architecture Gate.** Drafted Shape B2-A (`CascadeState` and `CascadeCheckableState`), control binding rules, and migration stages above. Waiting for user confirmation before editing code.
-- [ ] **Plan B2, Stage 1.** Add `CascadeState.cs` and `CascadeCheckableState.cs` under `CascadeControl/Views/`, register in `CascadeControl.csproj` with XML docs, and add pure non-UI tests in `CascadeControlTests/Views/CascadeStateTests.cs`.
+- [x] **Plan B2 Architecture Gate.** Confirmed Shape B2-A (`CascadeState` and `CascadeCheckableState`), control binding rules, and the three design decisions above.
+- [x] **Plan B2, Stage 1.** Add `CascadeState.cs` and `CascadeCheckableState.cs` under `CascadeControl/Views/`, register in `CascadeControl.csproj` with XML docs, and add pure non-UI tests in `CascadeControlTests/Views/CascadeStateTests.cs`.
 - [ ] **Plan B2, Stage 2.** Rewire `CascadeView` and `CascadeCheckboxView` to delegate data, navigation, and `CheckSet` ownership to `CascadeState` and `CascadeCheckableState`, keeping `History` and undo timeline behavior intact, and add multi-view sync tests.
 - [ ] **Plan B2, Stage 3.** Rewire `CascadeTreeImageView` to bind `CascadeState` with standalone navigation APIs, delete legacy `CascadeTreeImageView.View`, migrate `TreeSelector` and `TreeViewer` (and their Designer files) to `treeImageView1.State = cascadeView1.State`, remove redundant `treeImageView1.Redraw()` calls on `TreeEdited`, and replace `View`-coupling tests with standalone and shared-state tests.
 - [ ] **Plan B2, Stage 4.** Update `README.md` for `CascadeState`, `CascadeCheckableState`, and standalone `CascadeTreeImageView` usage, then run final verification.
@@ -165,4 +167,5 @@ Run these commands from the repository root `D:\github\CascadeControl`.
 - Plan A, Stage 2 (2026-11-20): Removed unused `CascadeView1_CheckedChanged` and ineffective `UncheckedDisplay` assignment from `CascadeControlSelector/TreeSelector.cs`, and consolidated `DEFAULT_PATH_SEPARATOR` onto `CascadeNavigator`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 426 of 426 tests in 13.60 seconds.
 - Plan A, Stage 3 (2026-11-20): Added `ICascadeView` and `ICascadeCheckableView` in `CascadeControl/Views/`, registered both in `CascadeControl/CascadeControl.csproj`, implemented them on `CascadeView` and `CascadeCheckboxView`, and added `InterfaceContracts_NavigateAndCheckThroughInterfaces` in `CascadeCheckboxViewTests.cs`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 427 of 427 tests in 13.67 seconds.
 - Plan A, Stage 4 (2026-11-20): Switched `CascadeTreeImageView.View` to `ICascadeView` with `[TypeConverter(typeof(ReferenceConverter))]`, replaced all `CascadeCheckboxView` casts with `ICascadeCheckableView`, subscribed to `Disposed` via `IComponent`, and added 3 tests in `TreeDrawerTests.cs` covering pure C# `ICascadeView`, pure C# `ICascadeCheckableView`, and WinForms `ReferenceConverter`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 430 of 430 tests in 14.25 seconds.
-- Plan B2 Architecture Gate (2026-11-20): Produced Shape B2-A vs Shape B2-B comparison, `CascadeState` and `CascadeCheckableState` signatures, three-control binding rules, three open confirmations, and four-stage B2 migration plan in this document. No B2 implementation code written; waiting for user confirmation.
+- Plan B2 Architecture Gate (2026-11-20): Confirmed Shape B2-A (`CascadeState` and `CascadeCheckableState`), pure POCO `State` binding, deferred `CascadeTreeImageView : ICascadeView` until Post-B2, and shared `PathSeparator`.
+- Plan B2, Stage 1 (2026-11-20): Added `CascadeState.cs` and `CascadeCheckableState.cs` in `CascadeControl/Views/`, registered both in `CascadeControl.csproj`, and added 6 pure non-UI tests in `CascadeControlTests/Views/CascadeStateTests.cs`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 436 of 436 tests in 13.11 seconds. Waiting for user confirmation before Plan B2 Stage 2.
