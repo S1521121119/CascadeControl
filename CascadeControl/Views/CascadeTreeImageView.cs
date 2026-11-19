@@ -31,21 +31,21 @@ namespace CascadeControl.Views
     /// </summary>
     /// <remarks>
     /// 取代「可捲動的 Panel 包一個 AutoSize 的 PictureBox」：控制項自己畫圖、自己管捲軸，所以可以直接 Dock = Fill。
-    /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="View"/> 是 <see cref="CascadeCheckboxView"/> 時
-    /// 多一組 <see cref="UncheckedDisplay"/>（<see cref="CascadeView"/> 沒有勾選資訊，用不到這個設定，所以不列出來）。
-    /// 會自動重畫的時機：<see cref="CascadeView.SelectedPathChanged"/>（包含 <see cref="CascadeView.SetTree"/>）、
-    /// <see cref="CascadeCheckboxView.CheckedChanged"/>；樹的結構被編輯但選取沒變，或直接換掉 <see cref="CascadeCheckboxView.CheckSet"/> 時，
+    /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="View"/> 實作 <see cref="ICascadeCheckableView"/> 時
+    /// 多一組 <see cref="UncheckedDisplay"/>（沒有勾選資訊時用不到這個設定，所以不列出來）。
+    /// 會自動重畫的時機：<see cref="ICascadeView.SelectedPathChanged"/>（包含 <see cref="ICascadeView.SetTree"/>）、
+    /// <see cref="ICascadeCheckableView.CheckedChanged"/>；樹的結構被編輯但選取沒變，或直接換掉 <see cref="ICascadeCheckableView.CheckSet"/> 時，
     /// 請自己呼叫 <see cref="Redraw"/>。
     /// <para>
     /// 有子節點的節點可以收合：左鍵點方塊右側的 [+] 展開（變成 [-]、畫出子節點），點 [-] 收合；點展開鈕不會觸發 <see cref="NodeMouseClick"/>。
     /// 沒點過的節點依勾選決定：有任何子節點被勾選就展開（勾選子孫會補勾祖先，所以祖先跟著展開），否則收合；
-    /// 沒有勾選資訊（<see cref="View"/> 不是 <see cref="CascadeCheckboxView"/>）時一律收合。
+    /// 沒有勾選資訊（<see cref="View"/> 未實作 <see cref="ICascadeCheckableView"/>）時一律收合。
     /// 點過的節點記住使用者的選擇，換成另一棵樹時全部忘掉；選取的節點被收合藏起來時不會自動展開。
     /// </para>
     /// <para>
-    /// 取得焦點後可以用鍵盤操作，改的是 <see cref="View"/> 的選取，所以「進出記住位置」的記憶和 <see cref="CascadeView"/> 是同一份：
+    /// 取得焦點後可以用鍵盤操作，改的是 <see cref="View"/> 的選取，所以「進出記住位置」的記憶和 <see cref="View"/> 是同一份：
     /// ↑↓ 在圖上看得到的同一層節點之間移動，可以跨父節點，被收合或隱藏的節點跳過；
-    /// ← 同 <see cref="CascadeView.StepBack"/>；→ 同 <see cref="CascadeView.StepForward"/>，但選取的節點收合（[+]）時不動作，要先展開；
+    /// ← 同 <see cref="ICascadeView.StepBack"/>；→ 同 <see cref="ICascadeView.StepForward"/>，但選取的節點收合（[+]）時不動作，要先展開；
     /// 空白鍵展開或收合選取的節點；Enter 觸發 <see cref="NodeActivated"/>（和雙擊同樣用途，由訂閱端決定做什麼）。原始尺寸下會捲動到選取的節點。
     /// <see cref="TreeDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
     /// </para>
@@ -57,7 +57,7 @@ namespace CascadeControl.Views
     {
         private readonly ContextMenuStrip _contextMenu = new ContextMenuStrip();
 
-        private CascadeView _view;
+        private ICascadeView _view;
         private TreeImage _image;
         private TreeDrawScope _drawScope = TreeDrawScope.WholeTree;
         private UncheckedNodeDisplay _uncheckedDisplay = UncheckedNodeDisplay.Dimmed;
@@ -89,12 +89,13 @@ namespace CascadeControl.Views
         #region 設定
 
         /// <summary>
-        /// 要畫哪一個 <see cref="CascadeView"/> 的樹；樹、選取與勾選都取自它。null 時畫成空白。
+        /// 要畫哪一個 <see cref="ICascadeView"/> 的樹；樹、選取與勾選都取自它。null 時畫成空白。
         /// </summary>
         [Category("Cascade")]
-        [Description("要畫哪一個 CascadeView 的樹；樹、選取與勾選都取自它。")]
+        [Description("要畫哪一個 ICascadeView 的樹；樹、選取與勾選都取自它。")]
         [DefaultValue(null)]
-        public CascadeView View
+        [TypeConverter(typeof(ReferenceConverter))]
+        public ICascadeView View
         {
             get => _view;
             set
@@ -128,10 +129,10 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 有勾選資訊（<see cref="View"/> 是 <see cref="CascadeCheckboxView"/>）時，沒勾的節點怎麼呈現。
+        /// 有勾選資訊（<see cref="View"/> 實作 <see cref="ICascadeCheckableView"/>）時，沒勾的節點怎麼呈現。
         /// </summary>
         [Category("Cascade")]
-        [Description("View 是 CascadeCheckboxView 時，沒勾的節點變淡或不畫。")]
+        [Description("View 實作 ICascadeCheckableView 時，沒勾的節點變淡或不畫。")]
         [DefaultValue(UncheckedNodeDisplay.Dimmed)]
         public UncheckedNodeDisplay UncheckedDisplay
         {
@@ -248,8 +249,7 @@ namespace CascadeControl.Views
         /// 依 <see cref="View"/> 目前的樹、選取與勾選重畫。
         /// </summary>
         /// <remarks>
-        /// <see cref="TreeDrawScope.SelectedSubtree"/> 沒有選取時畫成空白；<see cref="View"/> 是用 <see cref="CascadeView.SetTopLevelNodes"/>
-        /// 顯示其他資料（<see cref="CascadeView.Tree"/> 為 null）時也畫成空白。
+        /// <see cref="TreeDrawScope.SelectedSubtree"/> 沒有選取時畫成空白；<see cref="View"/> 的 <see cref="ICascadeView.Tree"/> 為 null 時也畫成空白。
         /// </remarks>
         public void Redraw()
         {
@@ -259,7 +259,7 @@ namespace CascadeControl.Views
             var selected = _view?.SelectedNode as MenuNode;
             if (_drawScope == TreeDrawScope.SelectedSubtree && selected == null) tree = null;
 
-            var checkSet = (_view as CascadeCheckboxView)?.CheckSet;
+            var checkSet = (_view as ICascadeCheckableView)?.CheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
 
             UpdateImage(TreeDrawer.RenderImage(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded));
@@ -280,7 +280,7 @@ namespace CascadeControl.Views
             SyncExpandTree();
             if (_expandOverrides.TryGetValue(node, out var expanded)) return expanded;
 
-            var checkSet = (_view as CascadeCheckboxView)?.CheckSet;
+            var checkSet = (_view as ICascadeCheckableView)?.CheckSet;
             return checkSet != null && node.Children.Any(checkSet.IsChecked);
         }
 
@@ -534,7 +534,7 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 進入下一層，照 <see cref="CascadeView.StepForward"/> 的規則走（有記憶走記憶，否則第一個子節點）；
+        /// 進入下一層，照 <see cref="ICascadeView.StepForward"/> 的規則走（有記憶走記憶，否則第一個子節點）；
         /// 選取的節點收合（[+]）時不動作，要先按空白鍵展開。
         /// </summary>
         /// <remarks>
@@ -599,7 +599,7 @@ namespace CascadeControl.Views
 
         #region 右鍵功能表
 
-        // 每次開啟前依目前的 View 重建：CascadeView 沒有勾選資訊，不列出「未勾選節點」。
+        // 每次開啟前依目前的 View 重建：沒有勾選能力時不列出「未勾選節點」。
         private void ContextMenu_Opening(object sender, CancelEventArgs e)
         {
             var items = _contextMenu.Items;
@@ -610,7 +610,7 @@ namespace CascadeControl.Views
             scopeMenu.DropDownItems.Add(CreateChoice("選取的子樹", _drawScope == TreeDrawScope.SelectedSubtree, () => DrawScope = TreeDrawScope.SelectedSubtree));
             items.Add(scopeMenu);
 
-            if (_view is CascadeCheckboxView)
+            if (_view is ICascadeCheckableView)
             {
                 var uncheckedMenu = new ToolStripMenuItem("未勾選節點");
                 uncheckedMenu.DropDownItems.Add(CreateChoice("變淡", _uncheckedDisplay == UncheckedNodeDisplay.Dimmed, () => UncheckedDisplay = UncheckedNodeDisplay.Dimmed));
@@ -638,18 +638,18 @@ namespace CascadeControl.Views
 
         #region View 的事件
 
-        private void Attach(CascadeView view)
+        private void Attach(ICascadeView view)
         {
             view.SelectedPathChanged += View_SelectedPathChanged;
-            view.Disposed += View_Disposed;
-            if (view is CascadeCheckboxView checkboxView) checkboxView.CheckedChanged += View_CheckedChanged;
+            if (view is IComponent component) component.Disposed += View_Disposed;
+            if (view is ICascadeCheckableView checkableView) checkableView.CheckedChanged += View_CheckedChanged;
         }
 
-        private void Detach(CascadeView view)
+        private void Detach(ICascadeView view)
         {
             view.SelectedPathChanged -= View_SelectedPathChanged;
-            view.Disposed -= View_Disposed;
-            if (view is CascadeCheckboxView checkboxView) checkboxView.CheckedChanged -= View_CheckedChanged;
+            if (view is IComponent component) component.Disposed -= View_Disposed;
+            if (view is ICascadeCheckableView checkableView) checkableView.CheckedChanged -= View_CheckedChanged;
         }
 
         private void View_SelectedPathChanged(object sender, CascadeNodeEventArgs e) => Redraw();
@@ -697,7 +697,7 @@ namespace CascadeControl.Views
         /// <summary>對象節點。</summary>
         public MenuNode Node { get; }
 
-        /// <summary>從第一層到 <see cref="Node"/> 的路徑，由淺到深，不含樹根；可以直接交給 <see cref="CascadeView.TrySelectPath"/>。</summary>
+        /// <summary>從第一層到 <see cref="Node"/> 的路徑，由淺到深，不含樹根；可以直接交給 <see cref="ICascadeView.TrySelectPath"/>。</summary>
         public IReadOnlyList<MenuNode> Path { get; }
 
         /// <summary>路徑上各節點名稱以 <see cref="CascadeTreeImageView.PathSeparator"/> 串起來的字串。</summary>

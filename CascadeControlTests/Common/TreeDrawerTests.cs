@@ -156,7 +156,7 @@ namespace CascadeControlTests.Common
 
         private static TreeImageNode LayoutNodeOf(CascadeTreeImageView imageView, MenuTree tree, MenuNode target)
         {
-            var checkSet = (imageView.View as CascadeCheckboxView)?.CheckSet;
+            var checkSet = (imageView.View as ICascadeCheckableView)?.CheckSet;
             var isChecked = checkSet == null ? (System.Func<MenuNode, bool>)null : checkSet.IsChecked;
             using (var layout = TreeDrawer.RenderImage(tree, imageView.Font, isChecked, imageView.DrawScope, imageView.UncheckedDisplay, imageView.View?.SelectedNode as MenuNode, imageView.IsExpanded))
             {
@@ -310,6 +310,218 @@ namespace CascadeControlTests.Common
                 Assert.AreEqual(UncheckedNodeDisplay.Hidden, imageView.UncheckedDisplay);
                 Assert.AreEqual(1, settingsChanged);
             }
+        }
+
+        [TestMethod]
+        public void View_BindsPureCSharpICascadeView_RendersNavigatesAndHidesUncheckedMenu()
+        {
+            var tree = TestTrees.Template();
+            var fake = new FakeCascadeView();
+            fake.SetTree(tree);
+
+            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ClientSize = new Size(300, 200), ShowInTaskbar = false })
+            using (var imageView = new ProbeImageView { Dock = DockStyle.Fill, View = fake })
+            {
+                form.Controls.Add(imageView);
+                form.Show();
+
+                Assert.IsTrue(imageView.Image.Width > 1 && imageView.Image.Height > 1);
+
+                var beforeSelect = imageView.Image;
+                imageView.Press(Keys.Down);
+                Assert.AreSame(Find(tree, "System"), fake.SelectedNode);
+                Assert.AreNotSame(beforeSelect, imageView.Image, "純 C# ICascadeView 觸發 SelectedPathChanged 後自動重畫");
+
+                imageView.Press(Keys.Space);
+                imageView.Press(Keys.Right);
+                Assert.AreSame(Find(tree, "System", "Reboot"), fake.SelectedNode);
+
+                imageView.Press(Keys.Left);
+                Assert.AreSame(Find(tree, "System"), fake.SelectedNode);
+
+                imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
+                var items = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
+                imageView.TreeContextMenu.Close();
+                CollectionAssert.AreEqual(new[] { "範圍", "顯示" }, items);
+            }
+        }
+
+        [TestMethod]
+        public void View_BindsPureCSharpICascadeCheckableView_TracksChecksAndShowsUncheckedMenu()
+        {
+            var tree = TestTrees.Template();
+            var fake = new FakeCheckableCascadeView();
+            fake.SetTree(tree);
+            var motor = Find(tree, "Motor");
+            var axisX = Find(tree, "Motor", "Axis X");
+
+            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ClientSize = new Size(300, 200), ShowInTaskbar = false })
+            using (var imageView = new CascadeTreeImageView { Dock = DockStyle.Fill, View = fake })
+            {
+                form.Controls.Add(imageView);
+                form.Show();
+
+                Assert.IsFalse(imageView.IsExpanded(motor));
+                var beforeCheck = imageView.Image;
+
+                fake.CheckSet.Check(axisX);
+                Assert.IsTrue(imageView.IsExpanded(motor), "純 C# ICascadeCheckableView 的 CheckSet 驅動展開狀態");
+                Assert.AreNotSame(beforeCheck, imageView.Image, "純 C# ICascadeCheckableView 的 CheckedChanged 觸發重畫");
+
+                imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
+                var items = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
+                imageView.TreeContextMenu.Close();
+                CollectionAssert.AreEqual(new[] { "範圍", "未勾選節點", "顯示" }, items);
+
+                imageView.View = null;
+                var afterDetach = imageView.Image;
+                fake.CheckSet.Uncheck(axisX);
+                Assert.AreSame(afterDetach, imageView.Image, "解除綁定後不再重畫");
+            }
+        }
+
+        [TestMethod]
+        public void ViewProperty_UsesReferenceConverter_AndListsICascadeViewComponents()
+        {
+            var property = System.ComponentModel.TypeDescriptor.GetProperties(typeof(CascadeTreeImageView))["View"];
+            Assert.IsNotNull(property);
+            Assert.IsInstanceOfType(property.Converter, typeof(System.ComponentModel.ReferenceConverter));
+
+            using (var plain = new CascadeView())
+            using (var checkable = new CascadeCheckboxView())
+            using (var unrelated = new Button())
+            {
+                var context = new ReferenceServiceContext(plain, checkable, unrelated);
+                Assert.IsTrue(property.Converter.GetStandardValuesSupported(context));
+
+                var values = property.Converter.GetStandardValues(context).Cast<object>().ToList();
+                Assert.IsTrue(values.Contains(plain), "設計工具下拉清單應包含 CascadeView");
+                Assert.IsTrue(values.Contains(checkable), "設計工具下拉清單應包含 CascadeCheckboxView");
+                Assert.IsFalse(values.Contains(unrelated), "不實作 ICascadeView 的控制項不可出現在清單中");
+            }
+        }
+
+        private class FakeCascadeView : ICascadeView
+        {
+            private MenuNode _selected;
+
+            public MenuTree Tree { get; private set; }
+
+            public ICascadeNode SelectedNode => _selected;
+
+            public System.Collections.Generic.IReadOnlyList<ICascadeNode> SelectedPath =>
+                _selected == null ? (System.Collections.Generic.IReadOnlyList<ICascadeNode>)new ICascadeNode[0] : _selected.FullPath.Cast<ICascadeNode>().ToList();
+
+            public string SelectedPathText => string.Join(PathSeparator, SelectedPath.Select(node => node.Name));
+
+            public bool IsLeafSelected => _selected != null && _selected.IsLeaf;
+
+            public string PathSeparator { get; set; } = " => ";
+
+            public event System.EventHandler<CascadeNodeEventArgs> SelectedPathChanged;
+
+            public event System.EventHandler<CascadeNodeEventArgs> NodeActivated;
+
+            public virtual void SetTree(MenuTree tree)
+            {
+                Tree = tree;
+                _selected = null;
+                RaiseSelectedPathChanged();
+            }
+
+            public void Clear() => SetTree(null);
+
+            public bool TrySelectNode(MenuNode node)
+            {
+                if (node == null) return false;
+
+                _selected = node;
+                RaiseSelectedPathChanged();
+                return true;
+            }
+
+            public bool TrySelectPath(System.Collections.Generic.IEnumerable<ICascadeNode> path)
+            {
+                var last = path?.LastOrDefault() as MenuNode;
+                return TrySelectNode(last);
+            }
+
+            public bool StepBack()
+            {
+                if (_selected == null || _selected.Parent == null || ReferenceEquals(_selected.Parent, Tree?.Root)) return false;
+
+                _selected = _selected.Parent;
+                RaiseSelectedPathChanged();
+                return true;
+            }
+
+            public bool StepForward()
+            {
+                if (_selected == null || _selected.Children.Count == 0) return false;
+
+                _selected = _selected.Children[0];
+                RaiseSelectedPathChanged();
+                return true;
+            }
+
+            protected void RaiseSelectedPathChanged()
+            {
+                SelectedPathChanged?.Invoke(this, new CascadeNodeEventArgs(SelectedPath, _selected == null ? Tree?.TopLevelNodes : null));
+            }
+
+            protected void RaiseNodeActivated()
+            {
+                NodeActivated?.Invoke(this, new CascadeNodeEventArgs(SelectedPath, _selected == null ? Tree?.TopLevelNodes : null));
+            }
+        }
+
+        private sealed class FakeCheckableCascadeView : FakeCascadeView, ICascadeCheckableView
+        {
+            private MenuCheckSet _checkSet;
+
+            public MenuCheckSet CheckSet
+            {
+                get => _checkSet;
+                set
+                {
+                    if (_checkSet != null) _checkSet.Changed -= OnCheckSetChanged;
+                    _checkSet = value;
+                    if (_checkSet != null) _checkSet.Changed += OnCheckSetChanged;
+                }
+            }
+
+            public event System.EventHandler<MenuCheckChangedEventArgs> CheckedChanged;
+
+            public override void SetTree(MenuTree tree)
+            {
+                CheckSet = tree == null ? null : new MenuCheckSet(tree);
+                base.SetTree(tree);
+            }
+
+            private void OnCheckSetChanged(object sender, MenuCheckChangedEventArgs e) => CheckedChanged?.Invoke(this, e);
+        }
+
+        private sealed class ReferenceServiceContext : System.ComponentModel.ITypeDescriptorContext, System.ComponentModel.Design.IReferenceService
+        {
+            private readonly object[] _components;
+
+            public ReferenceServiceContext(params object[] components)
+            {
+                _components = components;
+            }
+
+            public System.ComponentModel.IContainer Container => null;
+            public object Instance => null;
+            public System.ComponentModel.PropertyDescriptor PropertyDescriptor => null;
+            public bool OnComponentChanging() => true;
+            public void OnComponentChanged() { }
+            public object GetService(System.Type serviceType) => serviceType == typeof(System.ComponentModel.Design.IReferenceService) ? this : null;
+
+            public object[] GetReferences() => _components;
+            public object[] GetReferences(System.Type baseType) => _components.Where(baseType.IsInstanceOfType).ToArray();
+            public object GetReference(string name) => null;
+            public string GetName(object reference) => reference?.GetType().Name;
+            public System.ComponentModel.IComponent GetComponent(object reference) => reference as System.ComponentModel.IComponent;
         }
 
         #endregion CascadeTreeImageView
