@@ -72,6 +72,37 @@ namespace CascadeControlTests.Views
             }
         }
 
+        [TestMethod]
+        public void InterfaceContracts_NavigateAndCheckThroughInterfaces()
+        {
+            using (var plain = new CascadeView())
+            using (var checkable = new CascadeCheckboxView())
+            {
+                ICascadeView plainView = plain;
+                ICascadeCheckableView checkableView = checkable;
+                var tree = TestTrees.Template();
+                var axisX = tree.TopLevelNodes[1].Children[0];
+
+                plainView.SetTree(tree);
+                Assert.AreSame(tree, plainView.Tree);
+                Assert.IsTrue(plainView.TrySelectNode(axisX));
+                Assert.AreSame(axisX, plainView.SelectedNode);
+                Assert.IsTrue(plainView.StepBack());
+                Assert.AreSame(tree.TopLevelNodes[1], plainView.SelectedNode);
+                Assert.IsTrue(plainView.StepForward());
+                Assert.AreSame(axisX, plainView.SelectedNode);
+
+                var checkEvents = 0;
+                checkableView.CheckedChanged += (sender, e) => checkEvents++;
+                checkableView.SetTree(tree);
+                Assert.IsNotNull(checkableView.CheckSet);
+                Assert.AreSame(tree, checkableView.CheckSet.Tree);
+
+                checkableView.CheckSet.Check(axisX);
+                Assert.AreEqual(1, checkEvents);
+            }
+        }
+
         #endregion CheckSet
 
         #region 滑鼠

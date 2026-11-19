@@ -31,12 +31,11 @@ namespace CascadeControl.Views
     [Designer(typeof(CascadeViewDesigner))]
     [ToolboxItem(true)]
     [DefaultEvent(nameof(SelectedPathChanged))]
-    public partial class CascadeView : Panel
+    public partial class CascadeView : Panel, ICascadeView
     {
         private const int DEFAULT_COLUMN_WIDTH = 160;
         private const int MIN_COLUMN_WIDTH = 20;
         private const int DEFAULT_COLUMN_SPACING = 6;
-        private const string DEFAULT_PATH_SEPARATOR = " => ";
 
         private static readonly IReadOnlyList<ICascadeNode> NoNodes = new ICascadeNode[0];
 
@@ -60,7 +59,7 @@ namespace CascadeControl.Views
         private Color _inactiveSelectionBackColor = Color.Empty;
         private Color _trailBackColor = Color.Empty;
         private Color _multiSelectBackColor = Color.Empty;
-        private string _pathSeparator = DEFAULT_PATH_SEPARATOR;
+        private string _pathSeparator = CascadeNavigator.DEFAULT_PATH_SEPARATOR;
 
         /// <summary>
         /// 建立控制項。欄位多到放不下時會出現水平捲軸。
@@ -322,7 +321,7 @@ namespace CascadeControl.Views
         /// </summary>
         [Category("Cascade")]
         [Description("SelectedPathText 使用的層級分隔字串。")]
-        [DefaultValue(DEFAULT_PATH_SEPARATOR)]
+        [DefaultValue(CascadeNavigator.DEFAULT_PATH_SEPARATOR)]
         public string PathSeparator
         {
             get => _pathSeparator;

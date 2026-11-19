@@ -18,6 +18,8 @@ namespace CascadeControl.Views
     /// </remarks>
     internal sealed class CascadeNavigator
     {
+        internal const string DEFAULT_PATH_SEPARATOR = " => ";
+
         private static readonly IReadOnlyList<ICascadeNode> NoNodes = new ICascadeNode[0];
 
         // 第一層沒有父節點，用這個物件當它在記憶表裡的 key。

@@ -55,8 +55,6 @@ namespace CascadeControl.Views
     [DefaultEvent(nameof(NodeMouseClick))]
     public class CascadeTreeImageView : ScrollableControl
     {
-        private const string DEFAULT_PATH_SEPARATOR = " => ";
-
         private readonly ContextMenuStrip _contextMenu = new ContextMenuStrip();
 
         private CascadeView _view;
@@ -64,7 +62,7 @@ namespace CascadeControl.Views
         private TreeDrawScope _drawScope = TreeDrawScope.WholeTree;
         private UncheckedNodeDisplay _uncheckedDisplay = UncheckedNodeDisplay.Dimmed;
         private TreeImageSizeMode _sizeMode = TreeImageSizeMode.ActualSize;
-        private string _pathSeparator = DEFAULT_PATH_SEPARATOR;
+        private string _pathSeparator = CascadeNavigator.DEFAULT_PATH_SEPARATOR;
 
         // 使用者點過展開鈕的節點；沒有的依勾選決定。屬於 _expandTree，換樹時清空。
         private readonly Dictionary<MenuNode, bool> _expandOverrides = new Dictionary<MenuNode, bool>();
@@ -171,7 +169,7 @@ namespace CascadeControl.Views
         /// </summary>
         [Category("Cascade")]
         [Description("NodeMouseClick 事件參數 PathText 使用的層級分隔字串。")]
-        [DefaultValue(DEFAULT_PATH_SEPARATOR)]
+        [DefaultValue(CascadeNavigator.DEFAULT_PATH_SEPARATOR)]
         public string PathSeparator
         {
             get => _pathSeparator;

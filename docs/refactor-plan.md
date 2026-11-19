@@ -57,8 +57,8 @@ namespace CascadeControl.Views
 ## Roadmap and status
 
 - [x] **Plan A, Stage 1.** Add characterization tests for `CascadeTreeImageView` in `CascadeControlTests/Common/TreeDrawerTests.cs` covering `View` attach, replace, and `Dispose` cleanup, node mouse click and double-click, expander click isolation, and `TreeContextMenu` visibility for plain and checkable views.
-- [ ] **Plan A, Stage 2.** Remove dead and duplicate code. Delete unused `CascadeView1_CheckedChanged` and ineffective `UncheckedDisplay` assignment in `CascadeControlSelector/TreeSelector.cs`, and consolidate `DEFAULT_PATH_SEPARATOR` to a single source.
-- [ ] **Plan A, Stage 3.** Add `ICascadeView.cs` and `ICascadeCheckableView.cs` under `CascadeControl/Views/`, register both in `CascadeControl/CascadeControl.csproj` with XML docs, implement `ICascadeView` on `CascadeView`, and implement `ICascadeCheckableView` on `CascadeCheckboxView`.
+- [x] **Plan A, Stage 2.** Remove dead and duplicate code. Delete unused `CascadeView1_CheckedChanged` and ineffective `UncheckedDisplay` assignment in `CascadeControlSelector/TreeSelector.cs`, and consolidate `DEFAULT_PATH_SEPARATOR` to a single source.
+- [x] **Plan A, Stage 3.** Add `ICascadeView.cs` and `ICascadeCheckableView.cs` under `CascadeControl/Views/`, register both in `CascadeControl/CascadeControl.csproj` with XML docs, implement `ICascadeView` on `CascadeView`, and implement `ICascadeCheckableView` on `CascadeCheckboxView`.
 - [ ] **Plan A, Stage 4.** Change `CascadeTreeImageView.View` from `CascadeView` to `ICascadeView` with `[TypeConverter(typeof(ReferenceConverter))]`, replace all `CascadeCheckboxView` casts with `ICascadeCheckableView`, subscribe to `Disposed` through `IComponent`, verify WinForms Designer converter behavior, and add pure C# fake-view tests.
 - [ ] **Plan B2 Architecture Gate.** Run `/pstack:architect` to design the shared state object, control bindings for all three views, and migration steps. Stop for user confirmation before editing code.
 - [ ] **Plan B2 Implementation.** Execute the confirmed Plan B2 migration stages.
@@ -76,4 +76,6 @@ Run these commands from the repository root `D:\github\CascadeControl`.
 ## Stage log
 
 - Baseline (2026-11-20): Debug build succeeded (4 projects, 0 errors); `vstest.console.exe` passed 422 of 422 tests in 13.37 seconds.
-- Plan A, Stage 1 (2026-11-20): Added 4 characterization tests in `CascadeControlTests/Common/TreeDrawerTests.cs`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 426 of 426 tests in 12.99 seconds. Waiting for user confirmation before Stage 2.
+- Plan A, Stage 1 (2026-11-20): Added 4 characterization tests in `CascadeControlTests/Common/TreeDrawerTests.cs`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 426 of 426 tests in 12.99 seconds.
+- Plan A, Stage 2 (2026-11-20): Removed unused `CascadeView1_CheckedChanged` and ineffective `UncheckedDisplay` assignment from `CascadeControlSelector/TreeSelector.cs`, and consolidated `DEFAULT_PATH_SEPARATOR` onto `CascadeNavigator`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 426 of 426 tests in 13.60 seconds.
+- Plan A, Stage 3 (2026-11-20): Added `ICascadeView` and `ICascadeCheckableView` in `CascadeControl/Views/`, registered both in `CascadeControl/CascadeControl.csproj`, implemented them on `CascadeView` and `CascadeCheckboxView`, and added `InterfaceContracts_NavigateAndCheckThroughInterfaces` in `CascadeCheckboxViewTests.cs`; Debug build succeeded (0 errors, 0 new warnings); `vstest.console.exe` passed 427 of 427 tests in 13.67 seconds. Waiting for user confirmation before Stage 4.

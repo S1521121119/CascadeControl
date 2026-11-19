@@ -23,7 +23,7 @@ namespace CascadeControl.Views
     /// 剪下、刪除節點時，被移除節點的勾選會一起取消，和移除算同一步，所以復原時勾選也會回來。
     /// </remarks>
     [DesignerCategory("")]
-    public class CascadeCheckboxView : CascadeView
+    public class CascadeCheckboxView : CascadeView, ICascadeCheckableView
     {
         private const string CHECK_SUBTREE_TEXT = "勾選(含所有子節點)";
         private const string CHECK_SIBLINGS_TEXT = "全部勾選";

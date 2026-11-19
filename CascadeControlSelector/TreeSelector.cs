@@ -79,7 +79,6 @@ namespace CascadeControlSelector
             cascadeView1.FocusActiveColumn();
 
             treeImageView1.DrawScope = TreeDrawScope.WholeTree;
-            treeImageView1.UncheckedDisplay = UncheckedNodeDisplay.Dimmed;
         }
 
         #region 拖放載入
@@ -202,16 +201,6 @@ namespace CascadeControlSelector
         private void TreeImageView1_NodeActivated(object sender, CascadeTreeImageNodeEventArgs e)
         {
             ExecuteSelection(e.PathText);
-        }
-
-        private void CascadeView1_CheckedChanged(object sender, MenuCheckChangedEventArgs e)
-        {
-            // 樹狀圖由 treeImageView1 自己跟著勾選重畫。
-            LogMessage($"CheckedChanged：{e.Reason}"
-                + $"｜Target={e.Target?.FullPathText ?? "(整棵樹)"}"
-                + $"｜+{e.Added.Count} / -{e.Removed.Count}"
-
-                + $"｜Undo={cascadeView1.History.UndoCount} Redo={cascadeView1.History.RedoCount}");
         }
 
         #endregion 事件處理
