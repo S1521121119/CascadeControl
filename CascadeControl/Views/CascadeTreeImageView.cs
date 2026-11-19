@@ -36,6 +36,19 @@ namespace CascadeControl.Views
     /// 會自動重畫的時機：<see cref="CascadeView.SelectedPathChanged"/>（包含 <see cref="CascadeView.SetTree"/>）、
     /// <see cref="CascadeCheckboxView.CheckedChanged"/>；樹的結構被編輯但選取沒變，或直接換掉 <see cref="CascadeCheckboxView.CheckSet"/> 時，
     /// 請自己呼叫 <see cref="Redraw"/>。
+    /// <para>
+    /// 有子節點的節點可以收合：左鍵點方塊右側的 [+] 展開（變成 [-]、畫出子節點），點 [-] 收合；點展開鈕不會觸發 <see cref="NodeMouseClick"/>。
+    /// 沒點過的節點依勾選決定：有任何子節點被勾選就展開（勾選子孫會補勾祖先，所以祖先跟著展開），否則收合；
+    /// 沒有勾選資訊（<see cref="View"/> 不是 <see cref="CascadeCheckboxView"/>）時一律收合。
+    /// 點過的節點記住使用者的選擇，換成另一棵樹時全部忘掉；選取的節點被收合藏起來時不會自動展開。
+    /// </para>
+    /// <para>
+    /// 取得焦點後可以用鍵盤操作，改的是 <see cref="View"/> 的選取，所以「進出記住位置」的記憶和 <see cref="CascadeView"/> 是同一份：
+    /// ↑↓ 在圖上看得到的同一層節點之間移動，可以跨父節點，被收合或隱藏的節點跳過；
+    /// ← 同 <see cref="CascadeView.StepBack"/>；→ 同 <see cref="CascadeView.StepForward"/>，但選取的節點收合（[+]）時不動作，要先展開；
+    /// 空白鍵展開或收合選取的節點；Enter 觸發 <see cref="NodeActivated"/>（和雙擊同樣用途，由訂閱端決定做什麼）。原始尺寸下會捲動到選取的節點。
+    /// <see cref="TreeDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
+    /// </para>
     /// </remarks>
     [DesignerCategory("")]
     [ToolboxItem(true)]
@@ -52,6 +65,11 @@ namespace CascadeControl.Views
         private UncheckedNodeDisplay _uncheckedDisplay = UncheckedNodeDisplay.Dimmed;
         private TreeImageSizeMode _sizeMode = TreeImageSizeMode.ActualSize;
         private string _pathSeparator = DEFAULT_PATH_SEPARATOR;
+
+        // 使用者點過展開鈕的節點；沒有的依勾選決定。屬於 _expandTree，換樹時清空。
+        private readonly Dictionary<MenuNode, bool> _expandOverrides = new Dictionary<MenuNode, bool>();
+
+        private MenuTree _expandTree;
 
         /// <summary>
         /// 建立控制項。
@@ -149,7 +167,7 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// <see cref="CascadeTreeImageNodeMouseEventArgs.PathText"/> 使用的層級分隔字串。
+        /// <see cref="CascadeTreeImageNodeEventArgs.PathText"/> 使用的層級分隔字串。
         /// </summary>
         [Category("Cascade")]
         [Description("NodeMouseClick 事件參數 PathText 使用的層級分隔字串。")]
@@ -191,6 +209,14 @@ namespace CascadeControl.Views
         public event EventHandler<CascadeTreeImageNodeMouseEventArgs> NodeMouseDoubleClick;
 
         /// <summary>
+        /// 焦點在樹圖上時，在選取的節點上按 Enter 之後觸發；用途和 <see cref="NodeMouseDoubleClick"/> 相同，
+        /// 讓鍵盤也能「啟動」節點（例如 <see cref="CascadeCheckboxView"/> 切換勾選、<see cref="CascadeView"/> 執行選取）。
+        /// 控制項本身不做任何事，由訂閱端決定。沒有選取，或選取的節點被收合藏起來時不觸發。
+        /// </summary>
+        [Category("Cascade")]
+        public event EventHandler<CascadeTreeImageNodeEventArgs> NodeActivated;
+
+        /// <summary>
         /// <see cref="DrawScope"/>、<see cref="UncheckedDisplay"/> 或 <see cref="SizeMode"/> 改變後觸發，包含從右鍵功能表切換。
         /// </summary>
         [Category("Cascade")]
@@ -205,6 +231,11 @@ namespace CascadeControl.Views
         /// 觸發 <see cref="NodeMouseDoubleClick"/>。
         /// </summary>
         protected virtual void OnNodeMouseDoubleClick(CascadeTreeImageNodeMouseEventArgs e) => NodeMouseDoubleClick?.Invoke(this, e);
+
+        /// <summary>
+        /// 觸發 <see cref="NodeActivated"/>。
+        /// </summary>
+        protected virtual void OnNodeActivated(CascadeTreeImageNodeEventArgs e) => NodeActivated?.Invoke(this, e);
 
         /// <summary>
         /// 觸發 <see cref="DrawSettingsChanged"/>。
@@ -225,13 +256,59 @@ namespace CascadeControl.Views
         public void Redraw()
         {
             var tree = _view?.Tree;
+            SyncExpandTree();
+
             var selected = _view?.SelectedNode as MenuNode;
             if (_drawScope == TreeDrawScope.SelectedSubtree && selected == null) tree = null;
 
             var checkSet = (_view as CascadeCheckboxView)?.CheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
 
-            UpdateImage(TreeDrawer.RenderImage(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected));
+            UpdateImage(TreeDrawer.RenderImage(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded));
+        }
+
+        /// <summary>
+        /// 有子節點的節點是否展開。
+        /// </summary>
+        /// <param name="node">要查詢的節點。</param>
+        /// <returns>
+        /// 使用者點過展開鈕（或呼叫過 <see cref="SetExpanded"/>）的節點照那次的設定；
+        /// 其他的節點有任何子節點被勾選時為 true，沒有勾選資訊時為 false。null 回傳 false。
+        /// </returns>
+        public bool IsExpanded(MenuNode node)
+        {
+            if (node == null) return false;
+
+            SyncExpandTree();
+            if (_expandOverrides.TryGetValue(node, out var expanded)) return expanded;
+
+            var checkSet = (_view as CascadeCheckboxView)?.CheckSet;
+            return checkSet != null && node.Children.Any(checkSet.IsChecked);
+        }
+
+        /// <summary>
+        /// 展開或收合節點並重畫；之後不再依勾選自動決定，直到換成另一棵樹。
+        /// </summary>
+        /// <param name="node">要展開或收合的節點。</param>
+        /// <param name="expanded">true 展開、false 收合。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
+        public void SetExpanded(MenuNode node, bool expanded)
+        {
+            if (node == null) throw new ArgumentNullException(nameof(node));
+
+            SyncExpandTree();
+            _expandOverrides[node] = expanded;
+            Redraw();
+        }
+
+        // View 換成另一棵樹（或沒有樹）時，忘掉使用者點過的展開狀態。
+        private void SyncExpandTree()
+        {
+            var tree = _view?.Tree;
+            if (ReferenceEquals(tree, _expandTree)) return;
+
+            _expandOverrides.Clear();
+            _expandTree = tree;
         }
 
         private void UpdateImage(TreeImage image)
@@ -307,8 +384,35 @@ namespace CascadeControl.Views
         {
             if (_image == null) return null;
 
+            return _image.GetNodeAt(ToImagePoint(clientLocation));
+        }
+
+        /// <summary>
+        /// 控制項上的某一點落在哪個節點的展開鈕（[+] 或 [-]）上，已考慮捲動位置與縮放。
+        /// </summary>
+        /// <param name="clientLocation">控制項的用戶區座標。</param>
+        /// <returns>展開鈕所屬的節點；沒點到時為 null。</returns>
+        public MenuNode GetExpanderAt(Point clientLocation)
+        {
+            return _image?.GetExpanderAt(ToImagePoint(clientLocation));
+        }
+
+        private PointF ToImagePoint(Point clientLocation)
+        {
             GetTransform(out var scale, out var offset);
-            return _image.GetNodeAt(new PointF((clientLocation.X - offset.X) / scale, (clientLocation.Y - offset.Y) / scale));
+            return new PointF((clientLocation.X - offset.X) / scale, (clientLocation.Y - offset.Y) / scale);
+        }
+
+        // 左鍵點在展開鈕上就切換展開狀態；回傳 true 表示點到了展開鈕。
+        private bool TryToggleExpander(MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left) return false;
+
+            var node = GetExpanderAt(e.Location);
+            if (node == null) return false;
+
+            SetExpanded(node, !IsExpanded(node));
+            return true;
         }
 
         /// <inheritdoc />
@@ -330,6 +434,7 @@ namespace CascadeControl.Views
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
+            if (TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node != null) OnNodeMouseClick(CreateMouseEventArgs(node, e));
@@ -339,6 +444,9 @@ namespace CascadeControl.Views
         protected override void OnMouseDoubleClick(MouseEventArgs e)
         {
             base.OnMouseDoubleClick(e);
+
+            // 連點兩下時第二下只會送 DoubleClick，當成第二次點擊再切換一次。
+            if (TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node != null) OnNodeMouseDoubleClick(CreateMouseEventArgs(node, e));
@@ -350,6 +458,146 @@ namespace CascadeControl.Views
         }
 
         #endregion 滑鼠
+
+        #region 鍵盤
+
+        // 鍵盤移動後捲動到選取的節點時，方塊外圍多留的空白。
+        private const int ENSURE_VISIBLE_MARGIN = 12;
+
+        /// <inheritdoc />
+        /// <remarks>方向鍵要自己處理，不讓表單拿去切換焦點；Enter 也是，不讓表單的 AcceptButton 搶走。</remarks>
+        protected override bool IsInputKey(Keys keyData)
+        {
+            switch (keyData)
+            {
+                case Keys.Up:
+                case Keys.Down:
+                case Keys.Left:
+                case Keys.Right:
+                case Keys.Enter:
+                    return true;
+            }
+
+            return base.IsInputKey(keyData);
+        }
+
+        /// <summary>
+        /// ↑↓ 在圖上看得到的同一層節點之間移動（可以跨父節點）；← 退回上一層、→ 進入下一層（記憶和 <see cref="View"/> 共用）；
+        /// 空白鍵展開或收合選取的節點；Enter 在選取的節點上觸發 <see cref="NodeActivated"/>。改的是 <see cref="View"/> 的選取，所以兩邊一起動。
+        /// </summary>
+        /// <param name="e">按鍵資料；有 Ctrl、Alt 或 Shift 時不處理。</param>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.Handled || e.Modifiers != Keys.None || _view == null) return;
+
+            switch (e.KeyCode)
+            {
+                case Keys.Up: MoveVertical(-1); break;
+                case Keys.Down: MoveVertical(1); break;
+                case Keys.Left: _view.StepBack(); break;
+                case Keys.Right: StepIn(); break;
+                case Keys.Space: ToggleSelected(); break;
+                case Keys.Enter: ActivateSelected(); break;
+                default: return;
+            }
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            EnsureVisible(SelectedMenuNode);
+        }
+
+        private MenuNode SelectedMenuNode => _view?.SelectedNode as MenuNode;
+
+        // 節點畫在圖上的那一格；沒畫出來（被收合、隱藏，或不在範圍內）時為 null。
+        private TreeImageNode FindImageNode(MenuNode node)
+        {
+            return node == null || _image == null ? null : _image.Nodes.FirstOrDefault(imageNode => ReferenceEquals(imageNode.Node, node));
+        }
+
+        /// <summary>
+        /// 選同一層（同一欄）圖上看得到的上一個或下一個節點；到頭不動。未選取或選取的節點不在圖上時，選圖上第一個節點。
+        /// </summary>
+        /// <remarks><see cref="TreeImage.Nodes"/> 是前序排列，同一層的節點剛好由上往下。</remarks>
+        private void MoveVertical(int direction)
+        {
+            if (_image == null || _image.Nodes.Count == 0) return;
+
+            var current = FindImageNode(SelectedMenuNode);
+            if (current == null)
+            {
+                _view.TrySelectNode(_image.Nodes[0].Node);
+                return;
+            }
+
+            var column = _image.Nodes.Where(imageNode => imageNode.Node.Depth == current.Node.Depth).ToList();
+            var index = column.IndexOf(current) + direction;
+            if (index >= 0 && index < column.Count) _view.TrySelectNode(column[index].Node);
+        }
+
+        /// <summary>
+        /// 進入下一層，照 <see cref="CascadeView.StepForward"/> 的規則走（有記憶走記憶，否則第一個子節點）；
+        /// 選取的節點收合（[+]）時不動作，要先按空白鍵展開。
+        /// </summary>
+        /// <remarks>
+        /// 隱藏未勾選的節點時，記憶或第一個子節點可能沒畫出來，改選圖上第一個子節點；子節點全被隱藏時不動作。
+        /// </remarks>
+        private void StepIn()
+        {
+            var node = SelectedMenuNode;
+            if (node != null && !node.Children.Any(child => FindImageNode(child) != null)) return;
+
+            if (!_view.StepForward() || node == null) return;
+            if (FindImageNode(SelectedMenuNode) != null) return;
+
+            var firstDrawn = node.Children.FirstOrDefault(child => FindImageNode(child) != null);
+            if (firstDrawn != null) _view.TrySelectNode(firstDrawn);
+        }
+
+        // 和雙擊一樣只針對畫在圖上的節點；選取被收合藏起來或沒有選取時不觸發。
+        private void ActivateSelected()
+        {
+            var node = SelectedMenuNode;
+            if (FindImageNode(node) != null) OnNodeActivated(new CascadeTreeImageNodeEventArgs(node, _pathSeparator));
+        }
+
+        private void ToggleSelected()
+        {
+            var node = SelectedMenuNode;
+            if (node != null && node.Children.Count > 0) SetExpanded(node, !IsExpanded(node));
+        }
+
+        /// <summary>
+        /// 原始尺寸模式下，捲動到選取節點的方塊完整露出（外圍多留 <see cref="ENSURE_VISIBLE_MARGIN"/>）；自動縮放時整張都看得到，不用捲。
+        /// </summary>
+        private void EnsureVisible(MenuNode node)
+        {
+            if (_sizeMode != TreeImageSizeMode.ActualSize) return;
+
+            var imageNode = FindImageNode(node);
+            if (imageNode == null) return;
+
+            var bounds = RectangleF.Inflate(imageNode.Bounds, ENSURE_VISIBLE_MARGIN, ENSURE_VISIBLE_MARGIN);
+            var client = ClientSize;
+
+            // AutoScrollPosition 讀出來是負的，設定時要給正的。
+            var x = -AutoScrollPosition.X;
+            var y = -AutoScrollPosition.Y;
+
+            if (bounds.Left < x) x = (int)Math.Floor(bounds.Left);
+            else if (bounds.Right > x + client.Width) x = (int)Math.Ceiling(bounds.Right) - client.Width;
+
+            if (bounds.Top < y) y = (int)Math.Floor(bounds.Top);
+            else if (bounds.Bottom > y + client.Height) y = (int)Math.Ceiling(bounds.Bottom) - client.Height;
+
+            var target = new Point(Math.Max(0, x), Math.Max(0, y));
+            if (target == new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y)) return;
+
+            AutoScrollPosition = target;
+            Invalidate();
+        }
+
+        #endregion 鍵盤
 
         #region 右鍵功能表
 
@@ -431,30 +679,24 @@ namespace CascadeControl.Views
     }
 
     /// <summary>
-    /// <see cref="CascadeTreeImageView.NodeMouseClick"/> 與 <see cref="CascadeTreeImageView.NodeMouseDoubleClick"/> 的事件參數：點到的節點與它的路徑。
+    /// <see cref="CascadeTreeImageView.NodeActivated"/> 的事件參數：對象節點與它的路徑；滑鼠事件的參數由它衍生。
     /// </summary>
-    public class CascadeTreeImageNodeMouseEventArgs : EventArgs
+    public class CascadeTreeImageNodeEventArgs : EventArgs
     {
         /// <summary>
         /// 建立事件參數。
         /// </summary>
-        /// <param name="node">點到的節點。</param>
+        /// <param name="node">對象節點。</param>
         /// <param name="pathSeparator"><see cref="PathText"/> 的層級分隔字串。</param>
-        /// <param name="button">按下的滑鼠鍵。</param>
-        /// <param name="location">點擊位置，控制項的用戶區座標。</param>
-        /// <param name="screenLocation">點擊位置的螢幕座標。</param>
         /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
-        public CascadeTreeImageNodeMouseEventArgs(MenuNode node, string pathSeparator, MouseButtons button, Point location, Point screenLocation)
+        public CascadeTreeImageNodeEventArgs(MenuNode node, string pathSeparator)
         {
             Node = node ?? throw new ArgumentNullException(nameof(node));
             Path = node.FullPath;
             PathText = string.Join(pathSeparator ?? string.Empty, Path.Select(step => step.Name));
-            Button = button;
-            Location = location;
-            ScreenLocation = screenLocation;
         }
 
-        /// <summary>點到的節點。</summary>
+        /// <summary>對象節點。</summary>
         public MenuNode Node { get; }
 
         /// <summary>從第一層到 <see cref="Node"/> 的路徑，由淺到深，不含樹根；可以直接交給 <see cref="CascadeView.TrySelectPath"/>。</summary>
@@ -462,6 +704,29 @@ namespace CascadeControl.Views
 
         /// <summary>路徑上各節點名稱以 <see cref="CascadeTreeImageView.PathSeparator"/> 串起來的字串。</summary>
         public string PathText { get; }
+    }
+
+    /// <summary>
+    /// <see cref="CascadeTreeImageView.NodeMouseClick"/> 與 <see cref="CascadeTreeImageView.NodeMouseDoubleClick"/> 的事件參數：點到的節點、它的路徑與滑鼠資訊。
+    /// </summary>
+    public class CascadeTreeImageNodeMouseEventArgs : CascadeTreeImageNodeEventArgs
+    {
+        /// <summary>
+        /// 建立事件參數。
+        /// </summary>
+        /// <param name="node">點到的節點。</param>
+        /// <param name="pathSeparator"><see cref="CascadeTreeImageNodeEventArgs.PathText"/> 的層級分隔字串。</param>
+        /// <param name="button">按下的滑鼠鍵。</param>
+        /// <param name="location">點擊位置，控制項的用戶區座標。</param>
+        /// <param name="screenLocation">點擊位置的螢幕座標。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
+        public CascadeTreeImageNodeMouseEventArgs(MenuNode node, string pathSeparator, MouseButtons button, Point location, Point screenLocation)
+            : base(node, pathSeparator)
+        {
+            Button = button;
+            Location = location;
+            ScreenLocation = screenLocation;
+        }
 
         /// <summary>按下的滑鼠鍵。</summary>
         public MouseButtons Button { get; }

@@ -501,6 +501,29 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
+        /// 往左退一層，和按 ← 相同；退回的那一層留在記憶軌跡裡，之後 <see cref="StepForward"/> 會走回去。不會移動鍵盤焦點。
+        /// </summary>
+        /// <returns>選取有改變時為 true；已在第一層或未選取時不動作，回傳 false。</returns>
+        public bool StepBack()
+        {
+            var changed = _navigator.StepBack();
+            ApplyNavigation(changed);
+            return changed;
+        }
+
+        /// <summary>
+        /// 往右進一層，和按 → 相同：有記憶軌跡時選上次的節點；沒有記憶而選取的節點有子節點時，選它的第一個子節點。
+        /// 未選取時，第一層有記憶就選上次的節點。不會移動鍵盤焦點。
+        /// </summary>
+        /// <returns>選取有改變時為 true。</returns>
+        public bool StepForward()
+        {
+            var changed = _navigator.StepForward();
+            ApplyNavigation(changed);
+            return changed;
+        }
+
+        /// <summary>
         /// 忘掉所有分支的記憶軌跡，只保留目前的選取路徑；選取不變，所以不會觸發 <see cref="SelectedPathChanged"/>。
         /// </summary>
         /// <remarks>呼叫 <see cref="SetTopLevelNodes"/>、<see cref="SetTree"/> 或 <see cref="Clear"/> 時記憶也會一併清除，不需要另外呼叫。</remarks>

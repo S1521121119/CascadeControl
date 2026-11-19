@@ -74,11 +74,11 @@ namespace CascadeControl.Views
             switch (e.KeyCode)
             {
                 case Keys.Left:
-                    ApplyNavigation(_navigator.StepBack());
+                    StepBack();
                     break;
 
                 case Keys.Right:
-                    ApplyNavigation(_navigator.StepForward());
+                    StepForward();
                     break;
 
                 case Keys.Enter:

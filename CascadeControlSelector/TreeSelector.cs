@@ -42,7 +42,10 @@ namespace CascadeControlSelector
 
             if (string.IsNullOrEmpty(startupPath))
             {
-                return;
+                var _menu = new MenuTree();
+                _menu.AddPath("root");
+                cascadeView1.SetTree(_menu);
+                cascadeView1.ReadOnly = false;
             }
 
             if (!File.Exists(startupPath))
@@ -189,6 +192,14 @@ namespace CascadeControlSelector
         }
 
         private void TreeImageView1_NodeMouseDoubleClick(object sender, CascadeTreeImageNodeMouseEventArgs e)
+        {
+            ExecuteSelection(e.PathText);
+        }
+
+        /// <summary>
+        /// 在右側樹狀圖上按 Enter：和雙擊一樣執行選取。
+        /// </summary>
+        private void TreeImageView1_NodeActivated(object sender, CascadeTreeImageNodeEventArgs e)
         {
             ExecuteSelection(e.PathText);
         }

@@ -46,7 +46,8 @@ namespace CascadeControl.Common
     /// 父子之間用貝茲曲線連接。
     /// </summary>
     /// <remarks>
-    /// 有子節點的畫圓角長方形，方塊內的最右邊畫一個正方形的 [+]（該層因此加寬）；葉節點畫直角長方形。同一層的方塊等寬，寬度依字型量出該層最長的編號與名稱決定，且不小於高度；
+    /// 有子節點的畫圓角長方形，方塊內的最右邊畫一個正方形的展開鈕（該層因此加寬）：收合時是 [+]、子節點不畫，展開時是 [-]；
+    /// 葉節點畫直角長方形。第一層有多個節點時畫出的 Root 永遠展開，不畫展開鈕。同一層的方塊等寬，寬度依字型量出該層最長的編號與名稱決定，且不小於高度；
     /// 同一層的名稱從同一個位置開始，編號位數不同也對得齊。
     /// 圖照實際大小畫，不會為了塞進控制項而縮小；放不下時由外層的捲動容器處理。
     /// <para>
@@ -120,6 +121,9 @@ namespace CascadeControl.Common
 
             public bool IsChecked { get; set; }
 
+            // 有展開鈕時是否展開；收合的節點不畫子節點。
+            public bool IsExpanded { get; set; } = true;
+
             // 自己和原樹中的所有子孫都勾了。
             public bool IsFullyChecked { get; set; }
 
@@ -150,17 +154,19 @@ namespace CascadeControl.Common
         /// 目前選取的節點，要屬於 <paramref name="tree"/>；<see cref="TreeDrawScope.SelectedSubtree"/> 從它開始畫，
         /// <see cref="TreeDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
+        /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
         public static void Draw(
             PictureBox pictureBox,
             MenuTree tree,
             Func<MenuNode, bool> isChecked = null,
             TreeDrawScope scope = TreeDrawScope.WholeTree,
             UncheckedNodeDisplay uncheckedDisplay = UncheckedNodeDisplay.Dimmed,
-            MenuNode selectedNode = null)
+            MenuNode selectedNode = null,
+            Func<MenuNode, bool> isExpanded = null)
         {
             if (pictureBox == null) throw new ArgumentNullException(nameof(pictureBox));
 
-            var bitmap = Render(tree, pictureBox.Font ?? SystemFonts.DefaultFont, isChecked, scope, uncheckedDisplay, selectedNode);
+            var bitmap = Render(tree, pictureBox.Font ?? SystemFonts.DefaultFont, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded);
 
             var oldImage = pictureBox.Image;
             pictureBox.Image = bitmap;
@@ -181,19 +187,21 @@ namespace CascadeControl.Common
         /// 目前選取的節點，要屬於 <paramref name="tree"/>；<see cref="TreeDrawScope.SelectedSubtree"/> 從它開始畫，
         /// <see cref="TreeDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
+        /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
         public static Bitmap Render(
             MenuTree tree,
             Font font,
             Func<MenuNode, bool> isChecked = null,
             TreeDrawScope scope = TreeDrawScope.WholeTree,
             UncheckedNodeDisplay uncheckedDisplay = UncheckedNodeDisplay.Dimmed,
-            MenuNode selectedNode = null)
+            MenuNode selectedNode = null,
+            Func<MenuNode, bool> isExpanded = null)
         {
-            return RenderImage(tree, font, isChecked, scope, uncheckedDisplay, selectedNode).Image;
+            return RenderImage(tree, font, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded).Image;
         }
 
         /// <summary>
-        /// 和 <see cref="Render"/> 相同，另外帶回每個節點方塊在圖上的位置，用來找出滑鼠點到哪個節點。
+        /// 和 <see cref="Render"/> 相同，另外帶回每個節點方塊與展開鈕在圖上的位置，用來找出滑鼠點到哪個節點或哪個展開鈕。
         /// </summary>
         /// <param name="tree">要畫的樹；沒有東西可畫時，圖是 1×1 的空白、沒有任何節點。</param>
         /// <param name="font">文字的字型；null 時使用系統預設字型。</param>
@@ -201,6 +209,7 @@ namespace CascadeControl.Common
         /// <param name="scope">要畫樹的哪個範圍。</param>
         /// <param name="uncheckedDisplay">有勾選資訊時，沒勾的節點怎麼呈現。</param>
         /// <param name="selectedNode">目前選取的節點，規則同 <see cref="Render"/>。</param>
+        /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
         /// <returns>圖與節點位置；用完要 Dispose。</returns>
         public static TreeImage RenderImage(
             MenuTree tree,
@@ -208,7 +217,8 @@ namespace CascadeControl.Common
             Func<MenuNode, bool> isChecked = null,
             TreeDrawScope scope = TreeDrawScope.WholeTree,
             UncheckedNodeDisplay uncheckedDisplay = UncheckedNodeDisplay.Dimmed,
-            MenuNode selectedNode = null)
+            MenuNode selectedNode = null,
+            Func<MenuNode, bool> isExpanded = null)
         {
             font = font ?? SystemFonts.DefaultFont;
             if (tree == null || !BelongsTo(selectedNode, tree)) selectedNode = null;
@@ -218,6 +228,7 @@ namespace CascadeControl.Common
 
             var root = tree == null || tree.IsEmpty ? null : BuildLayout(tree, isChecked, scope, hideUnchecked, selectedNode);
             if (root == null) return new TreeImage(CreateBlank(), new TreeImageNode[0]);
+            if (isExpanded != null) Collapse(root, isExpanded);
 
             var showChecks = isChecked != null;
 
@@ -252,12 +263,20 @@ namespace CascadeControl.Common
                 // 位置跟著縮小的比例換算成圖上的像素；Root 不對應任何節點，不放進去。
                 var hitNodes = nodes
                     .Where(node => !node.IsVirtualRoot)
-                    .Select(node => new TreeImageNode(node.Source, new RectangleF(
-                        node.Bounds.X * scale, node.Bounds.Y * scale, node.Bounds.Width * scale, node.Bounds.Height * scale)))
+                    .Select(node => new TreeImageNode(
+                        node.Source,
+                        Scale(node.Bounds, scale),
+                        HasExpander(node) ? Scale(ExpanderBounds(node), scale) : RectangleF.Empty,
+                        node.IsExpanded))
                     .ToList();
 
                 return new TreeImage(bitmap, hitNodes);
             }
+        }
+
+        private static RectangleF Scale(RectangleF bounds, float scale)
+        {
+            return new RectangleF(bounds.X * scale, bounds.Y * scale, bounds.Width * scale, bounds.Height * scale);
         }
 
         private static Bitmap CreateBlank()
@@ -329,6 +348,25 @@ namespace CascadeControl.Common
             }
 
             parent.IsFullyChecked = allFullyChecked;
+        }
+
+        /// <summary>
+        /// 收合的節點拿掉子節點，不畫它們。
+        /// </summary>
+        /// <remarks>
+        /// 在 <see cref="BuildNode"/> 算完 <see cref="LayoutNode.IsFullyChecked"/> 之後才拿掉，
+        /// 所以收合的節點照樣依原樹的子孫決定外框是實線或虛線。
+        /// </remarks>
+        private static void Collapse(LayoutNode node, Func<MenuNode, bool> isExpanded)
+        {
+            if (HasExpander(node) && !isExpanded(node.Source))
+            {
+                node.IsExpanded = false;
+                node.Children.Clear();
+                return;
+            }
+
+            foreach (var child in node.Children) Collapse(child, isExpanded);
         }
 
         // 節點是不是這棵樹裡的（樹根不算）。
@@ -520,7 +558,7 @@ namespace CascadeControl.Common
         /// <remarks>
         /// 有底色的節點，外框是同色系的深色（A、B 色各自調暗）；沒勾的節點一律白底、灰框、灰字，不分層也不分 A/B 色；
         /// 勾選的節點底色與外框顏色不變，外框加粗，全勾是實線、勾了但子孫沒有全勾是虛線。
-        /// 有子節點的方塊在最右邊畫 [+]。
+        /// 有子節點的方塊在最右邊畫展開鈕（收合 [+]、展開 [-]）。
         /// 選取的節點照樣畫原本的外框，再往外留 <see cref="SELECTED_BORDER_GAP"/> 的空隙另外畫一圈矩形紅框，不蓋住原本的外框。
         /// </remarks>
         private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks)
@@ -593,7 +631,7 @@ namespace CascadeControl.Common
         }
 
         /// <summary>
-        /// 在方塊內的最右邊畫一個正方形的 [+]：白底，外框與加號用方塊的外框色（沒勾的節點是灰色）。
+        /// 在方塊內的最右邊畫一個正方形的展開鈕：收合時是 [+]、展開時是 [-]；白底，外框與符號用方塊的外框色（沒勾的節點是灰色）。
         /// </summary>
         /// <remarks>座標取整數、關掉反鋸齒畫，線條才不會糊掉。</remarks>
         private static void DrawExpander(Graphics g, LayoutNode node, Color color)
@@ -613,14 +651,15 @@ namespace CascadeControl.Common
                 g.FillRectangle(Brushes.White, x, y, size, size);
                 g.DrawRectangle(pen, x, y, size, size);
                 g.DrawLine(pen, x + EXPANDER_PADDING, y + middle, x + size - EXPANDER_PADDING, y + middle);
-                g.DrawLine(pen, x + middle, y + EXPANDER_PADDING, x + middle, y + size - EXPANDER_PADDING);
+                if (!node.IsExpanded) g.DrawLine(pen, x + middle, y + EXPANDER_PADDING, x + middle, y + size - EXPANDER_PADDING);
             }
 
             g.SmoothingMode = smoothing;
         }
 
-        // 和圓角一樣依原樹決定：隱藏沒勾的節點時，子節點全被濾掉的節點仍然有 [+]。
-        private static bool HasExpander(LayoutNode node) => node.Source.Children.Count > 0;
+        // 和圓角一樣依原樹決定：隱藏沒勾的節點時，子節點全被濾掉的節點仍然有展開鈕。
+        // Root 不對應真正的節點，永遠展開，不畫展開鈕。
+        private static bool HasExpander(LayoutNode node) => !node.IsVirtualRoot && node.Source.Children.Count > 0;
 
         // [+] 的位置：方塊內、離右緣 EXPANDER_RIGHT，垂直置中。
         private static RectangleF ExpanderBounds(LayoutNode node)

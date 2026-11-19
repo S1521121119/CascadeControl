@@ -42,6 +42,11 @@ namespace CascadeControlViewer
 
             if (string.IsNullOrEmpty(startupPath))
             {
+                var _menu = new MenuTree();
+                _menu.AddPath("root");
+                cascadeView1.SetTree(_menu);
+                cascadeView1.ReadOnly = false;
+
                 return;
             }
 
@@ -188,13 +193,24 @@ namespace CascadeControlViewer
 
         private void TreeImageView1_NodeMouseDoubleClick(object sender, CascadeTreeImageNodeMouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left) return;
+            if (e.Button == MouseButtons.Left) ToggleImageNodeCheck(e.Node);
+        }
 
-            // 透過 cascadeView1 的 CheckSet 切換：會記進同一份 Undo/Redo，並觸發 CheckedChanged、兩邊一起重畫。
+        /// <summary>
+        /// 在右側樹狀圖上按 Enter：和左鍵雙擊一樣切換勾選。
+        /// </summary>
+        private void TreeImageView1_NodeActivated(object sender, CascadeTreeImageNodeEventArgs e)
+        {
+            ToggleImageNodeCheck(e.Node);
+        }
+
+        // 透過 cascadeView1 的 CheckSet 切換：會記進同一份 Undo/Redo，並觸發 CheckedChanged、兩邊一起重畫。
+        private void ToggleImageNodeCheck(MenuNode node)
+        {
             var checkSet = cascadeView1.CheckSet;
-            if (checkSet == null || !checkSet.Contains(e.Node)) return;
+            if (checkSet == null || !checkSet.Contains(node)) return;
 
-            checkSet.Toggle(e.Node);
+            checkSet.Toggle(node);
         }
 
         private void CascadeView1_CheckedChanged(object sender, MenuCheckChangedEventArgs e)

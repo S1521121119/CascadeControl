@@ -82,6 +82,7 @@
             this.treeImageView1.View = this.cascadeView1;
             this.treeImageView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeTreeImageNodeMouseEventArgs>(this.TreeImageView1_NodeMouseClick);
             this.treeImageView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeTreeImageNodeMouseEventArgs>(this.TreeImageView1_NodeMouseDoubleClick);
+            this.treeImageView1.NodeActivated += new System.EventHandler<CascadeControl.Views.CascadeTreeImageNodeEventArgs>(this.TreeImageView1_NodeActivated);
             // 
             // txtPath
             // 

@@ -498,6 +498,7 @@ cascadeCheckboxView1.RefreshColumns();
 | `ActiveColumnIndex` | 目前操作中的欄位索引（0-based） |
 | `ColumnLayoutMode` / `DisplayColumnCount` | 欄位排版模式（`Fixed`、`Fill`、`Sliding`）與一次顯示的欄數 |
 | `ShowTrail` | 是否畫出記憶軌跡中的整段路線 |
+| `StepBack()` / `StepForward()` | 和按 ← / → 相同的退回、進入一層（走記憶軌跡），不移動鍵盤焦點 |
 | `ClearTrail()` | 忘掉所有分支的記憶軌跡，只留目前的選取路徑 |
 | `ColumnWidth` / `ColumnSpacing` / `SelectionBackColor` / `SelectionForeColor` / `InactiveSelectionBackColor` / `TrailBackColor` / `MultiSelectBackColor` / `PathSeparator` | 外觀設定 |
 | `SelectedPathChanged` | 選取路徑改變後觸發 |
@@ -543,12 +544,28 @@ treeImageView1.NodeMouseClick += (s, e) =>
 | `SizeMode` | `ActualSize`：原始尺寸，放不下時出現捲軸；`Zoom`：維持長寬比例縮小到整張看得到（不放大） |
 | `Redraw()` | 重畫；樹的結構被編輯但選取沒變時呼叫 |
 | `GetNodeAt(clientLocation)` | 控制項上某一點的節點，已考慮捲動與縮放 |
+| `GetExpanderAt(clientLocation)` | 控制項上某一點落在哪個節點的展開鈕（[+]／[-]）上 |
+| `IsExpanded(node)` / `SetExpanded(node, expanded)` | 節點是否展開／展開或收合並重畫。左鍵點 [+] 展開、點 [-] 收合（不觸發 `NodeMouseClick`）；沒點過的節點有子節點被勾選才展開，沒有勾選資訊時一律收合；換樹後重置 |
 | `NodeMouseClick` / `NodeMouseDoubleClick` | 點了圖上的節點；參數有 `Node`、`Path`、`PathText`（以 `PathSeparator` 串接）、`Button` |
+| `NodeActivated` | 在選取的節點上按 Enter；參數 `CascadeTreeImageNodeEventArgs`（`Node`、`Path`、`PathText`，滑鼠事件的參數由它衍生） |
 | `DrawSettingsChanged` | 三個顯示設定改變後觸發，包含從右鍵功能表切換 |
 | `TreeContextMenu` | 右鍵功能表：範圍、未勾選節點（只有 `CascadeCheckboxView`）、顯示（原始尺寸／自動縮放） |
 
+焦點在樹圖上時可以用鍵盤操作。按鍵改的是 `View` 的選取，所以「進出記住位置」的記憶和 `CascadeView` 是同一份：
+
+| 按鍵 | 動作 |
+|---|---|
+| ↑ / ↓ | 在圖上看得到的同一層節點之間移動，可以跨父節點；被收合或隱藏的節點跳過，到頭不動 |
+| ← | 退回上一層（同 `CascadeView.StepBack()`） |
+| → | 進入下一層：有記憶走記憶，否則第一個子節點（同 `CascadeView.StepForward()`）；收合 [+] 的節點不動作，要先展開 |
+| 空白 | 展開或收合選取的節點 |
+| Enter | 在選取的節點上觸發 `NodeActivated`（參數 `Node`、`Path`、`PathText`），用途和雙擊相同，由訂閱端決定：例如 `CascadeCheckboxView` 切換勾選、`CascadeView` 執行選取 |
+
+原始尺寸下，移動後會捲動到選取的節點。
+
 `CascadeView.Tree` 是 `SetTree` 設定的樹；用 `SetTopLevelNodes` 顯示其他資料或 `Clear` 後為 null。
-`TreeDrawer.RenderImage(...)` 和 `Render` 相同，另外帶回每個節點方塊的位置（`TreeImage.Nodes`、`GetNodeAt`）。
+`TreeDrawer.RenderImage(...)` 和 `Render` 相同，另外帶回每個節點方塊與展開鈕的位置（`TreeImage.Nodes`、`GetNodeAt`、`GetExpanderAt`）。
+三個繪製方法都有選用參數 `isExpanded`：回傳 false 的節點畫 [+]、不畫子節點；null 時全部展開（[-]）。
 
 **`MenuCheckSet`**（`CascadeControl.Trees`，不相依 WinForms）
 
