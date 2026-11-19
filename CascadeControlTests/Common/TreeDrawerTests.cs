@@ -141,14 +141,180 @@ namespace CascadeControlTests.Common
             }
         }
 
-        #endregion CascadeTreeImageView
-
-        #region 鍵盤
-
         private sealed class ProbeImageView : CascadeTreeImageView
         {
             public void Press(Keys key) => OnKeyDown(new KeyEventArgs(key));
+
+            public void ClickAt(Point location, MouseButtons button = MouseButtons.Left) =>
+                OnMouseClick(new MouseEventArgs(button, 1, location.X, location.Y, 0));
+
+            public void DoubleClickAt(Point location, MouseButtons button = MouseButtons.Left) =>
+                OnMouseDoubleClick(new MouseEventArgs(button, 2, location.X, location.Y, 0));
         }
+
+        private static Point RoundPoint(PointF point) => new Point((int)System.Math.Round(point.X), (int)System.Math.Round(point.Y));
+
+        private static TreeImageNode LayoutNodeOf(CascadeTreeImageView imageView, MenuTree tree, MenuNode target)
+        {
+            var checkSet = (imageView.View as CascadeCheckboxView)?.CheckSet;
+            var isChecked = checkSet == null ? (System.Func<MenuNode, bool>)null : checkSet.IsChecked;
+            using (var layout = TreeDrawer.RenderImage(tree, imageView.Font, isChecked, imageView.DrawScope, imageView.UncheckedDisplay, imageView.View?.SelectedNode as MenuNode, imageView.IsExpanded))
+            {
+                return layout.Nodes.Single(node => ReferenceEquals(node.Node, target));
+            }
+        }
+
+        [TestMethod]
+        public void View_ReplaceAndDispose_DetachesOldSubscriptionsAndClearsImage()
+        {
+            var firstTree = TestTrees.Template();
+            var secondTree = TestTrees.Template();
+
+            using (var first = new CascadeCheckboxView())
+            using (var second = new CascadeView())
+            using (var imageView = new CascadeTreeImageView { View = first })
+            {
+                first.SetTree(firstTree);
+                second.SetTree(secondTree);
+
+                var beforeCheck = imageView.Image;
+                Assert.IsTrue(beforeCheck.Width > 1 && beforeCheck.Height > 1);
+
+                first.CheckSet.Check(Find(firstTree, "Motor", "Axis X"));
+                var afterCheck = imageView.Image;
+                Assert.AreNotSame(beforeCheck, afterCheck, "勾選改變要自動重畫");
+
+                imageView.View = second;
+                var afterSwap = imageView.Image;
+                Assert.AreNotSame(afterCheck, afterSwap);
+
+                first.TrySelectNode(Find(firstTree, "System"));
+                first.CheckSet.Check(Find(firstTree, "System"));
+                Assert.AreSame(afterSwap, imageView.Image, "換掉 View 後，舊 View 的選取與勾選不再觸發重畫");
+
+                second.TrySelectNode(Find(secondTree, "Motor"));
+                Assert.AreNotSame(afterSwap, imageView.Image, "新 View 的選取改變會重畫");
+
+                second.Dispose();
+                Assert.IsNull(imageView.View, "View 釋放後自動解除綁定");
+                Assert.AreEqual(new Size(1, 1), imageView.Image.Size, "解除綁定後畫成 1x1 空白圖");
+            }
+        }
+
+        [TestMethod]
+        public void MouseClickAndDoubleClick_OnNodeAndBlank_RaiseEventsWithPathSeparator()
+        {
+            var tree = TestTrees.Template();
+            using (var view = new CascadeView())
+            using (var imageView = new ProbeImageView { View = view })
+            {
+                Assert.AreEqual(" => ", view.PathSeparator);
+                Assert.AreEqual(" => ", imageView.PathSeparator);
+
+                imageView.PathSeparator = " / ";
+                view.SetTree(tree);
+                var motor = Find(tree, "Motor");
+                var axisX = Find(tree, "Motor", "Axis X");
+                imageView.SetExpanded(motor, true);
+
+                var layout = LayoutNodeOf(imageView, tree, axisX);
+                var clickPoint = RoundPoint(new PointF(layout.Bounds.Left + 4f, layout.Bounds.Top + (layout.Bounds.Height / 2f)));
+                Assert.AreSame(axisX, imageView.GetNodeAt(clickPoint));
+                Assert.IsNull(imageView.GetExpanderAt(clickPoint));
+
+                var clicks = new System.Collections.Generic.List<CascadeTreeImageNodeMouseEventArgs>();
+                var doubleClicks = new System.Collections.Generic.List<CascadeTreeImageNodeMouseEventArgs>();
+                imageView.NodeMouseClick += (sender, e) => clicks.Add(e);
+                imageView.NodeMouseDoubleClick += (sender, e) => doubleClicks.Add(e);
+
+                imageView.ClickAt(clickPoint, MouseButtons.Left);
+                imageView.ClickAt(clickPoint, MouseButtons.Right);
+                imageView.DoubleClickAt(clickPoint, MouseButtons.Left);
+                imageView.ClickAt(new Point(0, 0), MouseButtons.Left);
+
+                Assert.AreEqual(2, clicks.Count, "空白處點擊不觸發 NodeMouseClick");
+                Assert.AreSame(axisX, clicks[0].Node);
+                Assert.AreEqual("Motor / Axis X", clicks[0].PathText);
+                CollectionAssert.AreEqual(axisX.FullPath.ToList(), clicks[0].Path.ToList());
+                Assert.AreEqual(MouseButtons.Left, clicks[0].Button);
+                Assert.AreEqual(clickPoint, clicks[0].Location);
+                Assert.AreEqual(MouseButtons.Right, clicks[1].Button);
+
+                Assert.AreEqual(1, doubleClicks.Count);
+                Assert.AreSame(axisX, doubleClicks[0].Node);
+                Assert.AreEqual("Motor / Axis X", doubleClicks[0].PathText);
+                Assert.AreEqual(MouseButtons.Left, doubleClicks[0].Button);
+            }
+        }
+
+        [TestMethod]
+        public void MouseClickAndDoubleClick_OnExpander_ToggleExpansionWithoutRaisingNodeEvents()
+        {
+            var tree = TestTrees.Template();
+            using (var view = new CascadeView())
+            using (var imageView = new ProbeImageView { View = view })
+            {
+                view.SetTree(tree);
+                var motor = Find(tree, "Motor");
+
+                var expanderPoint = RoundPoint(Center(LayoutNodeOf(imageView, tree, motor).ExpanderBounds));
+                Assert.AreSame(motor, imageView.GetExpanderAt(expanderPoint));
+
+                var clicks = 0;
+                var doubleClicks = 0;
+                imageView.NodeMouseClick += (sender, e) => clicks++;
+                imageView.NodeMouseDoubleClick += (sender, e) => doubleClicks++;
+
+                imageView.ClickAt(expanderPoint, MouseButtons.Left);
+                Assert.IsTrue(imageView.IsExpanded(motor), "左鍵點展開鈕會展開");
+                Assert.AreEqual(0, clicks, "點展開鈕不觸發 NodeMouseClick");
+
+                var expandedExpanderPoint = RoundPoint(Center(LayoutNodeOf(imageView, tree, motor).ExpanderBounds));
+                Assert.AreSame(motor, imageView.GetExpanderAt(expandedExpanderPoint));
+
+                imageView.DoubleClickAt(expandedExpanderPoint, MouseButtons.Left);
+                Assert.IsFalse(imageView.IsExpanded(motor), "雙擊展開鈕再切換一次");
+                Assert.AreEqual(0, doubleClicks, "雙擊展開鈕不觸發 NodeMouseDoubleClick");
+            }
+        }
+
+        [TestMethod]
+        public void TreeContextMenu_ShowsUncheckedDisplayOnlyForCheckableView_AndUpdatesSettings()
+        {
+            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ClientSize = new Size(300, 200), ShowInTaskbar = false })
+            using (var plainView = new CascadeView())
+            using (var checkboxView = new CascadeCheckboxView())
+            using (var imageView = new CascadeTreeImageView { Dock = DockStyle.Fill, View = plainView })
+            {
+                form.Controls.Add(imageView);
+                form.Show();
+
+                imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
+                var plainItems = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
+                imageView.TreeContextMenu.Close();
+                CollectionAssert.AreEqual(new[] { "範圍", "顯示" }, plainItems);
+
+                imageView.View = checkboxView;
+                imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
+                var checkboxItems = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
+                CollectionAssert.AreEqual(new[] { "範圍", "未勾選節點", "顯示" }, checkboxItems);
+
+                var settingsChanged = 0;
+                imageView.DrawSettingsChanged += (sender, e) => settingsChanged++;
+
+                var uncheckedMenu = (ToolStripMenuItem)imageView.TreeContextMenu.Items[1];
+                var hideChoice = uncheckedMenu.DropDownItems.Cast<ToolStripMenuItem>().Single(item => item.Text == "隱藏");
+                hideChoice.PerformClick();
+                imageView.TreeContextMenu.Close();
+
+                Assert.AreEqual(UncheckedNodeDisplay.Hidden, imageView.UncheckedDisplay);
+                Assert.AreEqual(1, settingsChanged);
+            }
+        }
+
+        #endregion CascadeTreeImageView
+
+        #region 鍵盤
 
         [TestMethod]
         public void Down_CrossesParentsAndSkipsCollapsedChildren()
