@@ -46,9 +46,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Common\TreeDrawer.cs" />
-    <Compile Include="Common\TreeImage.cs" />
-    <Compile Include="Views\CascadeTreeImageView.cs" />
+    <Compile Include="Views\TreeImage\TreeDrawer.cs" />
+    <Compile Include="Views\TreeImage\TreeImage.cs" />
+    <Compile Include="Views\TreeImage\CascadeTreeImageView.cs" />
     <Compile Include="Views\CascadeCheckboxView.cs" />
     <Compile Include="State\CascadeCheckableState.cs" />
     <Compile Include="Views\CascadeColumnLayoutMode.cs" />

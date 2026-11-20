@@ -59,7 +59,7 @@
   <ItemGroup>
     <Compile Include="Common\CsvFileTests.cs" />
     <Compile Include="Common\MultiNameCellSyntaxTests.cs" />
-    <Compile Include="Common\TreeDrawerTests.cs" />
+    <Compile Include="Views\TreeImage\TreeDrawerTests.cs" />
     <Compile Include="Trees\MenuCheckSetTests.cs" />
     <Compile Include="Trees\MenuHistoryTests.cs" />
     <Compile Include="Trees\MenuNodeTests.cs" />
