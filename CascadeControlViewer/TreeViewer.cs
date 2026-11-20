@@ -185,31 +185,31 @@ namespace CascadeControlViewer
         /// <summary>
         /// 點了右側樹狀圖上的節點：左鍵讓選單跳到那個節點，左右鍵都把路徑寫進記錄。
         /// </summary>
-        private void TreeImageView1_NodeMouseClick(object sender, CascadeTreeImageNodeMouseEventArgs e)
+        private void TreeImageView1_NodeMouseClick(object sender, CascadeNodeMouseEventArgs e)
         {
             LogMessage($"TreeImage NodeMouseClick（{e.Button}）：{e.PathText}");
 
             if (e.Button == MouseButtons.Left) cascadeView1.TrySelectPath(e.Path);
         }
 
-        private void TreeImageView1_NodeMouseDoubleClick(object sender, CascadeTreeImageNodeMouseEventArgs e)
+        private void TreeImageView1_NodeMouseDoubleClick(object sender, CascadeNodeMouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left) ToggleImageNodeCheck(e.Node);
+            if (e.Button == MouseButtons.Left) ToggleImageNodeCheck(e.Node as MenuNode);
         }
 
         /// <summary>
         /// 在右側樹狀圖上按 Enter：和左鍵雙擊一樣切換勾選。
         /// </summary>
-        private void TreeImageView1_NodeActivated(object sender, CascadeTreeImageNodeEventArgs e)
+        private void TreeImageView1_NodeActivated(object sender, CascadeNodeEventArgs e)
         {
-            ToggleImageNodeCheck(e.Node);
+            ToggleImageNodeCheck(e.Node as MenuNode);
         }
 
         // 透過 cascadeView1 的 CheckSet 切換：會記進同一份 Undo/Redo，並觸發 CheckedChanged、兩邊一起重畫。
         private void ToggleImageNodeCheck(MenuNode node)
         {
             var checkSet = cascadeView1.CheckSet;
-            if (checkSet == null || !checkSet.Contains(node)) return;
+            if (node == null || checkSet == null || !checkSet.Contains(node)) return;
 
             checkSet.Toggle(node);
         }

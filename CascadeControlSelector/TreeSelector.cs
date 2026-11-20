@@ -176,30 +176,20 @@ namespace CascadeControlSelector
 
         private void CascadeView1_NodeActivated(object sender, CascadeNodeEventArgs e)
         {
-            var pathText = string.Join(cascadeView1.PathSeparator, e.Path.Select(step => step.Name));
-
-            ExecuteSelection(pathText);
+            ExecuteSelection(e.PathText);
         }
 
         /// <summary>
         /// 點了右側樹狀圖上的節點：左鍵讓選單跳到那個節點，左右鍵都把路徑寫進記錄。
         /// </summary>
-        private void TreeImageView1_NodeMouseClick(object sender, CascadeTreeImageNodeMouseEventArgs e)
+        private void TreeImageView1_NodeMouseClick(object sender, CascadeNodeMouseEventArgs e)
         {
             LogMessage($"TreeImage NodeMouseClick（{e.Button}）：{e.PathText}");
 
             if (e.Button == MouseButtons.Left) cascadeView1.TrySelectPath(e.Path);
         }
 
-        private void TreeImageView1_NodeMouseDoubleClick(object sender, CascadeTreeImageNodeMouseEventArgs e)
-        {
-            ExecuteSelection(e.PathText);
-        }
-
-        /// <summary>
-        /// 在右側樹狀圖上按 Enter：和雙擊一樣執行選取。
-        /// </summary>
-        private void TreeImageView1_NodeActivated(object sender, CascadeTreeImageNodeEventArgs e)
+        private void TreeImageView1_NodeMouseDoubleClick(object sender, CascadeNodeMouseEventArgs e)
         {
             ExecuteSelection(e.PathText);
         }

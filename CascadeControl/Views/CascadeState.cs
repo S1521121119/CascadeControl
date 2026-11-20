@@ -234,7 +234,7 @@ namespace CascadeControl.Views
         internal CascadeNodeEventArgs CreateNodeEventArgs()
         {
             var path = _navigator.SelectedPath.ToList();
-            return new CascadeNodeEventArgs(path, path.Count == 0 ? _topLevelNodes : null);
+            return new CascadeNodeEventArgs(path, path.Count == 0 ? _topLevelNodes : null, _pathSeparator);
         }
 
         private void ResetTopLevelNodes(IEnumerable<ICascadeNode> topLevelNodes, MenuTree tree)

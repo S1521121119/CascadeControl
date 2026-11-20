@@ -26,14 +26,19 @@ namespace CascadeControl.Views
         /// </summary>
         /// <param name="path">由淺至深的選取路徑；null 或空集合代表未選取。</param>
         /// <param name="topLevelNodes">第一欄的內容，只有 <paramref name="path"/> 為空時才會成為 <see cref="Children"/>；可為 null。</param>
+        /// <param name="pathSeparator"><see cref="PathText"/> 使用的層級分隔字串。</param>
         /// <exception cref="ArgumentException"><paramref name="path"/> 中含有 null。</exception>
-        public CascadeNodeEventArgs(IEnumerable<ICascadeNode> path, IEnumerable<ICascadeNode> topLevelNodes = null)
+        public CascadeNodeEventArgs(
+            IEnumerable<ICascadeNode> path,
+            IEnumerable<ICascadeNode> topLevelNodes = null,
+            string pathSeparator = CascadeNavigator.DEFAULT_PATH_SEPARATOR)
         {
             var steps = path?.ToArray() ?? new ICascadeNode[0];
             if (steps.Any(step => step == null))
                 throw new ArgumentException("選取路徑中不可含有 null。", nameof(path));
 
             Path = Array.AsReadOnly(steps);
+            PathText = string.Join(pathSeparator ?? string.Empty, steps.Select(step => step.Name));
             _topLevelNodes = steps.Length == 0 && topLevelNodes != null ? Array.AsReadOnly(topLevelNodes.ToArray()) : NoNodes;
         }
 
@@ -41,6 +46,11 @@ namespace CascadeControl.Views
         /// 由淺至深的選取路徑；未選取時為空集合。
         /// </summary>
         public IReadOnlyList<ICascadeNode> Path { get; }
+
+        /// <summary>
+        /// 路徑上各節點名稱以層級分隔字串串接的結果；未選取時為空字串。
+        /// </summary>
+        public string PathText { get; }
 
         /// <summary>
         /// 路徑的終點，也就是目前選取的最深節點；未選取時為 null。
@@ -69,45 +79,42 @@ namespace CascadeControl.Views
     }
 
     /// <summary>
-    /// <see cref="CascadeView.NodeMouseClick"/> 的事件參數：被點的節點，以及點在哪裡。
+    /// 節點滑鼠事件（<see cref="CascadeView.NodeMouseClick"/>、<see cref="CascadeTreeImageView.NodeMouseClick"/> 與
+    /// <see cref="CascadeTreeImageView.NodeMouseDoubleClick"/>）共用的事件參數：被點的節點、路徑與滑鼠資訊。
     /// </summary>
-    public class CascadeNodeMouseEventArgs : EventArgs
+    public class CascadeNodeMouseEventArgs : CascadeNodeEventArgs
     {
         /// <summary>
         /// 建立事件參數。
         /// </summary>
-        /// <param name="node">被點的節點。</param>
-        /// <param name="columnIndex">節點所在的欄位索引（0-based）。</param>
+        /// <param name="path">由淺至深到被點節點的路徑，不可為空。</param>
+        /// <param name="pathSeparator"><see cref="CascadeNodeEventArgs.PathText"/> 使用的層級分隔字串。</param>
         /// <param name="button">按下的滑鼠鍵。</param>
-        /// <param name="location">點擊位置，欄位內的座標。</param>
-        /// <param name="bounds">被點那一列的矩形，欄位內的座標。</param>
+        /// <param name="location">點擊位置，欄位或控制項的用戶區座標。</param>
+        /// <param name="bounds">被點節點的矩形範圍，與 <paramref name="location"/> 同一個座標系。</param>
         /// <param name="screenLocation">點擊位置的螢幕座標。</param>
-        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
+        /// <exception cref="ArgumentException"><paramref name="path"/> 為 null、空集合或含有 null。</exception>
         public CascadeNodeMouseEventArgs(
-            ICascadeNode node, int columnIndex, System.Windows.Forms.MouseButtons button,
+            IEnumerable<ICascadeNode> path, string pathSeparator,
+            System.Windows.Forms.MouseButtons button,
             Point location, Rectangle bounds, Point screenLocation)
+            : base(path, null, pathSeparator)
         {
-            Node = node ?? throw new ArgumentNullException(nameof(node));
-            ColumnIndex = columnIndex;
+            if (Node == null) throw new ArgumentException("點擊路徑不可為空。", nameof(path));
+
             Button = button;
             Location = location;
             Bounds = bounds;
             ScreenLocation = screenLocation;
         }
 
-        /// <summary>被點的節點。</summary>
-        public ICascadeNode Node { get; }
-
-        /// <summary>節點所在的欄位索引（0-based）。</summary>
-        public int ColumnIndex { get; }
-
-        /// <summary>按下的滑鼠鍵：左鍵或右鍵。</summary>
+        /// <summary>按下的滑鼠鍵。</summary>
         public System.Windows.Forms.MouseButtons Button { get; }
 
-        /// <summary>點擊位置，欄位內的座標，和 <see cref="Bounds"/> 同一個座標系。</summary>
+        /// <summary>點擊位置，欄位或控制項內的座標，和 <see cref="Bounds"/> 同一個座標系。</summary>
         public Point Location { get; }
 
-        /// <summary>被點那一列的矩形，欄位內的座標。</summary>
+        /// <summary>被點節點的矩形範圍，和 <see cref="Location"/> 同一個座標系。</summary>
         public Rectangle Bounds { get; }
 
         /// <summary>

@@ -54,7 +54,7 @@ namespace CascadeControl.Views
     [DesignerCategory("")]
     [ToolboxItem(true)]
     [DefaultEvent(nameof(NodeMouseClick))]
-    public class CascadeTreeImageView : ScrollableControl
+    public class CascadeTreeImageView : ScrollableControl, ICascadeView
     {
         private readonly ContextMenuStrip _contextMenu = new ContextMenuStrip();
 
@@ -241,7 +241,7 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// <see cref="CascadeTreeImageNodeEventArgs.PathText"/> 與 <see cref="SelectedPathText"/> 使用的層級分隔字串。
+        /// <see cref="CascadeNodeEventArgs.PathText"/> 與 <see cref="SelectedPathText"/> 使用的層級分隔字串。
         /// </summary>
         [Category("Cascade")]
         [Description("NodeMouseClick 事件參數 PathText 與 SelectedPathText 使用的層級分隔字串。")]
@@ -280,13 +280,13 @@ namespace CascadeControl.Views
         /// 用滑鼠點了圖上的某個節點之後觸發（左鍵、右鍵都會）；點在空白處或 Root 上不會觸發。
         /// </summary>
         [Category("Cascade")]
-        public event EventHandler<CascadeTreeImageNodeMouseEventArgs> NodeMouseClick;
+        public event EventHandler<CascadeNodeMouseEventArgs> NodeMouseClick;
 
         /// <summary>
         /// 在圖上的某個節點雙擊之後觸發。
         /// </summary>
         [Category("Cascade")]
-        public event EventHandler<CascadeTreeImageNodeMouseEventArgs> NodeMouseDoubleClick;
+        public event EventHandler<CascadeNodeMouseEventArgs> NodeMouseDoubleClick;
 
         /// <summary>
         /// 焦點在樹圖上時，在選取的節點上按 Enter 之後觸發；用途和 <see cref="NodeMouseDoubleClick"/> 相同，
@@ -294,7 +294,7 @@ namespace CascadeControl.Views
         /// 控制項本身不做任何事，由訂閱端決定。沒有選取，或選取的節點被收合藏起來時不觸發。
         /// </summary>
         [Category("Cascade")]
-        public event EventHandler<CascadeTreeImageNodeEventArgs> NodeActivated;
+        public event EventHandler<CascadeNodeEventArgs> NodeActivated;
 
         /// <summary>
         /// <see cref="DrawScope"/>、<see cref="UncheckedDisplay"/> 或 <see cref="SizeMode"/> 改變後觸發，包含從右鍵功能表切換。
@@ -310,17 +310,17 @@ namespace CascadeControl.Views
         /// <summary>
         /// 觸發 <see cref="NodeMouseClick"/>。
         /// </summary>
-        protected virtual void OnNodeMouseClick(CascadeTreeImageNodeMouseEventArgs e) => NodeMouseClick?.Invoke(this, e);
+        protected virtual void OnNodeMouseClick(CascadeNodeMouseEventArgs e) => NodeMouseClick?.Invoke(this, e);
 
         /// <summary>
         /// 觸發 <see cref="NodeMouseDoubleClick"/>。
         /// </summary>
-        protected virtual void OnNodeMouseDoubleClick(CascadeTreeImageNodeMouseEventArgs e) => NodeMouseDoubleClick?.Invoke(this, e);
+        protected virtual void OnNodeMouseDoubleClick(CascadeNodeMouseEventArgs e) => NodeMouseDoubleClick?.Invoke(this, e);
 
         /// <summary>
         /// 觸發 <see cref="NodeActivated"/>。
         /// </summary>
-        protected virtual void OnNodeActivated(CascadeTreeImageNodeEventArgs e) => NodeActivated?.Invoke(this, e);
+        protected virtual void OnNodeActivated(CascadeNodeEventArgs e) => NodeActivated?.Invoke(this, e);
 
         /// <summary>
         /// 觸發 <see cref="DrawSettingsChanged"/>。
@@ -536,9 +536,24 @@ namespace CascadeControl.Views
             if (node != null) OnNodeMouseDoubleClick(CreateMouseEventArgs(node, e));
         }
 
-        private CascadeTreeImageNodeMouseEventArgs CreateMouseEventArgs(MenuNode node, MouseEventArgs e)
+        private CascadeNodeMouseEventArgs CreateMouseEventArgs(MenuNode node, MouseEventArgs e)
         {
-            return new CascadeTreeImageNodeMouseEventArgs(node, PathSeparator, e.Button, e.Location, PointToScreen(e.Location));
+            var bounds = GetClientBoundsOf(node);
+            return new CascadeNodeMouseEventArgs(node.FullPath, PathSeparator, e.Button, e.Location, bounds, PointToScreen(e.Location));
+        }
+
+        private Rectangle GetClientBoundsOf(MenuNode node)
+        {
+            var imageNode = FindImageNode(node);
+            if (imageNode == null) return Rectangle.Empty;
+
+            GetTransform(out var scale, out var offset);
+            var b = imageNode.Bounds;
+            return Rectangle.Round(new RectangleF(
+                (b.X * scale) + offset.X,
+                (b.Y * scale) + offset.Y,
+                b.Width * scale,
+                b.Height * scale));
         }
 
         #endregion 滑鼠
@@ -642,7 +657,7 @@ namespace CascadeControl.Views
         private void ActivateSelected()
         {
             var node = SelectedMenuNode;
-            if (FindImageNode(node) != null) OnNodeActivated(new CascadeTreeImageNodeEventArgs(node, PathSeparator));
+            if (FindImageNode(node) != null) OnNodeActivated(new CascadeNodeEventArgs(node.FullPath, null, PathSeparator));
         }
 
         private void ToggleSelected()
@@ -771,65 +786,5 @@ namespace CascadeControl.Views
 
             base.Dispose(disposing);
         }
-    }
-
-    /// <summary>
-    /// <see cref="CascadeTreeImageView.NodeActivated"/> 的事件參數：對象節點與它的路徑；滑鼠事件的參數由它衍生。
-    /// </summary>
-    public class CascadeTreeImageNodeEventArgs : EventArgs
-    {
-        /// <summary>
-        /// 建立事件參數。
-        /// </summary>
-        /// <param name="node">對象節點。</param>
-        /// <param name="pathSeparator"><see cref="PathText"/> 的層級分隔字串。</param>
-        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
-        public CascadeTreeImageNodeEventArgs(MenuNode node, string pathSeparator)
-        {
-            Node = node ?? throw new ArgumentNullException(nameof(node));
-            Path = node.FullPath;
-            PathText = string.Join(pathSeparator ?? string.Empty, Path.Select(step => step.Name));
-        }
-
-        /// <summary>對象節點。</summary>
-        public MenuNode Node { get; }
-
-        /// <summary>從第一層到 <see cref="Node"/> 的路徑，由淺到深，不含樹根；可以直接交給 <see cref="ICascadeView.TrySelectPath"/>。</summary>
-        public IReadOnlyList<MenuNode> Path { get; }
-
-        /// <summary>路徑上各節點名稱以 <see cref="CascadeTreeImageView.PathSeparator"/> 串起來的字串。</summary>
-        public string PathText { get; }
-    }
-
-    /// <summary>
-    /// <see cref="CascadeTreeImageView.NodeMouseClick"/> 與 <see cref="CascadeTreeImageView.NodeMouseDoubleClick"/> 的事件參數：點到的節點、它的路徑與滑鼠資訊。
-    /// </summary>
-    public class CascadeTreeImageNodeMouseEventArgs : CascadeTreeImageNodeEventArgs
-    {
-        /// <summary>
-        /// 建立事件參數。
-        /// </summary>
-        /// <param name="node">點到的節點。</param>
-        /// <param name="pathSeparator"><see cref="CascadeTreeImageNodeEventArgs.PathText"/> 的層級分隔字串。</param>
-        /// <param name="button">按下的滑鼠鍵。</param>
-        /// <param name="location">點擊位置，控制項的用戶區座標。</param>
-        /// <param name="screenLocation">點擊位置的螢幕座標。</param>
-        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
-        public CascadeTreeImageNodeMouseEventArgs(MenuNode node, string pathSeparator, MouseButtons button, Point location, Point screenLocation)
-            : base(node, pathSeparator)
-        {
-            Button = button;
-            Location = location;
-            ScreenLocation = screenLocation;
-        }
-
-        /// <summary>按下的滑鼠鍵。</summary>
-        public MouseButtons Button { get; }
-
-        /// <summary>點擊位置，控制項的用戶區座標。</summary>
-        public Point Location { get; }
-
-        /// <summary>點擊位置的螢幕座標。</summary>
-        public Point ScreenLocation { get; }
     }
 }

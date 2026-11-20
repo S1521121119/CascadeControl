@@ -525,7 +525,7 @@ cascadeCheckboxView1.RefreshColumns();
 | `CheckedChanged` | `CheckSet` 的勾選狀態改變後觸發 |
 | `GetCheckBoxBounds(rowBounds)` | 勾選框在某一列裡的位置 |
 
-**`CascadeTreeImageView`**（`CascadeControl.Views`，繼承自 `ScrollableControl`）
+**`CascadeTreeImageView`**（`CascadeControl.Views`，繼承自 `ScrollableControl`，實作 `ICascadeView`）
 
 把 `State` 的選單樹用 `TreeDrawer` 畫出來，跟著選取與勾選自動重畫；自己管捲軸，可以直接 `Dock = Fill`。可呼叫 `SetTree` 獨立運作，或共享 `CascadeView`／`CascadeCheckboxView` 的 `State` 同步顯示。
 
@@ -557,8 +557,8 @@ standalone.SetTree(menu);
 | `GetExpanderAt(clientLocation)` | 控制項上某一點落在哪個節點的展開鈕（[+]／[-]）上 |
 | `IsExpanded(node)` / `SetExpanded(node, expanded)` | 節點是否展開／展開或收合並重畫。左鍵點 [+] 展開、點 [-] 收合（不觸發 `NodeMouseClick`）；沒點過的節點有子節點被勾選才展開，沒有勾選資訊時一律收合；換樹後重置 |
 | `SelectedPathChanged` | 選取路徑改變後觸發 |
-| `NodeMouseClick` / `NodeMouseDoubleClick` | 點了圖上的節點；參數有 `Node`、`Path`、`PathText`（以 `PathSeparator` 串接）、`Button` |
-| `NodeActivated` | 在選取的節點上按 Enter；參數 `CascadeTreeImageNodeEventArgs`（`Node`、`Path`、`PathText`，滑鼠事件的參數由它衍生） |
+| `NodeMouseClick` / `NodeMouseDoubleClick` | 點了圖上的節點；參數 `CascadeNodeMouseEventArgs`（繼承 `CascadeNodeEventArgs`，含 `Node`、`Path`、`PathText`、`ColumnIndex`、`Button`、`Location`、`Bounds`、`ScreenLocation`） |
+| `NodeActivated` | 在選取的節點上按 Enter；參數與 `CascadeView.NodeActivated` 同為 `CascadeNodeEventArgs`（含 `Node`、`Path`、`PathText`、`IsLeaf`） |
 | `DrawSettingsChanged` | 三個顯示設定改變後觸發，包含從右鍵功能表切換 |
 | `TreeContextMenu` | 右鍵功能表，含範圍、未勾選節點（`State` 為 `CascadeCheckableState` 時顯示）、顯示（原始尺寸／自動縮放） |
 
@@ -588,7 +588,7 @@ standalone.SetTree(menu);
 
 **`ICascadeView` / `ICascadeCheckableView`**（`CascadeControl.Views`，不相依 WinForms）
 
-導覽與勾選能力的檢視介面，不含編輯與復原成員。`CascadeView` 實作 `ICascadeView`，`CascadeCheckboxView` 實作 `ICascadeCheckableView`。
+導覽與勾選能力的檢視介面，不含編輯與復原成員。`CascadeView`、`CascadeCheckboxView` 與 `CascadeTreeImageView` 皆實作 `ICascadeView`，`CascadeCheckboxView` 另外實作 `ICascadeCheckableView`。
 
 `CascadeView.Tree` 是 `SetTree` 設定的樹；用 `SetTopLevelNodes` 顯示其他資料或 `Clear` 後為 null。
 `TreeDrawer.RenderImage(...)` 和 `Render` 相同，另外帶回每個節點方塊與展開鈕的位置（`TreeImage.Nodes`、`GetNodeAt`、`GetExpanderAt`）。

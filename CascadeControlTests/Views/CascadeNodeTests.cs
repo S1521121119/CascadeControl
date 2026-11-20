@@ -137,6 +137,46 @@ namespace CascadeControlTests.Views
                 new CascadeNodeEventArgs(new ICascadeNode[] { new CascadeNode("A", "A"), null }));
         }
 
+        [TestMethod]
+        public void EventArgs_PathText_FormatsWithSeparator()
+        {
+            var tree = new MenuTree();
+            var leaf = tree.AddPath("Motor", "Axis X", "Home");
+
+            var defaultArgs = new CascadeNodeEventArgs(leaf.FullPath);
+            Assert.AreEqual("Motor => Axis X => Home", defaultArgs.PathText);
+
+            var customArgs = new CascadeNodeEventArgs(leaf.FullPath, null, " / ");
+            Assert.AreEqual("Motor / Axis X / Home", customArgs.PathText);
+
+            var emptyArgs = new CascadeNodeEventArgs(null);
+            Assert.AreEqual(string.Empty, emptyArgs.PathText);
+        }
+
+        [TestMethod]
+        public void MouseEventArgs_InheritsNodeEventArgsAndRejectsEmptyPath()
+        {
+            var tree = new MenuTree();
+            var leaf = tree.AddPath("System", "Reboot");
+            var bounds = new System.Drawing.Rectangle(10, 20, 80, 18);
+            var location = new System.Drawing.Point(15, 25);
+            var screen = new System.Drawing.Point(115, 125);
+
+            var args = new CascadeNodeMouseEventArgs(leaf.FullPath, " / ", System.Windows.Forms.MouseButtons.Left, location, bounds, screen);
+
+            Assert.AreSame(leaf, args.Node);
+            Assert.AreEqual(1, args.ColumnIndex);
+            Assert.AreEqual("System / Reboot", args.PathText);
+            Assert.IsTrue(args.IsLeaf);
+            Assert.AreEqual(System.Windows.Forms.MouseButtons.Left, args.Button);
+            Assert.AreEqual(location, args.Location);
+            Assert.AreEqual(bounds, args.Bounds);
+            Assert.AreEqual(screen, args.ScreenLocation);
+
+            Assert.ThrowsException<ArgumentException>(() =>
+                new CascadeNodeMouseEventArgs(new ICascadeNode[0], " / ", System.Windows.Forms.MouseButtons.Left, location, bounds, screen));
+        }
+
         private sealed class NullChildrenNode : ICascadeNode
         {
             public string Name => "X";

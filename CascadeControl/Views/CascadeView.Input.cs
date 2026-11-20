@@ -428,7 +428,7 @@ namespace CascadeControl.Views
             CascadeNodeMouseEventArgs args = null;
             if (hit && e.Button == MouseButtons.Right)
             {
-                args = new CascadeNodeMouseEventArgs(node, columnIndex, e.Button, e.Location, bounds, list.PointToScreen(e.Location));
+                args = CreateMouseEventArgs(columnIndex, node, e.Button, e.Location, bounds, list.PointToScreen(e.Location));
             }
             else if (hit)
             {
@@ -436,12 +436,12 @@ namespace CascadeControl.Views
 
                 if (!pressed && !selectionFree)
                 {
-                    args = new CascadeNodeMouseEventArgs(node, columnIndex, e.Button, e.Location, bounds, list.PointToScreen(e.Location));
+                    args = CreateMouseEventArgs(columnIndex, node, e.Button, e.Location, bounds, list.PointToScreen(e.Location));
                     ApplySelectionGesture(columnIndex, node, SelectionGesture.Plain);
                 }
                 else if (pressed && selectionFree && pressedList == list && Equals(pressedNode, node))
                 {
-                    args = new CascadeNodeMouseEventArgs(node, columnIndex, e.Button, e.Location, bounds, list.PointToScreen(e.Location));
+                    args = CreateMouseEventArgs(columnIndex, node, e.Button, e.Location, bounds, list.PointToScreen(e.Location));
                 }
             }
 
@@ -458,6 +458,13 @@ namespace CascadeControl.Views
                 if (e.Button == MouseButtons.Right) ShowColumnContextMenu(columnIndex, screenLocation);
                 if (list.Items.Count > 0) OnColumnBlankMouseClick(columnIndex, list.Items.OfType<ICascadeNode>().ToList(), e.Button, screenLocation);
             }
+        }
+
+        private CascadeNodeMouseEventArgs CreateMouseEventArgs(
+            int columnIndex, ICascadeNode node, MouseButtons button, Point location, Rectangle bounds, Point screenLocation)
+        {
+            var path = _state.PathWithTrail.Take(columnIndex).Concat(new[] { node });
+            return new CascadeNodeMouseEventArgs(path, PathSeparator, button, location, bounds, screenLocation);
         }
 
         /// <summary>

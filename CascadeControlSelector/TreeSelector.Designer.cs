@@ -79,9 +79,9 @@
             this.treeImageView1.Name = "treeImageView1";
             this.treeImageView1.Size = new System.Drawing.Size(312, 398);
             this.treeImageView1.TabIndex = 5;
-            this.treeImageView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeTreeImageNodeMouseEventArgs>(this.TreeImageView1_NodeMouseClick);
-            this.treeImageView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeTreeImageNodeMouseEventArgs>(this.TreeImageView1_NodeMouseDoubleClick);
-            this.treeImageView1.NodeActivated += new System.EventHandler<CascadeControl.Views.CascadeTreeImageNodeEventArgs>(this.TreeImageView1_NodeActivated);
+            this.treeImageView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.TreeImageView1_NodeMouseClick);
+            this.treeImageView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.TreeImageView1_NodeMouseDoubleClick);
+            this.treeImageView1.NodeActivated += new System.EventHandler<CascadeControl.Views.CascadeNodeEventArgs>(this.CascadeView1_NodeActivated);
             // 
             // txtPath
             // 

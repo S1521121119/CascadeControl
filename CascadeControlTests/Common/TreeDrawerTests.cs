@@ -287,8 +287,8 @@ namespace CascadeControlTests.Common
                 Assert.AreSame(axisX, imageView.GetNodeAt(clickPoint));
                 Assert.IsNull(imageView.GetExpanderAt(clickPoint));
 
-                var clicks = new System.Collections.Generic.List<CascadeTreeImageNodeMouseEventArgs>();
-                var doubleClicks = new System.Collections.Generic.List<CascadeTreeImageNodeMouseEventArgs>();
+                var clicks = new System.Collections.Generic.List<CascadeNodeMouseEventArgs>();
+                var doubleClicks = new System.Collections.Generic.List<CascadeNodeMouseEventArgs>();
                 imageView.NodeMouseClick += (sender, e) => clicks.Add(e);
                 imageView.NodeMouseDoubleClick += (sender, e) => doubleClicks.Add(e);
 
@@ -299,10 +299,12 @@ namespace CascadeControlTests.Common
 
                 Assert.AreEqual(2, clicks.Count, "空白處點擊不觸發 NodeMouseClick");
                 Assert.AreSame(axisX, clicks[0].Node);
+                Assert.AreEqual(1, clicks[0].ColumnIndex);
                 Assert.AreEqual("Motor / Axis X", clicks[0].PathText);
-                CollectionAssert.AreEqual(axisX.FullPath.ToList(), clicks[0].Path.ToList());
+                CollectionAssert.AreEqual(axisX.FullPath.Cast<ICascadeNode>().ToList(), clicks[0].Path.ToList());
                 Assert.AreEqual(MouseButtons.Left, clicks[0].Button);
                 Assert.AreEqual(clickPoint, clicks[0].Location);
+                Assert.IsTrue(clicks[0].Bounds.Contains(clickPoint), "Bounds 為被點節點的用戶區矩形");
                 Assert.AreEqual(MouseButtons.Right, clicks[1].Button);
 
                 Assert.AreEqual(1, doubleClicks.Count);
@@ -372,6 +374,35 @@ namespace CascadeControlTests.Common
 
                 Assert.AreEqual(UncheckedNodeDisplay.Hidden, imageView.UncheckedDisplay);
                 Assert.AreEqual(1, settingsChanged);
+            }
+        }
+
+        [TestMethod]
+        public void AllThreeControls_ImplementICascadeView_AndShareUniformEventHandler()
+        {
+            var tree = TestTrees.Template();
+            var motor = Find(tree, "Motor");
+
+            using (var cascade = new CascadeView())
+            using (var checkbox = new CascadeCheckboxView())
+            using (var image = new ProbeImageView())
+            {
+                ICascadeView[] views = { cascade, checkbox, image };
+                var selectedPaths = new System.Collections.Generic.List<string>();
+                var activatedPaths = new System.Collections.Generic.List<string>();
+
+                foreach (var view in views)
+                {
+                    view.SelectedPathChanged += (sender, e) => selectedPaths.Add(e.PathText);
+                    view.NodeActivated += (sender, e) => activatedPaths.Add(e.PathText);
+                    view.SetTree(tree);
+                    Assert.IsTrue(view.TrySelectNode(motor));
+                    Assert.AreSame(motor, view.SelectedNode);
+                }
+
+                Assert.AreEqual(6, selectedPaths.Count);
+                image.Press(Keys.Enter);
+                CollectionAssert.AreEqual(new[] { "Motor" }, activatedPaths);
             }
         }
 
@@ -446,7 +477,7 @@ namespace CascadeControlTests.Common
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
-                var activated = new System.Collections.Generic.List<CascadeTreeImageNodeEventArgs>();
+                var activated = new System.Collections.Generic.List<CascadeNodeEventArgs>();
                 imageView.NodeActivated += (sender, e) => activated.Add(e);
 
                 imageView.Press(Keys.Enter);

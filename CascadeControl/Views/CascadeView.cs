@@ -597,7 +597,7 @@ namespace CascadeControl.Views
         /// 使用者用滑鼠左鍵或右鍵點了某個節點之後觸發；左鍵觸發時選取通常已經移到該節點，右鍵不改選取。
         /// </summary>
         /// <remarks>
-        /// 右鍵不改選取，欄位才不會在開快顯功能表時滑動；要知道點了哪個節點，用 <see cref="CascadeNodeMouseEventArgs.Node"/>。
+        /// 右鍵不改選取，欄位才不會在開快顯功能表時滑動；要知道點了哪個節點，用 <see cref="CascadeNodeEventArgs.Node"/>。
         /// 點在欄位的空白處不會觸發。
         /// 左鍵點在衍生類別保留的位置（<see cref="SelectsOnLeftClick"/> 為 false，例如 <see cref="CascadeCheckboxView"/> 的勾選框）時，
         /// 選取也不變，而且按下與放開要在同一列的那個位置才會觸發。
