@@ -165,6 +165,25 @@ namespace CascadeControlTests.Views.Diagram
             }
         }
 
+        [TestMethod]
+        public void SelectionFromColumnsView_ScrollsSelectedNodeIntoView()
+        {
+            var tree = TestTrees.Template();
+            using (var form = new Form { ShowInTaskbar = false })
+            using (var view = new CascadeColumnsView())
+            using (var imageView = new CascadeDiagramView { State = view.State, Size = new Size(120, 120) })
+            {
+                form.Controls.Add(imageView);
+                form.Show();
+                view.SetTree(tree);
+                Assert.AreEqual(Point.Empty, imageView.AutoScrollPosition);
+
+                view.TrySelectPath(Find(tree, "Diagnostics", "Sensor", "Temperature", "Zone B", "Read", "Calibrated").FullPath);
+
+                Assert.AreNotEqual(Point.Empty, imageView.AutoScrollPosition, "從 CascadeColumnsView 切換選取，圖也要捲到選取的節點");
+            }
+        }
+
         private sealed class ProbeImageView : CascadeDiagramView
         {
             public void Press(Keys key) => OnKeyDown(new KeyEventArgs(key));
