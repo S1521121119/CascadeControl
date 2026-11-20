@@ -3,7 +3,7 @@ using CascadeControl.State;
 using System;
 using System.Drawing;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     /// <summary>
     /// <see cref="CascadeView.DrawNode"/> 的事件參數。把 <see cref="Handled"/> 設為 true 就會略過預設繪製。

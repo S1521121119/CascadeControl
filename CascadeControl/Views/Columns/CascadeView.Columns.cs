@@ -6,7 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     // 依導覽狀態建立、拆除與排列欄位。
     public partial class CascadeView

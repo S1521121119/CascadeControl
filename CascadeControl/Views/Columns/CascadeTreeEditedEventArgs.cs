@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     /// <summary>
     /// <see cref="CascadeView.TreeEdited"/> 對樹做了哪一種編輯。

@@ -1,12 +1,13 @@
 using CascadeControl.Common;
 using CascadeControl.Trees;
 using CascadeControl.Views;
+using CascadeControl.Views.Columns;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControlTests.Views
+namespace CascadeControlTests.Views.Columns
 {
     /// <summary>
     /// 同一欄內比照檔案總管的多選：Ctrl / Shift / Ctrl+Shift 點選與方向鍵、Ctrl+Space，以及焦點跟著移動。

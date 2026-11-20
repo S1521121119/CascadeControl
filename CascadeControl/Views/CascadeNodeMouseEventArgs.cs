@@ -7,7 +7,7 @@ using System.Drawing;
 namespace CascadeControl.Views
 {
     /// <summary>
-    /// 節點滑鼠事件（<see cref="CascadeView.NodeMouseClick"/>、<see cref="TreeImage.CascadeTreeImageView.NodeMouseClick"/> 與
+    /// 節點滑鼠事件（<see cref="Columns.CascadeView.NodeMouseClick"/>、<see cref="TreeImage.CascadeTreeImageView.NodeMouseClick"/> 與
     /// <see cref="TreeImage.CascadeTreeImageView.NodeMouseDoubleClick"/>）共用的事件參數：被點的節點、路徑與滑鼠資訊。
     /// </summary>
     public class CascadeNodeMouseEventArgs : CascadeNodeEventArgs

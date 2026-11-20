@@ -3,7 +3,7 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     /// <summary>
     /// <see cref="CascadeView"/> 的設計工具。它不是容器，設計階段無法把其他控制項拖進去。

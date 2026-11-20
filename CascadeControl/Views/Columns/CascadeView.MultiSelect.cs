@@ -6,7 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     /// <summary>
     /// 同一欄內的選取手勢，對應檔案總管的規則。

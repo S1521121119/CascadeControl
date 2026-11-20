@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace CascadeControl.Common
 {
     /// <summary>
-    /// <see cref="Views.CascadeView"/> 顯示節點時需要的最少資訊：名稱、顯示文字與子節點。
+    /// <see cref="Views.Columns.CascadeView"/> 顯示節點時需要的最少資訊：名稱、顯示文字與子節點。
     /// </summary>
     /// <remarks>
     /// 不包含 Parent 與 Depth：路徑由控制項的欄位順序決定，資料不需要知道自己在第幾層。
@@ -13,7 +13,7 @@ namespace CascadeControl.Common
     public interface ICascadeNode
     {
         /// <summary>
-        /// 節點的原始名稱，不會顯示在欄位上，用來組成 <see cref="Views.CascadeView.SelectedPathText"/>。
+        /// 節點的原始名稱，不會顯示在欄位上，用來組成 <see cref="Views.Columns.CascadeView.SelectedPathText"/>。
         /// </summary>
         string Name { get; }
 
@@ -62,7 +62,7 @@ namespace CascadeControl.Common
         public object Tag { get; }
 
         /// <summary>
-        /// 子節點，可以直接增刪；已經顯示的欄位不會自動更新，修改後請重新呼叫 <see cref="Views.CascadeView.SetTopLevelNodes"/> 或 <see cref="Views.CascadeView.RefreshColumns"/>。
+        /// 子節點，可以直接增刪；已經顯示的欄位不會自動更新，修改後請重新呼叫 <see cref="Views.Columns.CascadeView.SetTopLevelNodes"/> 或 <see cref="Views.Columns.CascadeView.RefreshColumns"/>。
         /// </summary>
         public IList<CascadeNode> Children => _children;
 

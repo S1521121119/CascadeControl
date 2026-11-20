@@ -8,7 +8,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     /// <summary>
     /// 以 Miller Columns 的方式呈現多層選單：有下一層就長出一欄，改選時後面的欄位會整批換掉。

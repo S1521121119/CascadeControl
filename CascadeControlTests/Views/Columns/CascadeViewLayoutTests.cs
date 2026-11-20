@@ -1,5 +1,6 @@
 ﻿using CascadeControl.Trees;
 using CascadeControl.Views;
+using CascadeControl.Views.Columns;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.ComponentModel;
@@ -7,7 +8,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControlTests.Views
+namespace CascadeControlTests.Views.Columns
 {
     [TestClass]
     public class CascadeViewLayoutTests

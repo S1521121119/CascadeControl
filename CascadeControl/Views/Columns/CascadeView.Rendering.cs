@@ -5,7 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     // 欄位的自繪與防閃爍。
     public partial class CascadeView

@@ -2,6 +2,7 @@
 using CascadeControl.State;
 using CascadeControl.Trees;
 using CascadeControl.Views;
+using CascadeControl.Views.Columns;
 using CascadeControl.Views.TreeImage;
 using CascadeControlTests.Trees;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

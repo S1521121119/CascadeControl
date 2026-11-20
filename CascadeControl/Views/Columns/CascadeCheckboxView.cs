@@ -7,7 +7,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     /// <summary>
     /// 每一列前面多一個勾選框的 <see cref="CascadeView"/>：可以在樹上勾選多個節點，勾選狀態存在 <see cref="CheckSet"/>。

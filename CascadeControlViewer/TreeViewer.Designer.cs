@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.cascadeView1 = new CascadeControl.Views.CascadeCheckboxView();
+            this.cascadeView1 = new CascadeControl.Views.Columns.CascadeCheckboxView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.treeImageView1 = new CascadeControl.Views.TreeImage.CascadeTreeImageView();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
@@ -105,7 +105,7 @@
 
         #endregion
 
-        private CascadeControl.Views.CascadeCheckboxView cascadeView1;
+        private CascadeControl.Views.Columns.CascadeCheckboxView cascadeView1;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private CascadeControl.Views.TreeImage.CascadeTreeImageView treeImageView1;
     }

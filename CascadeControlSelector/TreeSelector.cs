@@ -3,6 +3,7 @@ using CascadeControl.State;
 using CascadeControl.Trees;
 using CascadeControl.Trees.Csv;
 using CascadeControl.Views;
+using CascadeControl.Views.Columns;
 using CascadeControl.Views.TreeImage;
 using System;
 using System.Collections.Generic;

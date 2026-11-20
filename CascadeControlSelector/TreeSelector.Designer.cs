@@ -30,7 +30,7 @@
         {
             this.components = new System.ComponentModel.Container();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
-            this.cascadeView1 = new CascadeControl.Views.CascadeView();
+            this.cascadeView1 = new CascadeControl.Views.Columns.CascadeView();
             this.treeImageView1 = new CascadeControl.Views.TreeImage.CascadeTreeImageView();
             this.txtPath = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
@@ -115,7 +115,7 @@
         #endregion
         private System.Windows.Forms.SplitContainer splitContainer2;
         private CascadeControl.Views.TreeImage.CascadeTreeImageView treeImageView1;
-        private CascadeControl.Views.CascadeView cascadeView1;
+        private CascadeControl.Views.Columns.CascadeView cascadeView1;
         private System.Windows.Forms.TextBox txtPath;
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CascadeControl.Common;
 using CascadeControl.Trees;
 using CascadeControl.Views;
+using CascadeControl.Views.Columns;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Drawing;
@@ -8,7 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 
-namespace CascadeControlTests.Views
+namespace CascadeControlTests.Views.Columns
 {
     /// <summary>
     /// 給衍生類別用的掛勾：<see cref="CascadeView.NodeMouseClick"/>、DrawDefaultNode(e, textBounds)、

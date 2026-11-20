@@ -11,7 +11,7 @@ namespace CascadeControlTests.Views
 {
     /// <summary>
     /// Views 命名空間中不需要視窗的部分：<see cref="CascadeNode"/> 與 <see cref="CascadeNodeEventArgs"/>。
-    /// <see cref="CascadeView"/> 本身要建立 ListBox 與視窗訊息，不在單元測試範圍內。
+    /// <see cref="CascadeControl.Views.Columns.CascadeView"/> 本身要建立 ListBox 與視窗訊息，不在單元測試範圍內。
     /// </summary>
     [TestClass]
     public class CascadeNodeTests

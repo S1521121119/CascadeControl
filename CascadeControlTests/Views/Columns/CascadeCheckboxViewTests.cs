@@ -2,6 +2,7 @@
 using CascadeControl.State;
 using CascadeControl.Trees;
 using CascadeControl.Views;
+using CascadeControl.Views.Columns;
 using CascadeControlTests.Trees;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
@@ -9,7 +10,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControlTests.Views
+namespace CascadeControlTests.Views.Columns
 {
     [TestClass]
     public class CascadeCheckboxViewTests

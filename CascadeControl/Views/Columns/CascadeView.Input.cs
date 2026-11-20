@@ -5,7 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     // 鍵盤與滑鼠操作。焦點固定在操作欄，所以按鍵一律以導覽狀態為準，不看是哪一欄收到的。
     public partial class CascadeView

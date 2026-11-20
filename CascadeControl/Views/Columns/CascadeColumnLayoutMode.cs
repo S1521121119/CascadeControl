@@ -1,4 +1,4 @@
-namespace CascadeControl.Views
+namespace CascadeControl.Views.Columns
 {
     /// <summary>
     /// <see cref="CascadeView"/> 決定欄寬與顯示欄數的排版模式。
