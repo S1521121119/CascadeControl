@@ -1,13 +1,14 @@
 ﻿using CascadeControl.Common;
 using CascadeControl.Trees;
 using CascadeControl.Views;
+using CascadeControl.Views.TreeImage;
 using CascadeControlTests.Trees;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControlTests.Common
+namespace CascadeControlTests.Views.TreeImage
 {
     [TestClass]
     public class TreeDrawerTests

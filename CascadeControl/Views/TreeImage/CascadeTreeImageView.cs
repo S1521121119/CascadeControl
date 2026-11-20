@@ -8,7 +8,7 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControl.Views
+namespace CascadeControl.Views.TreeImage
 {
     /// <summary>
     /// <see cref="CascadeTreeImageView"/> 的圖怎麼放進控制項。

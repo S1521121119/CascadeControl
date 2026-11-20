@@ -31,7 +31,7 @@
             this.components = new System.ComponentModel.Container();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.cascadeView1 = new CascadeControl.Views.CascadeView();
-            this.treeImageView1 = new CascadeControl.Views.CascadeTreeImageView();
+            this.treeImageView1 = new CascadeControl.Views.TreeImage.CascadeTreeImageView();
             this.txtPath = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
             this.splitContainer2.Panel1.SuspendLayout();
@@ -114,7 +114,7 @@
 
         #endregion
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private CascadeControl.Views.CascadeTreeImageView treeImageView1;
+        private CascadeControl.Views.TreeImage.CascadeTreeImageView treeImageView1;
         private CascadeControl.Views.CascadeView cascadeView1;
         private System.Windows.Forms.TextBox txtPath;
     }

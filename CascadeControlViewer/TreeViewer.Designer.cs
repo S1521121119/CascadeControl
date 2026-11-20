@@ -31,7 +31,7 @@
             this.components = new System.ComponentModel.Container();
             this.cascadeView1 = new CascadeControl.Views.CascadeCheckboxView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
-            this.treeImageView1 = new CascadeControl.Views.CascadeTreeImageView();
+            this.treeImageView1 = new CascadeControl.Views.TreeImage.CascadeTreeImageView();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
@@ -107,7 +107,7 @@
 
         private CascadeControl.Views.CascadeCheckboxView cascadeView1;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private CascadeControl.Views.CascadeTreeImageView treeImageView1;
+        private CascadeControl.Views.TreeImage.CascadeTreeImageView treeImageView1;
     }
 }
 

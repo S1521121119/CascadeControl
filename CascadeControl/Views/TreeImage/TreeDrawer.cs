@@ -7,7 +7,7 @@ using System.Drawing.Text;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControl.Common
+namespace CascadeControl.Views.TreeImage
 {
     /// <summary>
     /// <see cref="TreeDrawer"/> 要畫樹的哪個範圍。
