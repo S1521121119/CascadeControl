@@ -78,13 +78,13 @@
     <Compile Include="Graphs\Csv\MenuGraphCsvFileTests.cs" />
     <Compile Include="Graphs\Csv\MenuGraphCsvTextTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Views\CascadeCheckboxViewTests.cs" />
-    <Compile Include="Views\CascadeNodeTests.cs" />
     <Compile Include="State\CascadeNavigatorTests.cs" />
     <Compile Include="State\CascadeStateTests.cs" />
-    <Compile Include="Views\CascadeViewHookTests.cs" />
-    <Compile Include="Views\CascadeViewLayoutTests.cs" />
-    <Compile Include="Views\CascadeViewMultiSelectTests.cs" />
+    <Compile Include="Views\CascadeNodeTests.cs" />
+    <Compile Include="Views\Columns\CascadeCheckboxViewTests.cs" />
+    <Compile Include="Views\Columns\CascadeViewHookTests.cs" />
+    <Compile Include="Views\Columns\CascadeViewLayoutTests.cs" />
+    <Compile Include="Views\Columns\CascadeViewMultiSelectTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
