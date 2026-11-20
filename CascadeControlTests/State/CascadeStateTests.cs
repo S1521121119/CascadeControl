@@ -1,13 +1,13 @@
 using CascadeControl.Common;
+using CascadeControl.State;
 using CascadeControl.Trees;
-using CascadeControl.Views;
 using CascadeControlTests.Trees;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CascadeControlTests.Views
+namespace CascadeControlTests.State
 {
     [TestClass]
     public class CascadeStateTests

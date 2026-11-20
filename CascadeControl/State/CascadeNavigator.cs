@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CascadeControl.Views
+namespace CascadeControl.State
 {
     /// <summary>
-    /// <see cref="CascadeView"/> 的導覽狀態：目前的選取路徑，以及每個節點「上次在底下選了哪一個子節點」的記憶軌跡。
+    /// <see cref="Views.CascadeView"/> 的導覽狀態：目前的選取路徑，以及每個節點「上次在底下選了哪一個子節點」的記憶軌跡。
     /// </summary>
     /// <remarks>
     /// 記憶是逐節點記的：在某一層改選別的項目，只會改寫那一層的父節點那一筆，其他分支的記憶都還在，

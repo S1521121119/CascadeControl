@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CascadeControl.Views
+namespace CascadeControl.State
 {
     /// <summary>
     /// <see cref="CascadeState"/> 內部狀態變更的種類，供同組件的檢視控制項決定要同步哪些畫面狀態。

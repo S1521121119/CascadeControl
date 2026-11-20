@@ -3,13 +3,13 @@ using CascadeControl.Trees;
 using System;
 using System.Collections.Generic;
 
-namespace CascadeControl.Views
+namespace CascadeControl.State
 {
     /// <summary>
     /// 具備節點勾選狀態的 <see cref="CascadeState"/>：在 <see cref="SetTree"/> 時一併建立對應的 <see cref="MenuCheckSet"/>。
     /// </summary>
     /// <remarks>
-    /// 這個檔案不相依 System.Windows.Forms，可同時綁定到 <see cref="CascadeCheckboxView"/> 與 <see cref="Views.TreeImage.CascadeTreeImageView"/>。
+    /// 這個檔案不相依 System.Windows.Forms，可同時綁定到 <see cref="Views.CascadeCheckboxView"/> 與 <see cref="Views.TreeImage.CascadeTreeImageView"/>。
     /// </remarks>
     public class CascadeCheckableState : CascadeState
     {

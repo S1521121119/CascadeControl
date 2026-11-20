@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CascadeControl.Views
+namespace CascadeControl.State
 {
     /// <summary>
-    /// <see cref="CascadeView.SelectedPathChanged"/> 與 <see cref="CascadeView.NodeActivated"/> 共用的事件參數，所有內容都由選取路徑推算而來。
+    /// <see cref="Views.CascadeView.SelectedPathChanged"/> 與 <see cref="Views.CascadeView.NodeActivated"/> 共用的事件參數，所有內容都由選取路徑推算而來。
     /// </summary>
     /// <remarks>
     /// 只保存 <see cref="Path"/>，其他屬性都從路徑推算，不會有兩份資料不一致的問題。

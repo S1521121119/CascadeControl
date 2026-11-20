@@ -1,11 +1,11 @@
 using CascadeControl.Common;
+using CascadeControl.State;
 using CascadeControl.Trees;
-using CascadeControl.Views;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 
-namespace CascadeControlTests.Views
+namespace CascadeControlTests.State
 {
     /// <summary>
     /// <see cref="CascadeNavigator"/> 的導覽規則：選取深度，以及逐節點記住的「上次選的子節點」。

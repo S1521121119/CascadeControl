@@ -50,8 +50,8 @@
             this.cascadeView1.Size = new System.Drawing.Size(343, 426);
             this.cascadeView1.TabIndex = 0;
             this.cascadeView1.CheckedChanged += new System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs>(this.CascadeView1_CheckedChanged);
-            this.cascadeView1.SelectedPathChanged += new System.EventHandler<CascadeControl.Views.CascadeNodeEventArgs>(this.CascadeView1_SelectedPathChanged);
-            this.cascadeView1.NodeActivated += new System.EventHandler<CascadeControl.Views.CascadeNodeEventArgs>(this.CascadeView1_NodeActivated);
+            this.cascadeView1.SelectedPathChanged += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.CascadeView1_SelectedPathChanged);
+            this.cascadeView1.NodeActivated += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.CascadeView1_NodeActivated);
             // 
             // splitContainer2
             // 
@@ -84,7 +84,7 @@
             this.treeImageView1.TabIndex = 5;
             this.treeImageView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.TreeImageView1_NodeMouseClick);
             this.treeImageView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.TreeImageView1_NodeMouseDoubleClick);
-            this.treeImageView1.NodeActivated += new System.EventHandler<CascadeControl.Views.CascadeNodeEventArgs>(this.TreeImageView1_NodeActivated);
+            this.treeImageView1.NodeActivated += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.TreeImageView1_NodeActivated);
             // 
             // TreeViewer
             // 
