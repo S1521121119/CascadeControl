@@ -18,7 +18,7 @@
 第 4 欄是 `Jog` 的子節點。選到任何一項再按 Enter 都會觸發 `NodeActivated`；進入下一層用 →。
 
 - **需求**：.NET Framework 4.8、Windows Forms，不需要第三方套件。
-- **命名空間**：`CascadeControl.Views`（控制項）、`CascadeControl.Trees`（選單樹與勾選）、`CascadeControl.Trees.Csv`（樹的文字與 CSV 讀寫）、`CascadeControl.Graphs`／`CascadeControl.Graphs.Csv`（有向圖與其 CSV 讀寫）、`CascadeControl.Common`（`ICascadeNode`、`|` 語法等共用部分）。
+- **命名空間**：`CascadeControl.State`（共享導覽與勾選狀態）、`CascadeControl.Views`（共用檢視介面與滑鼠事件）、`CascadeControl.Views.Columns`（Miller Columns 控制項 `CascadeView`／`CascadeCheckboxView`）、`CascadeControl.Views.TreeImage`（樹狀圖繪製與檢視 `TreeDrawer`／`CascadeTreeImageView`）、`CascadeControl.Trees`（選單樹與勾選）、`CascadeControl.Trees.Csv`（樹的文字與 CSV 讀寫）、`CascadeControl.Graphs`／`CascadeControl.Graphs.Csv`（有向圖與其 CSV 讀寫）、`CascadeControl.Common`（`ICascadeNode`、`|` 語法等基礎共用部分）。
 
 **目錄**：[快速開始](#快速開始) · [常見任務](#常見任務) · [CSV 格式](#csv-格式) · [操作方式](#操作方式) · [勾選](#勾選) · [API 速查](#api-速查) · [注意事項](#注意事項)
 
@@ -64,9 +64,10 @@ Motor,Axis X|Axis Y,Jog,Forward|Backward
 ### 4. 載入選單並處理執行
 
 ```csharp
+using CascadeControl.State;
 using CascadeControl.Trees;
 using CascadeControl.Trees.Csv;
-using CascadeControl.Views;
+using CascadeControl.Views.Columns;
 
 public MainForm()
 {
@@ -478,7 +479,7 @@ cascadeCheckboxView1.RefreshColumns();
 
 ## API 速查
 
-**`CascadeView`**（`CascadeControl.Views`，繼承自 `Panel`，實作 `ICascadeView`）
+**`CascadeView`**（`CascadeControl.Views.Columns`，繼承自 `Panel`，實作 `ICascadeView`）
 
 | 成員 | 說明 |
 |---|---|
@@ -517,7 +518,7 @@ cascadeCheckboxView1.RefreshColumns();
 `OnColumnBlankMouseClick(columnIndex, nodes, button, screenLocation)`（可覆寫，點欄位空白處時呼叫）、
 `OnContextMenuOpening(menu)`（可覆寫，內建功能表開啟前設定自己項目的 `Available`）、`OnTreeEdited`、`OnMultiSelectionChanged`；`SetTree` 是 virtual。
 
-**`CascadeCheckboxView`**（`CascadeControl.Views`，繼承自 `CascadeView`，實作 `ICascadeCheckableView`）
+**`CascadeCheckboxView`**（`CascadeControl.Views.Columns`，繼承自 `CascadeView`，實作 `ICascadeCheckableView`）
 
 | 成員 | 說明 |
 |---|---|
@@ -525,7 +526,7 @@ cascadeCheckboxView1.RefreshColumns();
 | `CheckedChanged` | `CheckSet` 的勾選狀態改變後觸發 |
 | `GetCheckBoxBounds(rowBounds)` | 勾選框在某一列裡的位置 |
 
-**`CascadeTreeImageView`**（`CascadeControl.Views`，繼承自 `ScrollableControl`，實作 `ICascadeView`）
+**`CascadeTreeImageView`**（`CascadeControl.Views.TreeImage`，繼承自 `ScrollableControl`，實作 `ICascadeView`）
 
 把 `State` 的選單樹用 `TreeDrawer` 畫出來，跟著選取與勾選自動重畫；自己管捲軸，可以直接 `Dock = Fill`。可呼叫 `SetTree` 獨立運作，或共享 `CascadeView`／`CascadeCheckboxView` 的 `State` 同步顯示。
 
@@ -574,7 +575,7 @@ standalone.SetTree(menu);
 
 原始尺寸下，移動後會捲動到選取的節點。
 
-**`CascadeState` / `CascadeCheckableState`**（`CascadeControl.Views`，不相依 WinForms）
+**`CascadeState` / `CascadeCheckableState`**（`CascadeControl.State`，不相依 WinForms）
 
 多個檢視控制項共享的資料、選取與勾選狀態。`CascadeView` 與 `CascadeTreeImageView` 預設建立 `CascadeState`，`CascadeCheckboxView` 預設建立 `CascadeCheckableState`。
 
