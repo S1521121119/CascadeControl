@@ -272,6 +272,8 @@ namespace CascadeControl.Views.Columns
         /// </remarks>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            if (ProcessCheckBoxKey(keyData)) return true;
+
             if (_edit != null && _edit.Box.ContainsFocus)
             {
                 switch (keyData)
@@ -366,12 +368,12 @@ namespace CascadeControl.Views.Columns
         /// <param name="bounds">那一列的矩形，欄位內的座標。</param>
         /// <param name="location">點擊位置，和 <paramref name="bounds"/> 同一個座標系。</param>
         /// <remarks>
-        /// 衍生類別在列裡畫了自己處理點擊的東西（例如勾選框）時覆寫它，在那個範圍回傳 false。
+        /// 預設只有 <see cref="CheckBoxes"/> 的勾選框回傳 false；衍生類別在列裡畫了自己處理點擊的東西時覆寫它，在那個範圍回傳 false。
         /// 回傳 false 的位置，左鍵按下、放開與雙擊都不改選取，也不觸發 <see cref="NodeActivated"/>；
         /// 按下與放開都在同一列的這種位置時才觸發 <see cref="NodeMouseClick"/>，衍生類別在 <see cref="OnNodeMouseClick"/> 處理。
         /// 右鍵本來就不改選取，不受影響。
         /// </remarks>
-        protected virtual bool SelectsOnLeftClick(ICascadeNode node, Rectangle bounds, Point location) => true;
+        protected virtual bool SelectsOnLeftClick(ICascadeNode node, Rectangle bounds, Point location) => !IsOnCheckBox(node, bounds, location);
 
         /// <summary>
         /// 用左鍵或右鍵點了某一欄的空白處（最後一列下方）之後呼叫；預設不做任何事。

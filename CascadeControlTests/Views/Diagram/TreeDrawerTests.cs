@@ -103,7 +103,7 @@ namespace CascadeControlTests.Views.Diagram
         public void IsExpanded_FollowsCheckedChildren()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeCheckboxView())
+            using (var view = new CascadeColumnsView { CheckBoxes = true })
             using (var imageView = new CascadeDiagramView { State = view.State })
             {
                 view.SetTree(tree);
@@ -123,7 +123,7 @@ namespace CascadeControlTests.Views.Diagram
         public void SetExpanded_OverridesDefaultUntilTreeChanges()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeCheckboxView())
+            using (var view = new CascadeColumnsView { CheckBoxes = true })
             using (var imageView = new CascadeDiagramView { State = view.State })
             {
                 view.SetTree(tree);
@@ -250,7 +250,7 @@ namespace CascadeControlTests.Views.Diagram
         public void SharedCheckableState_SharesPathSeparatorAndAutoRedrawsOnCheckAndEdit()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeCheckboxView { ReadOnly = false })
+            using (var view = new CascadeColumnsView { CheckBoxes = true, ReadOnly = false })
             using (var imageView = new CascadeDiagramView { State = view.State })
             {
                 view.PathSeparator = "\\";
@@ -387,7 +387,7 @@ namespace CascadeControlTests.Views.Diagram
             var motor = Find(tree, "Motor");
 
             using (var cascade = new CascadeColumnsView())
-            using (var checkbox = new CascadeCheckboxView())
+            using (var checkbox = new CascadeColumnsView { CheckBoxes = true })
             using (var image = new ProbeImageView())
             {
                 ICascadeView[] views = { cascade, checkbox, image };

@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.cascadeView1 = new CascadeControl.Views.Columns.CascadeCheckboxView();
+            this.cascadeView1 = new CascadeControl.Views.Columns.CascadeColumnsView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.diagramView1 = new CascadeControl.Views.Diagram.CascadeDiagramView();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
@@ -42,6 +42,7 @@
             // 
             this.cascadeView1.AutoScroll = true;
             this.cascadeView1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.cascadeView1.CheckBoxes = true;
             this.cascadeView1.DisplayColumnCount = 1;
             this.cascadeView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.cascadeView1.Location = new System.Drawing.Point(0, 0);
@@ -105,7 +106,7 @@
 
         #endregion
 
-        private CascadeControl.Views.Columns.CascadeCheckboxView cascadeView1;
+        private CascadeControl.Views.Columns.CascadeColumnsView cascadeView1;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private CascadeControl.Views.Diagram.CascadeDiagramView diagramView1;
     }

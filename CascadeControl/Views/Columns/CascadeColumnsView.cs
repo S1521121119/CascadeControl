@@ -62,21 +62,17 @@ namespace CascadeControl.Views.Columns
         public CascadeColumnsView()
         {
             AutoScroll = true;
-            _state = CreateDefaultState() ?? throw new InvalidOperationException($"{nameof(CreateDefaultState)} 不可回傳 null。");
+            _state = new CascadeCheckableState();
             AttachState(_state);
             InitializeContextMenus();
+            InitializeCheckBoxMenus();
         }
-
-        /// <summary>
-        /// 建立這個控制項預設使用的 <see cref="CascadeState"/>；衍生類別需要自訂狀態型別（例如 <see cref="CascadeCheckableState"/>）時覆寫。
-        /// </summary>
-        protected virtual CascadeState CreateDefaultState() => new CascadeState();
 
         /// <summary>
         /// 目前綁定的共享狀態：樹、頂層節點、選取路徑、記憶軌跡與 <see cref="PathSeparator"/> 都存在這裡。
         /// </summary>
         /// <remarks>
-        /// 預設每個控制項各自持有一份；把同一份 <see cref="CascadeState"/> 指派給多個控制項即可自動同步。不可設為 null。
+        /// 預設每個控制項各自持有一份 <see cref="CascadeCheckableState"/>，<see cref="CheckBoxes"/> 才有勾選狀態可以顯示；把同一份 <see cref="CascadeState"/> 指派給多個控制項即可自動同步。不可設為 null。
         /// </remarks>
         /// <exception cref="ArgumentNullException">設為 null。</exception>
         [Browsable(false)]
@@ -99,23 +95,15 @@ namespace CascadeControl.Views.Columns
                 History.Clear();
                 foreach (var list in _lists) list.Tag = null;
                 SyncColumns();
-                OnStateChanged(oldState, _state);
+                if (_checkBoxes) SyncCheckSetWithHistory();
             }
-        }
-
-        /// <summary>
-        /// <see cref="State"/> 換成另一份之後呼叫；衍生類別在這裡切換額外事件訂閱。
-        /// </summary>
-        /// <param name="oldState">原本綁定的狀態。</param>
-        /// <param name="newState">新綁定的狀態。</param>
-        protected virtual void OnStateChanged(CascadeState oldState, CascadeState newState)
-        {
         }
 
         private void AttachState(CascadeState state)
         {
             state.Invalidated += OnStateInvalidated;
             state.SelectedPathChanged += OnStateSelectedPathChanged;
+            AttachCheckableState(state);
         }
 
         private void DetachState(CascadeState state)
@@ -124,6 +112,7 @@ namespace CascadeControl.Views.Columns
 
             state.Invalidated -= OnStateInvalidated;
             state.SelectedPathChanged -= OnStateSelectedPathChanged;
+            DetachCheckableState(state);
         }
 
         private void OnStateInvalidated(CascadeStateInvalidation kind)
@@ -600,7 +589,7 @@ namespace CascadeControl.Views.Columns
         /// <remarks>
         /// 右鍵不改選取，欄位才不會在開快顯功能表時滑動；要知道點了哪個節點，用 <see cref="CascadeNodeEventArgs.Node"/>。
         /// 點在欄位的空白處不會觸發。
-        /// 左鍵點在衍生類別保留的位置（<see cref="SelectsOnLeftClick"/> 為 false，例如 <see cref="CascadeCheckboxView"/> 的勾選框）時，
+        /// 左鍵點在衍生類別保留的位置（<see cref="SelectsOnLeftClick"/> 為 false，例如 <see cref="CheckBoxes"/> 的勾選框）時，
         /// 選取也不變，而且按下與放開要在同一列的那個位置才會觸發。
         /// </remarks>
         [Category("Cascade")]
@@ -635,7 +624,17 @@ namespace CascadeControl.Views.Columns
         /// <summary>
         /// 觸發 <see cref="NodeMouseClick"/>。
         /// </summary>
-        protected virtual void OnNodeMouseClick(CascadeNodeMouseEventArgs e) => NodeMouseClick?.Invoke(this, e);
+        /// <remarks>
+        /// <see cref="CheckBoxes"/> 為 true 時，左鍵點在勾選框上會先切換勾選（按住 Shift 時連同所有子節點）再觸發，所以訂閱端看到的是切換之後的狀態。
+        /// Shift＋點勾選框：還沒全勾就 <see cref="MenuCheckSet.CheckSubtree"/>，已經全勾就取消，所以連點兩下會回到原狀。
+        /// </remarks>
+        protected virtual void OnNodeMouseClick(CascadeNodeMouseEventArgs e)
+        {
+            if (e == null) throw new ArgumentNullException(nameof(e));
+
+            ToggleOnCheckBoxClick(e);
+            NodeMouseClick?.Invoke(this, e);
+        }
 
         /// <summary>
         /// 觸發 <see cref="ColumnWidthChanged"/> 並重新排版。

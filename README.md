@@ -18,7 +18,7 @@
 第 4 欄是 `Jog` 的子節點。選到任何一項再按 Enter 都會觸發 `NodeActivated`；進入下一層用 →。
 
 - **需求**：.NET Framework 4.8、Windows Forms，不需要第三方套件。
-- **命名空間**：`CascadeControl.State`（共享導覽與勾選狀態）、`CascadeControl.Views`（共用檢視介面與滑鼠事件）、`CascadeControl.Views.Columns`（Miller Columns 控制項 `CascadeColumnsView`／`CascadeCheckboxView`）、`CascadeControl.Views.Diagram`（樹狀圖繪製與檢視 `TreeDrawer`／`CascadeDiagramView`）、`CascadeControl.Trees`（選單樹與勾選）、`CascadeControl.Trees.Csv`（樹的文字與 CSV 讀寫）、`CascadeControl.Graphs`／`CascadeControl.Graphs.Csv`（有向圖與其 CSV 讀寫）、`CascadeControl.Common`（`ICascadeNode`、`|` 語法等基礎共用部分）。
+- **命名空間**：`CascadeControl.State`（共享導覽與勾選狀態）、`CascadeControl.Views`（共用檢視介面與滑鼠事件）、`CascadeControl.Views.Columns`（Miller Columns 控制項 `CascadeColumnsView`）、`CascadeControl.Views.Diagram`（樹狀圖繪製與檢視 `TreeDrawer`／`CascadeDiagramView`）、`CascadeControl.Trees`（選單樹與勾選）、`CascadeControl.Trees.Csv`（樹的文字與 CSV 讀寫）、`CascadeControl.Graphs`／`CascadeControl.Graphs.Csv`（有向圖與其 CSV 讀寫）、`CascadeControl.Common`（`ICascadeNode`、`|` 語法等基礎共用部分）。
 
 **目錄**：[快速開始](#快速開始) · [常見任務](#常見任務) · [CSV 格式](#csv-格式) · [操作方式](#操作方式) · [勾選](#勾選) · [API 速查](#api-速查) · [注意事項](#注意事項)
 
@@ -365,7 +365,7 @@ ActionStep,ActionBurnIn,Init|Stop,
 
 | 功能表項目 | 快捷鍵 | `ReadOnly = true` | `ReadOnly = false` |
 |---|---|---|---|
-| 復原 / 重做 | Ctrl+Z / Ctrl+Y | —（`CascadeCheckboxView` 可以復原勾選） | 見[復原與重做](#復原與重做)；兩個功能表都有 |
+| 復原 / 重做 | Ctrl+Z / Ctrl+Y | —（`CheckBoxes` 為 true 時可以復原勾選） | 見[復原與重做](#復原與重做)；兩個功能表都有 |
 | 插入 ▸ 之前 / 之後 | Ctrl+I（之後） | — | 在節點前面／後面插入一列編輯框，按 Enter 建立新節點 |
 | 建立子節點 | Ctrl+N | — | 只對葉節點：長出下一欄並開啟編輯框，按 Enter 建立第一個子節點；已經有子節點時停用，請在子節點那一欄插入 |
 | 重新命名 | F2 | — | 在節點上開啟編輯框，文字全選 |
@@ -402,16 +402,18 @@ ActionStep,ActionBurnIn,Init|Stop,
 
 ## 勾選
 
-`CascadeCheckboxView` 是每一列前面多一個勾選框的 `CascadeColumnsView`，用來在樹上**勾選多個節點**，再一次輸出勾選的部分。
+把 `CascadeColumnsView.CheckBoxes` 設為 true，每一列前面就多一個勾選框，用來在樹上**勾選多個節點**，再一次輸出勾選的部分。
+在設計工具的屬性視窗（Cascade 分類）或程式碼裡設定都可以，執行中也可以切換。
 選取（目前走到哪裡）和勾選（選了哪些）是兩回事：勾選狀態存在 `MenuCheckSet`，不存在節點上，所以 `MenuNode` 與 `MenuTree` 都不必改。
 
 ```csharp
-// 用法和 CascadeColumnsView 一樣；SetTree 會自動建立一份針對這棵樹的 MenuCheckSet。
-cascadeCheckboxView1.SetTree(menu);
-cascadeCheckboxView1.CheckedChanged += (s, e) =>
+// SetTree 會自動建立一份針對這棵樹的 MenuCheckSet。
+cascadeView1.CheckBoxes = true;
+cascadeView1.SetTree(menu);
+cascadeView1.CheckedChanged += (s, e) =>
     Debug.WriteLine($"{e.Reason}：+{e.Added.Count} / -{e.Removed.Count}");
 
-MenuCheckSet checks = cascadeCheckboxView1.CheckSet;
+MenuCheckSet checks = cascadeView1.CheckSet;
 
 // 取得勾選的節點（依樹的順序）
 foreach (MenuNode node in checks.CheckedNodes) Debug.WriteLine(node.FullPathText);
@@ -469,8 +471,8 @@ checks.Apply(saved, out IList<string> applyWarnings);   // 原樹裡找不到的
 
 ```csharp
 node.RemoveFromParent();
-cascadeCheckboxView1.CheckSet.Reconcile();
-cascadeCheckboxView1.RefreshColumns();
+cascadeView1.CheckSet.Reconcile();
+cascadeView1.RefreshColumns();
 ```
 
 `SetTree` 每次都會換上一份全新的 `MenuCheckSet`；自己設定 `CheckSet` 時，它的 `History` 會換成控制項的 `History`，並清空歷史。想保留勾選（例如重新載入同一棵樹），先用 `ToTree()` 存下來，`SetTree` 之後再 `Apply` 回去。
@@ -512,26 +514,27 @@ cascadeCheckboxView1.RefreshColumns();
 | `ColumnWidthChanged` | `ColumnWidth` 改變後觸發，供資料繫結使用 |
 | `InvalidateNodes()` | 讓所有欄位重畫，不重建欄位；自繪的外觀取決於外部狀態、而那份狀態改變時呼叫 |
 
-給衍生類別用的 protected 成員：`CreateDefaultState()`、`OnStateChanged(oldState, newState)`、`DrawDefaultNode(e)`（可覆寫，畫預設外觀）、`DrawDefaultNode(e, textBounds)`（把文字畫在指定範圍）、
+給衍生類別用的 protected 成員：`DrawDefaultNode(e)`（可覆寫，畫預設外觀）、`DrawDefaultNode(e, textBounds)`（把文字畫在指定範圍）、
 `IsColumnFocused`、`MinimumItemHeight`（可覆寫）、`OnNodeMouseClick`、
 `SelectsOnLeftClick(node, bounds, location)`（可覆寫，回傳 false 的位置左鍵不改選取，例如勾選框）、
 `OnColumnBlankMouseClick(columnIndex, nodes, button, screenLocation)`（可覆寫，點欄位空白處時呼叫）、
 `OnContextMenuOpening(menu)`（可覆寫，內建功能表開啟前設定自己項目的 `Available`）、`OnTreeEdited`、`OnMultiSelectionChanged`；`SetTree` 是 virtual。
 
-**`CascadeCheckboxView`**（`CascadeControl.Views.Columns`，繼承自 `CascadeColumnsView`，實作 `ICascadeCheckableView`）
+**勾選成員**（`CascadeColumnsView` 實作 `ICascadeCheckableView`）
 
 | 成員 | 說明 |
 |---|---|
-| `CheckSet` | 目前顯示的勾選狀態（存在預設的 `CascadeCheckableState` 裡）；`SetTree` 會自動換上新的，設為 null 就不顯示勾選框 |
+| `CheckBoxes` | 是否顯示勾選框並接受勾選操作，預設 false；切換時清空 `History` |
+| `CheckSet` | 目前的勾選狀態（存在預設的 `CascadeCheckableState` 裡），不論 `CheckBoxes` 都可以讀寫；`SetTree` 會自動換上新的，設為 null 就不顯示勾選框 |
 | `CheckedChanged` | `CheckSet` 的勾選狀態改變後觸發 |
 | `GetCheckBoxBounds(rowBounds)` | 勾選框在某一列裡的位置 |
 
 **`CascadeDiagramView`**（`CascadeControl.Views.Diagram`，繼承自 `ScrollableControl`，實作 `ICascadeView`）
 
-把 `State` 的選單樹用 `TreeDrawer` 畫出來，跟著選取與勾選自動重畫；自己管捲軸，可以直接 `Dock = Fill`。可呼叫 `SetTree` 獨立運作，或共享 `CascadeColumnsView`／`CascadeCheckboxView` 的 `State` 同步顯示。
+把 `State` 的選單樹用 `TreeDrawer` 畫出來，跟著選取與勾選自動重畫；自己管捲軸，可以直接 `Dock = Fill`。可呼叫 `SetTree` 獨立運作，或共享 `CascadeColumnsView` 的 `State` 同步顯示。
 
 ```csharp
-// 與 CascadeColumnsView 或 CascadeCheckboxView 共享狀態（選取、記憶、PathSeparator 與勾選會自動同步）
+// 與 CascadeColumnsView 共享狀態（選取、記憶、PathSeparator 與勾選會自動同步）
 diagramView1.State = cascadeView1.State;
 diagramView1.NodeMouseClick += (s, e) =>
 {
@@ -577,7 +580,7 @@ standalone.SetTree(menu);
 
 **`CascadeState` / `CascadeCheckableState`**（`CascadeControl.State`，不相依 WinForms）
 
-多個檢視控制項共享的資料、選取與勾選狀態。`CascadeColumnsView` 與 `CascadeDiagramView` 預設建立 `CascadeState`，`CascadeCheckboxView` 預設建立 `CascadeCheckableState`。
+多個檢視控制項共享的資料、選取與勾選狀態。`CascadeColumnsView` 預設建立 `CascadeCheckableState`，`CascadeDiagramView` 預設建立 `CascadeState`。
 
 | 成員 | 說明 |
 |---|---|
@@ -589,7 +592,7 @@ standalone.SetTree(menu);
 
 **`ICascadeView` / `ICascadeCheckableView`**（`CascadeControl.Views`，不相依 WinForms）
 
-導覽與勾選能力的檢視介面，不含編輯與復原成員。`CascadeColumnsView`、`CascadeCheckboxView` 與 `CascadeDiagramView` 皆實作 `ICascadeView`，`CascadeCheckboxView` 另外實作 `ICascadeCheckableView`。
+導覽與勾選能力的檢視介面，不含編輯與復原成員。`CascadeColumnsView` 與 `CascadeDiagramView` 皆實作 `ICascadeView`，`CascadeColumnsView` 另外實作 `ICascadeCheckableView`。
 
 `CascadeColumnsView.Tree` 是 `SetTree` 設定的樹；用 `SetTopLevelNodes` 顯示其他資料或 `Clear` 後為 null。
 `TreeDrawer.RenderImage(...)` 和 `Render` 相同，另外帶回每個節點方塊與展開鈕的位置（`TreeImage.Nodes`、`GetNodeAt`、`GetExpanderAt`）。
@@ -610,7 +613,7 @@ standalone.SetTree(menu);
 | `CheckAll()` / `UncheckAll()` | 整棵樹 |
 | `ToTree()` | 產生只含勾選節點的新樹，交給 `ToRows`、`MenuTreeCsvText.Format`、`MenuTreeCsvFile.Save` 輸出 |
 | `Apply(subset, out warnings)` | 把勾選狀態換成 `subset` 裡有的節點（依名稱路徑對應），算一個復原步驟 |
-| `History` | 勾選的步驟記在哪一份 `MenuHistory`；預設是自己的一份，交給 `CascadeCheckboxView` 後是控制項的 `History` |
+| `History` | 勾選的步驟記在哪一份 `MenuHistory`；預設是自己的一份，`CascadeColumnsView.CheckBoxes` 為 true 時是控制項的 `History` |
 | `Reconcile()` | 在程式裡直接改了樹的結構後呼叫；會清除 `History` |
 | `Changed` | 勾選狀態改變後觸發，參數有 `Added`、`Removed`、`Target`、`Reason` |
 
@@ -697,7 +700,7 @@ Info|Status,Version|Uptime
 - **`SetTree`、`SetTopLevelNodes`、`Clear` 也會觸發 `SelectedPathChanged`**（未選取的狀態）。在表單建構式裡呼叫時，事件處理常式也會跑一次。
 - **按 ← 會改變選取**，`SelectedPathChanged` 跟著觸發。依賴「← 只移動焦點」的舊程式要留意。
 - **`DrawNode` 和 `ColumnWidthChanged` 不在屬性視窗裡**，需要時請在程式碼中訂閱。
-- **在程式裡直接改 `MenuNode` 之後要清除復原歷史**：`CascadeColumnsView` 呼叫 `History.Clear()`，`CascadeCheckboxView` 呼叫 `CheckSet.Reconcile()`（它也會清除），見[樹被編輯之後](#樹被編輯之後)。
+- **在程式裡直接改 `MenuNode` 之後要清除復原歷史**：`CascadeColumnsView` 呼叫 `History.Clear()`，開著 `CheckBoxes` 時改呼叫 `CheckSet.Reconcile()`（它也會清除），見[樹被編輯之後](#樹被編輯之後)。
 - **更新 dll 時要連同 `CascadeControl.xml` 一起換**，否則 IntelliSense 顯示的會是舊的說明。
 - 控制項用 `WS_EX_COMPOSITED` 做雙緩衝，避免改選時閃爍。一般大小的選單感覺不出額外負擔；
   如果單欄有上千項，請留意重繪效能。

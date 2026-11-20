@@ -13,7 +13,7 @@ namespace CascadeControl.Trees
     /// 所以勾選一個節點會自動補勾祖先，取消一個節點會連同它的所有子孫一起取消；
     /// 中間節點可以只勾自己，代表輸出到這一層為止。
     /// 每一次呼叫異動方法算一個復原步驟，只記錄實際的差異；沒有造成任何改變的呼叫不會進入歷史。
-    /// 歷史放在 <see cref="History"/>，可以和樹的編輯共用同一條時間軸（<see cref="Views.Columns.CascadeCheckboxView"/> 就是這樣用的）。
+    /// 歷史放在 <see cref="History"/>，可以和樹的編輯共用同一條時間軸（<see cref="Views.Columns.CascadeColumnsView.CheckBoxes"/> 為 true 時就是這樣用的）。
     /// 在程式裡直接改了樹的結構（插入、刪除、改名合併）之後要呼叫 <see cref="Reconcile"/>。
     /// 這個類別不相依 System.Windows.Forms。
     /// </remarks>
@@ -48,7 +48,7 @@ namespace CascadeControl.Trees
         /// </summary>
         /// <remarks>
         /// 換成別的 <see cref="MenuHistory"/>，就能和樹的編輯排在同一條時間軸上；
-        /// <see cref="Views.Columns.CascadeCheckboxView.CheckSet"/> 被設定時會把它換成控制項的 <see cref="Views.Columns.CascadeColumnsView.History"/>。
+        /// <see cref="Views.Columns.CascadeColumnsView.CheckSet"/> 在 <see cref="Views.Columns.CascadeColumnsView.CheckBoxes"/> 為 true 時被設定會把它換成控制項的 <see cref="Views.Columns.CascadeColumnsView.History"/>。
         /// 換掉時，舊歷史裡的步驟留在舊的那一份，不會搬過來。
         /// </remarks>
         /// <exception cref="ArgumentNullException">設為 null。</exception>

@@ -99,10 +99,16 @@ namespace CascadeControl.Views.Columns
         /// </summary>
         /// <param name="e">這一列的繪製參數。</param>
         /// <remarks>
-        /// 衍生類別要在預設外觀上多畫東西（例如勾選框）時覆寫它，文字的部分交給
+        /// <see cref="CheckBoxes"/> 為 true 時，有勾選框的節點在文字前面多畫一個勾選框。
+        /// 衍生類別要在預設外觀上多畫東西時覆寫它，文字的部分交給
         /// <see cref="DrawDefaultNode(CascadeDrawNodeEventArgs, Rectangle)"/>。
         /// </remarks>
-        protected virtual void DrawDefaultNode(CascadeDrawNodeEventArgs e) => DrawDefaultNode(e, e.Bounds);
+        protected virtual void DrawDefaultNode(CascadeDrawNodeEventArgs e)
+        {
+            if (e == null) throw new ArgumentNullException(nameof(e));
+
+            if (!TryDrawCheckBoxNode(e)) DrawDefaultNode(e, e.Bounds);
+        }
 
         /// <summary>
         /// 畫出預設外觀，但文字只畫在 <paramref name="textBounds"/> 裡；背景仍然填滿整個 <see cref="CascadeDrawNodeEventArgs.Bounds"/>。

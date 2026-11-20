@@ -94,7 +94,7 @@ namespace CascadeControl.Views.Columns
 
         /// <summary>
         /// 復原／重做的歷史：使用者在這個控制項上對樹做的編輯（插入、建立子節點、改名、貼上、剪下、刪除）照順序記在這裡，
-        /// <see cref="CascadeCheckboxView"/> 的勾選也記在同一條時間軸上；預設最多 <see cref="MenuHistory.DEFAULT_CAPACITY"/> 步。
+        /// <see cref="CheckBoxes"/> 為 true 時，勾選也記在同一條時間軸上；預設最多 <see cref="MenuHistory.DEFAULT_CAPACITY"/> 步。
         /// </summary>
         /// <remarks>
         /// 複製不改樹，不進歷史。<see cref="SetTree"/>、<see cref="SetTopLevelNodes"/>、<see cref="Clear"/> 會清空歷史。
@@ -182,7 +182,16 @@ namespace CascadeControl.Views.Columns
         /// <summary>
         /// 觸發 <see cref="TreeEdited"/>。
         /// </summary>
-        protected virtual void OnTreeEdited(CascadeTreeEditedEventArgs e) => TreeEdited?.Invoke(this, e);
+        /// <remarks>
+        /// <see cref="CheckBoxes"/> 為 true 時，剪下、刪除之後會先取消被移除節點（連同子孫）的勾選再觸發，和移除算同一步，復原時一起回來。
+        /// </remarks>
+        protected virtual void OnTreeEdited(CascadeTreeEditedEventArgs e)
+        {
+            if (e == null) throw new ArgumentNullException(nameof(e));
+
+            UncheckRemovedNodes(e);
+            TreeEdited?.Invoke(this, e);
+        }
 
         /// <summary>
         /// 內建快顯功能表開啟之前呼叫，內建項目的狀態已經設好；預設不做任何事。
@@ -343,6 +352,7 @@ namespace CascadeControl.Views.Columns
             _pasteChildItem.Enabled = singleLeaf;
 
             SetHistoryItems(_undoItem, _redoItem);
+            SetCheckBoxMenuItems(NodeContextMenu);
 
             OnContextMenuOpening(NodeContextMenu);
             e.Cancel = !TidySeparators(NodeContextMenu);
@@ -359,6 +369,7 @@ namespace CascadeControl.Views.Columns
             _selectAllItem.Available = SafeColumnNodes(columnIndex).Count > 0;
 
             SetHistoryItems(_columnUndoItem, _columnRedoItem);
+            SetCheckBoxMenuItems(ColumnContextMenu);
 
             OnContextMenuOpening(ColumnContextMenu);
             e.Cancel = !TidySeparators(ColumnContextMenu);
@@ -375,10 +386,9 @@ namespace CascadeControl.Views.Columns
             redoItem.Enabled = CanRedo;
         }
 
-        /// <summary>
-        /// 右鍵功能表要不要顯示「復原」、「重做」：基底在可以編輯樹時（<see cref="ReadOnly"/> 為 false、而且是 <see cref="SetTree"/> 顯示的樹）顯示。
-        /// </summary>
-        internal virtual bool ShowsHistoryCommands => CanEdit;
+        // 右鍵功能表要不要顯示「復原」、「重做」：可以編輯樹時（ReadOnly 為 false、而且是 SetTree 顯示的樹）顯示；
+        // 有勾選框時唯讀也可以復原勾選，所以一律顯示。
+        private bool ShowsHistoryCommands => CanEdit || ActiveCheckSet != null;
 
         /// <summary>
         /// 只留下夾在兩個可見項目之間的分隔線。
@@ -955,7 +965,7 @@ namespace CascadeControl.Views.Columns
                 Font = list.Font,
                 Text = text,
 
-                // 欄位為了讓 Space 當指令可能關掉了輸入法（CascadeCheckboxView），編輯框不跟著繼承。
+                // 欄位為了讓 Space 當指令可能關掉了輸入法（CheckBoxes），編輯框不跟著繼承。
                 ImeMode = ImeMode.NoControl,
             };
 

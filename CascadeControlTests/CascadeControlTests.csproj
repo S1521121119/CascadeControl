@@ -81,7 +81,7 @@
     <Compile Include="State\CascadeNavigatorTests.cs" />
     <Compile Include="State\CascadeStateTests.cs" />
     <Compile Include="Views\CascadeNodeTests.cs" />
-    <Compile Include="Views\Columns\CascadeCheckboxViewTests.cs" />
+    <Compile Include="Views\Columns\CascadeColumnsViewCheckBoxesTests.cs" />
     <Compile Include="Views\Columns\CascadeColumnsViewHookTests.cs" />
     <Compile Include="Views\Columns\CascadeColumnsViewLayoutTests.cs" />
     <Compile Include="Views\Columns\CascadeColumnsViewMultiSelectTests.cs" />

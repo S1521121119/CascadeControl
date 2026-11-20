@@ -215,6 +215,7 @@ namespace CascadeControl.Views.Columns
                 // 失去焦點後選取項仍是標準藍底，多欄一起看就分不出鍵盤在哪一欄，記憶軌跡項目也要另外上色，所以改為自繪。
                 DrawMode = DrawMode.OwnerDrawFixed,
                 ItemHeight = ItemHeight,
+                ImeMode = ColumnImeMode,
 
                 // 讓 GetItemText（打字跳到項目、無障礙功能）也使用 ICascadeNode.DisplayText，而不是各實作自己的 ToString。
                 FormattingEnabled = true,
@@ -489,13 +490,13 @@ namespace CascadeControl.Views.Columns
         private int ItemHeight => Math.Min(255, Math.Max(Font.Height, MinimumItemHeight));
 
         /// <summary>
-        /// 每一列至少要多高（像素）；預設為 0，也就是完全由字型決定。
+        /// 每一列至少要多高（像素）；<see cref="CheckBoxes"/> 為 true 時是放得下勾選框的高度，否則為 0，也就是完全由字型決定。
         /// </summary>
         /// <remarks>
-        /// 衍生類別在列裡多畫了比文字還高的東西（例如勾選框）時覆寫它，小字型下才不會被上下裁掉。
-        /// 回傳值應該固定不變；列高只在建立欄位與字型改變時重新計算。
+        /// 衍生類別在列裡多畫了比文字還高的東西時覆寫它，小字型下才不會被上下裁掉。
+        /// 列高只在建立欄位、字型改變與切換 <see cref="CheckBoxes"/> 時重新計算，所以覆寫的回傳值不應該因為其他條件而改變。
         /// </remarks>
-        protected virtual int MinimumItemHeight => 0;
+        protected virtual int MinimumItemHeight => _checkBoxes ? CheckBoxRowHeight : 0;
 
         /// <summary>
         /// 依目前的欄寬與欄高重新擺放所有欄位，決定哪幾欄要顯示，並修正捲動範圍。

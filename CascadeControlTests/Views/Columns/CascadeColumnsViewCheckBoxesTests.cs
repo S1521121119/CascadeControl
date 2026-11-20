@@ -13,10 +13,12 @@ using System.Windows.Forms;
 namespace CascadeControlTests.Views.Columns
 {
     [TestClass]
-    public class CascadeCheckboxViewTests
+    public class CascadeColumnsViewCheckBoxesTests
     {
-        private sealed class ProbeView : CascadeCheckboxView
+        private sealed class ProbeView : CascadeColumnsView
         {
+            public ProbeView() => CheckBoxes = true;
+
             public void Draw(CascadeDrawNodeEventArgs e) => OnDrawNode(e);
         }
 
@@ -25,7 +27,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void SetTree_CreatesFreshCheckSetForThatTree()
         {
-            using (var view = new CascadeCheckboxView())
+            using (var view = new CascadeColumnsView { CheckBoxes = true })
             {
                 Assert.IsNull(view.CheckSet);
 
@@ -49,7 +51,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void CheckedChanged_ForwardsOnlyTheCurrentCheckSet()
         {
-            using (var view = new CascadeCheckboxView())
+            using (var view = new CascadeColumnsView { CheckBoxes = true })
             {
                 var tree = TestTrees.Template();
                 view.SetTree(tree);
@@ -78,7 +80,7 @@ namespace CascadeControlTests.Views.Columns
         public void InterfaceContracts_NavigateAndCheckThroughInterfaces()
         {
             using (var plain = new CascadeColumnsView())
-            using (var checkable = new CascadeCheckboxView())
+            using (var checkable = new CascadeColumnsView { CheckBoxes = true })
             {
                 ICascadeView plainView = plain;
                 ICascadeCheckableView checkableView = checkable;
@@ -114,7 +116,7 @@ namespace CascadeControlTests.Views.Columns
             shared.SetTree(tree);
             shared.TrySelectNode(axisX);
 
-            using (var first = new CascadeCheckboxView())
+            using (var first = new CascadeColumnsView { CheckBoxes = true })
             {
                 var firstSelectedEvents = 0;
                 var firstCheckedEvents = 0;
@@ -126,7 +128,7 @@ namespace CascadeControlTests.Views.Columns
                 Assert.AreSame(axisX, first.SelectedNode);
                 Assert.AreEqual(3, first.Controls.OfType<ListBox>().Count(), "綁上已選取的 State 會立刻重建對應欄位");
 
-                using (var second = new CascadeCheckboxView { State = shared })
+                using (var second = new CascadeColumnsView { CheckBoxes = true, State = shared })
                 {
                     var secondSelectedEvents = 0;
                     var secondCheckedEvents = 0;
@@ -154,7 +156,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void State_RejectsNull_AndPlainStateRejectsCheckSetAssignment()
         {
-            using (var view = new CascadeCheckboxView())
+            using (var view = new CascadeColumnsView { CheckBoxes = true })
             {
                 Assert.ThrowsException<System.ArgumentNullException>(() => view.State = null);
 
@@ -168,12 +170,92 @@ namespace CascadeControlTests.Views.Columns
 
         #endregion CheckSet
 
+        #region CheckBoxes 開關
+
+        [TestMethod]
+        public void CheckBoxesOff_ByDefault_ClickOnCheckBoxAreaSelects_ButCheckSetStillExists()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            {
+                Assert.IsFalse(host.View.CheckBoxes);
+
+                var tree = TestTrees.Template();
+                host.View.SetTree(tree);
+                Assert.IsNotNull(host.View.CheckSet, "沒開勾選框也有勾選狀態，可以和其他檢視共用");
+
+                var column = host.Columns[0];
+                var box = host.View.GetCheckBoxBounds(column.GetItemRectangle(1));
+                ViewHost.SendLeftClick(column, Center(box));
+
+                Assert.AreSame(tree.TopLevelNodes[1], host.View.SelectedNode, "沒有勾選框，那個位置就是一般的選取");
+                Assert.AreEqual(0, host.View.CheckSet.Count);
+            }
+        }
+
+        [TestMethod]
+        public void TurningCheckBoxesOn_AtRuntime_ClickChecks_AndUndoGoesThroughViewHistory()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            {
+                var tree = TestTrees.Template();
+                host.View.SetTree(tree);
+                host.View.CheckBoxes = true;
+
+                var column = host.Columns[0];
+                var box = host.View.GetCheckBoxBounds(column.GetItemRectangle(1));
+                ViewHost.SendLeftClick(column, Center(box));
+
+                Assert.IsTrue(host.View.CheckSet.IsChecked(tree.TopLevelNodes[1]));
+                Assert.IsNull(host.View.SelectedNode, "點勾選框不改選取");
+                Assert.IsTrue(host.View.Undo(), "勾選記在控制項的歷史裡");
+                Assert.AreEqual(0, host.View.CheckSet.Count);
+            }
+        }
+
+        [TestMethod]
+        public void TurningCheckBoxesOn_AtRuntime_GrowsRowsToFitTheCheckBox()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            {
+                host.View.Font = new Font("Microsoft Sans Serif", 6f);
+                host.View.SetTree(TestTrees.Template());
+                host.View.CheckBoxes = true;
+
+                var row = host.Columns[0].GetItemRectangle(0);
+                var box = host.View.GetCheckBoxBounds(row);
+
+                Assert.IsTrue(box.Top > row.Top && box.Bottom < row.Bottom, $"列 {row}，勾選框 {box}");
+            }
+        }
+
+        [TestMethod]
+        public void TurningCheckBoxesOff_ClearsHistory_AndLaterChecksStayOutOfIt()
+        {
+            using (var host = new ViewHost<CheckBoxColumnsView>())
+            {
+                var tree = TestTrees.Template();
+                host.View.SetTree(tree);
+                var set = host.View.CheckSet;
+                set.Check(tree.TopLevelNodes[0]);
+                Assert.IsTrue(host.View.CanUndo);
+
+                host.View.CheckBoxes = false;
+                Assert.IsFalse(host.View.CanUndo, "切換時清空歷史");
+                Assert.AreNotSame(host.View.History, set.History, "勾選不再記進控制項的歷史");
+
+                set.Check(tree.TopLevelNodes[1]);
+                Assert.IsFalse(host.View.CanUndo);
+            }
+        }
+
+        #endregion CheckBoxes 開關
+
         #region 滑鼠
 
         [TestMethod]
         public void ClickOnCheckBox_TogglesWithoutSelecting_ClickOnTextOnlySelects()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.SetTree(tree);
@@ -200,7 +282,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void ClickOnCheckBox_InNextColumn_DoesNotSlide()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 host.View.ColumnLayoutMode = CascadeColumnLayoutMode.Sliding;
                 host.View.DisplayColumnCount = 3;
@@ -234,7 +316,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void ShiftClickOnCheckBox_ChecksSubtree_AgainUnchecks()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.SetTree(tree);
@@ -260,7 +342,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void DragOffCheckBox_OrDoubleClick_BehaveLikeACheckBox()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var activated = 0;
                 host.View.NodeActivated += (sender, e) => activated++;
@@ -287,7 +369,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void RowHeight_IsTallEnoughForCheckBox()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 host.View.Font = new Font("Microsoft Sans Serif", 6f);
                 host.View.SetTree(TestTrees.Template());
@@ -302,7 +384,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void RightClickOnNode_ShowsNodeMenu_WithoutSelecting()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.SetTree(tree);
@@ -331,7 +413,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void RightClickOnBlankArea_ShowsColumnMenu_ItemsActOnWholeColumn()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.SetTree(tree);
@@ -370,7 +452,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void RightClick_WithoutCheckSet_ShowsOnlyEditItems()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 host.View.SetTree(TestTrees.Template());
                 host.View.CheckSet = null;
@@ -471,7 +553,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void Keys_NotFocusedOrNoCheckSet_AreNotHandled()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 host.View.SetTree(TestTrees.Template());
                 host.View.TrySelectNode(host.View.CheckSet.Tree.TopLevelNodes[0]);
@@ -496,7 +578,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void Undo_ChecksAndRenames_FollowOneTimeline()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.ReadOnly = false;
@@ -542,7 +624,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void Undo_Insert_RemovesNode_RedoBringsSameNodeBack()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.ReadOnly = false;
@@ -572,7 +654,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void CreateChildAndPasteAsChild_OnlyOnLeaf()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.ReadOnly = false;
@@ -614,7 +696,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void SetTreeOrNewCheckSet_ClearsHistory()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 host.View.SetTree(TestTrees.Template());
                 host.View.CheckSet.Check(host.View.Tree.TopLevelNodes[0]);
@@ -633,7 +715,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void ContextMenu_UndoItem_EnabledByHistory_AndUndoes()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 var tree = TestTrees.Template();
                 host.View.SetTree(tree);
@@ -657,7 +739,7 @@ namespace CascadeControlTests.Views.Columns
             }
         }
 
-        private static TextBox EditBox(ViewHost<CascadeCheckboxView> host) =>
+        private static TextBox EditBox(ViewHost<CheckBoxColumnsView> host) =>
             host.Columns.SelectMany(column => column.Controls.Cast<Control>()).SelectMany(frame => frame.Controls.OfType<TextBox>()).Single();
 
         #endregion 復原與重做
@@ -753,14 +835,14 @@ namespace CascadeControlTests.Views.Columns
 
         private static Point Center(Rectangle bounds) => new Point(bounds.Left + (bounds.Width / 2), bounds.Top + (bounds.Height / 2));
 
-        private static void RightClickRow(ViewHost<CascadeCheckboxView> host, int columnIndex, int rowIndex)
+        private static void RightClickRow(ViewHost<CheckBoxColumnsView> host, int columnIndex, int rowIndex)
         {
             var column = host.Columns[columnIndex];
             var row = column.GetItemRectangle(rowIndex);
             ViewHost.RaiseMouseUp(column, MouseButtons.Right, new Point(row.Left + 40, row.Top + (row.Height / 2)));
         }
 
-        private static void RightClickBlank(ViewHost<CascadeCheckboxView> host, int columnIndex)
+        private static void RightClickBlank(ViewHost<CheckBoxColumnsView> host, int columnIndex)
         {
             var column = host.Columns[columnIndex];
             ViewHost.RaiseMouseUp(column, MouseButtons.Right, new Point(40, column.ClientSize.Height - 2));
@@ -792,9 +874,9 @@ namespace CascadeControlTests.Views.Columns
         }
 
         // 顯示範本樹並把鍵盤焦點放進第一欄；測試環境拿不到焦點時，測試標成 Inconclusive。
-        private static ViewHost<CascadeCheckboxView> FocusedHost(out MenuTree tree)
+        private static ViewHost<CheckBoxColumnsView> FocusedHost(out MenuTree tree)
         {
-            var host = new ViewHost<CascadeCheckboxView>();
+            var host = new ViewHost<CheckBoxColumnsView>();
             tree = TestTrees.Template();
             host.View.SetTree(tree);
 

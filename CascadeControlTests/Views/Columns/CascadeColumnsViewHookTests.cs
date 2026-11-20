@@ -324,6 +324,14 @@ namespace CascadeControlTests.Views.Columns
     /// <summary>
     /// 把控制項放進一個真的顯示出來（但在螢幕外）的表單，讓欄位有 Handle，可以做點擊位置的換算。
     /// </summary>
+    /// <summary>
+    /// 開著 <see cref="CascadeColumnsView.CheckBoxes"/> 的 <see cref="CascadeColumnsView"/>，給 <see cref="ViewHost{TView}"/> 用（它需要無參數建構式）。
+    /// </summary>
+    internal sealed class CheckBoxColumnsView : CascadeColumnsView
+    {
+        public CheckBoxColumnsView() => CheckBoxes = true;
+    }
+
     internal sealed class ViewHost<TView> : System.IDisposable where TView : CascadeColumnsView, new()
     {
         public ViewHost()

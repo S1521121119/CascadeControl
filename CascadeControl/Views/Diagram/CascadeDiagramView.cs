@@ -32,7 +32,7 @@ namespace CascadeControl.Views.Diagram
     /// </summary>
     /// <remarks>
     /// 取代「可捲動的 Panel 包一個 AutoSize 的 PictureBox」：控制項自己畫圖、自己管捲軸，所以可以直接 Dock = Fill。
-    /// 可以直接呼叫 <see cref="SetTree"/> 獨立顯示與導覽，也可以把與 <see cref="Columns.CascadeColumnsView"/> 或 <see cref="Columns.CascadeCheckboxView"/> 相同的 <see cref="CascadeState"/> 指派給 <see cref="State"/> 同步顯示。
+    /// 可以直接呼叫 <see cref="SetTree"/> 獨立顯示與導覽，也可以把與 <see cref="Columns.CascadeColumnsView"/> 相同的 <see cref="CascadeState"/> 指派給 <see cref="State"/> 同步顯示。
     /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="State"/> 是 <see cref="CascadeCheckableState"/> 時
     /// 多一組 <see cref="UncheckedDisplay"/>（沒有勾選資訊時用不到這個設定，所以不列出來）。
     /// 會自動重畫的時機：<see cref="CascadeState.SelectedPathChanged"/>（包含 <see cref="CascadeState.SetTree"/> 與 <see cref="CascadeState.Refresh"/>）、
@@ -291,7 +291,7 @@ namespace CascadeControl.Views.Diagram
 
         /// <summary>
         /// 焦點在樹圖上時，在選取的節點上按 Enter 之後觸發；用途和 <see cref="NodeMouseDoubleClick"/> 相同，
-        /// 讓鍵盤也能「啟動」節點（例如 <see cref="Columns.CascadeCheckboxView"/> 切換勾選、<see cref="Columns.CascadeColumnsView"/> 執行選取）。
+        /// 讓鍵盤也能「啟動」節點（例如 <see cref="Columns.CascadeColumnsView"/> 開著 <see cref="Columns.CascadeColumnsView.CheckBoxes"/> 時切換勾選，或執行選取）。
         /// 控制項本身不做任何事，由訂閱端決定。沒有選取，或選取的節點被收合藏起來時不觸發。
         /// </summary>
         [Category("Cascade")]

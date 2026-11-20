@@ -258,7 +258,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void CheckboxView_SpaceStillChecks_CtrlSpaceOnlyMarks()
         {
-            using (var host = new ViewHost<CascadeCheckboxView>())
+            using (var host = new ViewHost<CheckBoxColumnsView>())
             {
                 host.View.SetTree(EightItems());
                 var column = host.Columns[0];
