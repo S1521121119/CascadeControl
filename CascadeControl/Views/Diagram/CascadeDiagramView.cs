@@ -40,9 +40,10 @@ namespace CascadeControl.Views.Diagram
     /// 請自己呼叫 <see cref="Redraw"/>。
     /// <para>
     /// 有子節點的節點可以收合：左鍵點方塊右側的 [+] 展開（變成 [-]、畫出子節點），點 [-] 收合；點展開鈕不會觸發 <see cref="NodeMouseClick"/>。
+    /// 選取改變時（包含從共享 State 的 <see cref="Columns.CascadeColumnsView"/> 切換節點），選取節點的祖先自動展開，效果和點了展開鈕相同。
     /// 沒點過的節點依勾選決定：有任何子節點被勾選就展開（勾選子孫會補勾祖先，所以祖先跟著展開），否則收合；
     /// 沒有勾選資訊（<see cref="ShowChecks"/> 為 false，或 <see cref="State"/> 不是 <see cref="CascadeCheckableState"/>）時一律收合。
-    /// 點過的節點記住使用者的選擇，換成另一棵樹時全部忘掉；選取的節點被收合藏起來時不會自動展開。
+    /// 點過的節點記住使用者的選擇，換成另一棵樹時全部忘掉；選取不變時點收合，選取的節點會被藏起來，直到下次選取改變。
     /// </para>
     /// <para>
     /// 取得焦點後可以用鍵盤操作，改的是 <see cref="State"/> 的選取，所以「進出記住位置」的記憶和共享同一份狀態的其他檢視一致：
@@ -111,6 +112,7 @@ namespace CascadeControl.Views.Diagram
                 _state = value;
                 AttachState(_state);
 
+                RevealSelection();
                 Redraw();
             }
         }
@@ -411,6 +413,13 @@ namespace CascadeControl.Views.Diagram
             SyncExpandTree();
             _expandOverrides[node] = expanded;
             Redraw();
+        }
+
+        // 展開選取節點的祖先，讓選取的節點畫得出來；之後選取移開也維持展開，和使用者點過展開鈕一樣。
+        private void RevealSelection()
+        {
+            SyncExpandTree();
+            for (var node = (_state.SelectedNode as MenuNode)?.Parent; node != null; node = node.Parent) _expandOverrides[node] = true;
         }
 
         // State 換成另一棵樹（或沒有樹）時，忘掉使用者點過的展開狀態。
@@ -791,6 +800,7 @@ namespace CascadeControl.Views.Diagram
 
         private void State_SelectedPathChanged(object sender, CascadeNodeEventArgs e)
         {
+            RevealSelection();
             Redraw();
             OnSelectedPathChanged(e);
         }

@@ -144,6 +144,27 @@ namespace CascadeControlTests.Views.Diagram
             }
         }
 
+        [TestMethod]
+        public void SelectionFromColumnsView_ExpandsAncestorsSoSelectedNodeIsDrawn()
+        {
+            var tree = TestTrees.Template();
+            using (var view = new CascadeColumnsView())
+            using (var imageView = new CascadeDiagramView { State = view.State })
+            {
+                view.SetTree(tree);
+                var home = Find(tree, "Motor", "Axis Y", "Home");
+                imageView.SetExpanded(Find(tree, "Motor"), false);
+
+                Assert.IsTrue(view.TrySelectPath(home.FullPath));
+
+                Assert.IsFalse(LayoutNodeOf(imageView, tree, home).Bounds.IsEmpty, "選取的節點要畫出來，使用者收合過的祖先也要展開");
+                Assert.IsFalse(imageView.IsExpanded(Find(tree, "Motor", "Axis X")), "不在選取路徑上的節點維持收合");
+
+                view.TrySelectPath(Find(tree, "System", "Reboot").FullPath);
+                Assert.IsTrue(imageView.IsExpanded(Find(tree, "Motor", "Axis Y")), "選取離開後維持展開，和點過展開鈕一樣");
+            }
+        }
+
         private sealed class ProbeImageView : CascadeDiagramView
         {
             public void Press(Keys key) => OnKeyDown(new KeyEventArgs(key));
