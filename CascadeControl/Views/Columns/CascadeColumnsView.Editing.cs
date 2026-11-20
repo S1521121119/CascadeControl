@@ -38,7 +38,7 @@ namespace CascadeControl.Views.Columns
         private readonly ToolStripMenuItem _columnRedoItem = new ToolStripMenuItem("重做") { ShortcutKeyDisplayString = "Ctrl+Y" };
 
         private readonly ToolStripMenuItem _insertItem = new ToolStripMenuItem("插入");
-        private readonly ToolStripMenuItem _insertBeforeItem = new ToolStripMenuItem("之前");
+        private readonly ToolStripMenuItem _insertBeforeItem = new ToolStripMenuItem("之前") { ShortcutKeyDisplayString = "Ctrl+Shift+I" };
         private readonly ToolStripMenuItem _insertNextItem = new ToolStripMenuItem("之後") { ShortcutKeyDisplayString = "Ctrl+I" };
         private readonly ToolStripMenuItem _createChildItem = new ToolStripMenuItem("建立子節點") { ShortcutKeyDisplayString = "Ctrl+N" };
         private readonly ToolStripMenuItem _renameItem = new ToolStripMenuItem("重新命名") { ShortcutKeyDisplayString = "F2" };
@@ -46,9 +46,9 @@ namespace CascadeControl.Views.Columns
         private readonly ToolStripMenuItem _copyPathItem = new ToolStripMenuItem("複製(路徑)") { ShortcutKeyDisplayString = "Ctrl+Shift+C" };
         private readonly ToolStripMenuItem _cutItem = new ToolStripMenuItem("剪下") { ShortcutKeyDisplayString = "Ctrl+X" };
         private readonly ToolStripMenuItem _pasteItem = new ToolStripMenuItem("貼上");
-        private readonly ToolStripMenuItem _pasteBeforeItem = new ToolStripMenuItem("之前");
+        private readonly ToolStripMenuItem _pasteBeforeItem = new ToolStripMenuItem("之前") { ShortcutKeyDisplayString = "Ctrl+Shift+V" };
         private readonly ToolStripMenuItem _pasteNextItem = new ToolStripMenuItem("之後") { ShortcutKeyDisplayString = "Ctrl+V" };
-        private readonly ToolStripMenuItem _pasteChildItem = new ToolStripMenuItem("作為子節點");
+        private readonly ToolStripMenuItem _pasteChildItem = new ToolStripMenuItem("作為子節點") { ShortcutKeyDisplayString = "Ctrl+Alt+V" };
         private readonly ToolStripMenuItem _deleteItem = new ToolStripMenuItem("刪除") { ShortcutKeyDisplayString = "Del" };
 
         private readonly ToolStripMenuItem _columnInsertItem = new ToolStripMenuItem("插入");

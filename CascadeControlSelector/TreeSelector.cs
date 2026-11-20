@@ -50,6 +50,8 @@ namespace CascadeControlSelector
                 _menu.AddPath("root");
                 cascadeView1.SetTree(_menu);
                 cascadeView1.ReadOnly = false;
+
+                return;
             }
 
             if (!File.Exists(startupPath))

@@ -265,7 +265,7 @@ namespace CascadeControl.Views.Columns
         /// 編輯框有焦點時：Enter 套用、Esc 取消，其他按鍵交給編輯框（Ctrl+C / Ctrl+V 是編輯框自己的複製貼上）。
         /// 焦點在欄位上時：Esc 先取消多選，沒有多選時清除選取（記憶保留，之後按 → 可以沿上次的路線走回去）；
         /// Ctrl+C 複製、Ctrl+Shift+C 複製路徑（CSV 文字，見 <see cref="CopyPath"/>）、Ctrl+A 多選操作欄的全部節點、Ctrl+Z 復原、Ctrl+Y 與 Ctrl+Shift+Z 重做（唯讀時改到樹的步驟不能復原或重做，見 <see cref="CanUndo"/>）；
-        /// <see cref="ReadOnly"/> 為 false 時另有 Ctrl+X 剪下、Ctrl+V 貼在後面、Delete 刪除、F2 改名、Ctrl+I 在後面插入、Ctrl+N 建立子節點（只對葉節點）。
+        /// <see cref="ReadOnly"/> 為 false 時另有 Ctrl+X 剪下、Ctrl+V 貼在後面、Ctrl+Shift+V 貼在前面、Ctrl+Alt+V 貼成子節點（只對葉節點）、Delete 刪除、F2 改名、Ctrl+I 在後面插入、Ctrl+Shift+I 在前面插入、Ctrl+N 建立子節點（只對葉節點）。
         /// Enter、Esc 不是 ListBox 與單行 TextBox 的輸入鍵，表單設了 AcceptButton / CancelButton 時會先被表單處理，
         /// 所以要在 ProcessCmdKey 這一關攔：它由焦點控制項往上逐層呼叫，比表單的 ProcessDialogKey 早。
         /// 和 ←、→、Enter 一樣，這些鍵只要焦點在欄位上就一律攔下，即使當下沒有對象。
@@ -339,6 +339,14 @@ namespace CascadeControl.Views.Columns
                             Paste(before: false);
                             return true;
 
+                        case Keys.Control | Keys.Shift | Keys.V:
+                            Paste(before: true);
+                            return true;
+
+                        case Keys.Control | Keys.Alt | Keys.V:
+                            PasteAsChild();
+                            return true;
+
                         case Keys.Delete:
                             Delete();
                             return true;
@@ -349,6 +357,10 @@ namespace CascadeControl.Views.Columns
 
                         case Keys.Control | Keys.I:
                             BeginInsert(before: false);
+                            return true;
+
+                        case Keys.Control | Keys.Shift | Keys.I:
+                            BeginInsert(before: true);
                             return true;
 
                         case Keys.Control | Keys.N:

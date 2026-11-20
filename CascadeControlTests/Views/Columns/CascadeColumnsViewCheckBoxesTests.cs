@@ -551,6 +551,56 @@ namespace CascadeControlTests.Views.Columns
         }
 
         [TestMethod]
+        public void InsertAndPasteKeys_BeforeAndAsChild()
+        {
+            using (var host = FocusedHost(out var tree))
+            {
+                host.View.ReadOnly = false;
+                host.View.FocusActiveColumn();
+                Application.DoEvents();
+
+                var system = tree.TopLevelNodes[0];
+                var shutdown = system.Children[1];
+                Assert.IsTrue(host.View.TrySelectNode(shutdown));
+
+                // Ctrl+Shift+I：插在前面。
+                Assert.IsTrue(ViewHost.SendCmdKey(host.View, Keys.Control | Keys.Shift | Keys.I));
+                EditBox(host).Text = "Halt";
+                host.View.EndEdit(commit: true);
+                CollectionAssert.AreEqual(new[] { "Reboot", "Halt", "Shutdown", "Info" }, system.Children.Select(node => node.Name).ToList());
+
+                if (!host.View.TrySelectNode(shutdown) || !host.View.Copy())
+                    Assert.Inconclusive("測試環境無法使用剪貼簿。");
+                host.View.FocusActiveColumn();
+                Application.DoEvents();
+
+                // Ctrl+Shift+V：貼在前面。
+                Assert.IsTrue(ViewHost.SendCmdKey(host.View, Keys.Control | Keys.Shift | Keys.V));
+                CollectionAssert.AreEqual(new[] { "Reboot", "Halt", "Shutdown - 2", "Shutdown", "Info" }, system.Children.Select(node => node.Name).ToList());
+
+                // Ctrl+Alt+V：貼成葉節點的子節點。
+                var reboot = system.Children[0];
+                Assert.IsTrue(host.View.TrySelectNode(reboot));
+                Assert.IsTrue(ViewHost.SendCmdKey(host.View, Keys.Control | Keys.Alt | Keys.V));
+                CollectionAssert.AreEqual(new[] { "Shutdown" }, reboot.Children.Select(node => node.Name).ToList());
+            }
+        }
+
+        [TestMethod]
+        public void NodeContextMenu_InsertAndPasteItems_ShowShortcuts()
+        {
+            using (var host = new ViewHost<CheckBoxColumnsView>())
+            {
+                var menu = host.View.NodeContextMenu;
+                var insert = menu.Items.OfType<ToolStripMenuItem>().Single(item => item.Text == "插入").DropDownItems.OfType<ToolStripMenuItem>().ToList();
+                var paste = menu.Items.OfType<ToolStripMenuItem>().Single(item => item.Text == "貼上").DropDownItems.OfType<ToolStripMenuItem>().ToList();
+
+                CollectionAssert.AreEqual(new[] { "Ctrl+Shift+I", "Ctrl+I" }, insert.Select(item => item.ShortcutKeyDisplayString).ToList());
+                CollectionAssert.AreEqual(new[] { "Ctrl+Shift+V", "Ctrl+V", "Ctrl+Alt+V" }, paste.Select(item => item.ShortcutKeyDisplayString).ToList());
+            }
+        }
+
+        [TestMethod]
         public void Keys_NotFocusedOrNoCheckSet_AreNotHandled()
         {
             using (var host = new ViewHost<CheckBoxColumnsView>())
