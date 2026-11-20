@@ -52,7 +52,9 @@
     <Compile Include="Views\CascadeCheckboxView.cs" />
     <Compile Include="Views\CascadeCheckableState.cs" />
     <Compile Include="Views\CascadeColumnLayoutMode.cs" />
+    <Compile Include="Views\CascadeDrawNodeEventArgs.cs" />
     <Compile Include="Views\CascadeNodeEventArgs.cs" />
+    <Compile Include="Views\CascadeNodeMouseEventArgs.cs" />
     <Compile Include="Views\CascadeNavigator.cs" />
     <Compile Include="Views\CascadeState.cs" />
     <Compile Include="Views\CascadeTreeEditedEventArgs.cs" />
