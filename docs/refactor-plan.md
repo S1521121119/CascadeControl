@@ -1,6 +1,6 @@
 # CascadeControl 資料夾結構重構計畫
 
-這份文件記錄 `CascadeControl` 與 `CascadeControlTests` 的領域導向資料夾重組規劃與執行結果。先前的 Plan A、Plan B2 與 Post-B2 事件統一重構已完成於 commit `9a39f85`，成為本計畫的基線。第一輪（Step 1 至 Step 5，只搬資料夾、不改 namespace）的程式碼搬遷、自動化驗證與 Visual Studio IDE 設計工具確認已全部完成。
+這份文件記錄 `CascadeControl` 與 `CascadeControlTests` 的領域導向資料夾重組規劃與執行結果。先前的 Plan A、Plan B2 與 Post-B2 事件統一重構已完成於 commit `9a39f85`，成為本計畫的基線。第一輪（Step 1 至 Step 5，只搬資料夾、不改 namespace）與第二輪（Step 1 至 Step 4，對齊 C# IDE0130 namespace 規範）的程式碼異動、自動化驗證與 Visual Studio IDE 設計工具確認皆已完成。
 
 ## 目標與限制
 
@@ -424,5 +424,5 @@ Write-Output "Forms OK"
 - [x] **Round 2, Step 1（commit `ad1edae`）**：`Views/TreeImage/` 對齊 `CascadeControl.Views.TreeImage`（`TreeDrawer`、`TreeImage`、`CascadeTreeImageView`、`TreeDrawerTests`、兩個表單與 `Designer.cs`）。Debug 與 Release MSBuild 0 錯誤 0 新增警告，`vstest` 440 / 440（12.01 秒），設計工具屬性與表單實例化通過。
 - [x] **Round 2, Step 2（commit `89af526`）**：`State/` 對齊 `CascadeControl.State`（`CascadeNavigator`、`CascadeState`、`CascadeCheckableState`、`CascadeNodeEventArgs`、`CascadeNavigatorTests`、`CascadeStateTests`、兩個表單與 `Designer.cs`）。Debug 與 Release MSBuild 0 錯誤 0 新增警告，`vstest` 440 / 440（13.24 秒），設計工具屬性與表單實例化通過。
 - [x] **Round 2, Step 3（commit `481ff70`）**：`Views/Columns/` 對齊 `CascadeControl.Views.Columns`（`CascadeView*`、`CascadeCheckboxView`、`CascadeColumnLayoutMode`、`CascadeDrawNodeEventArgs`、`CascadeTreeEditedEventArgs`、`CascadeViewDesigner`、4 個 Columns 測試檔、全組件 `<see cref>` 註解、兩個表單與 `Designer.cs`）。Debug 與 Release MSBuild 0 錯誤 0 新增警告，`vstest` 440 / 440（12.83 秒），PowerShell 腳本實測 `CascadeControl` 與 `CascadeControlTests` 全部 `.cs` 檔 100% 符合 IDE0130（0 筆不一致），`CascadeViewDesigner` 解析與 `TreeSelector`／`TreeViewer` 實例化全部通過，`CascadeControl.xml` 維持 62 筆 `T:` 型別識別碼。
-- [x] **Round 2, Step 4**：更新 `README.md` 命名空間與範例 `using` 說明並補寫本紀錄。
-- [ ] **Visual Studio IDE 最終確認**：在 Visual Studio 執行 Rebuild Solution 後，開啟 `CascadeControlSelector/TreeSelector.cs` 與 `CascadeControlViewer/TreeViewer.cs` 設計工具確認新命名空間下的控制項與 `CascadeViewDesigner` 皆正常顯示。
+- [x] **Round 2, Step 4（commit `babdc82`）**：更新 `README.md` 命名空間與範例 `using` 說明並補寫本紀錄。
+- [x] **Visual Studio IDE 最終確認**：操作者於 2026-11-20 在 Visual Studio 執行 Rebuild Solution，並開啟 `CascadeControlSelector/TreeSelector.cs` 與 `CascadeControlViewer/TreeViewer.cs` 設計工具確認新命名空間下的控制項與 `CascadeViewDesigner` 皆正常顯示。針對重建後組件複驗通過（Debug 與 Release `CascadeControl.xml` 各 62 筆 `T:` 型別識別碼、三個控制項設計工具屬性解析與兩支表單實例化通過、`CascadeControl` 與 `CascadeControlTests` 全部 `.cs` 檔 IDE0130 0 筆不一致），第二輪重構全數結案。
