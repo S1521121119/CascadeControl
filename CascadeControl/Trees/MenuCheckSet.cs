@@ -48,7 +48,7 @@ namespace CascadeControl.Trees
         /// </summary>
         /// <remarks>
         /// 換成別的 <see cref="MenuHistory"/>，就能和樹的編輯排在同一條時間軸上；
-        /// <see cref="Views.Columns.CascadeCheckboxView.CheckSet"/> 被設定時會把它換成控制項的 <see cref="Views.Columns.CascadeView.History"/>。
+        /// <see cref="Views.Columns.CascadeCheckboxView.CheckSet"/> 被設定時會把它換成控制項的 <see cref="Views.Columns.CascadeColumnsView.History"/>。
         /// 換掉時，舊歷史裡的步驟留在舊的那一份，不會搬過來。
         /// </remarks>
         /// <exception cref="ArgumentNullException">設為 null。</exception>

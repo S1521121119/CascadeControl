@@ -31,7 +31,7 @@
             this.components = new System.ComponentModel.Container();
             this.cascadeView1 = new CascadeControl.Views.Columns.CascadeCheckboxView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
-            this.treeImageView1 = new CascadeControl.Views.TreeImage.CascadeTreeImageView();
+            this.diagramView1 = new CascadeControl.Views.Diagram.CascadeDiagramView();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
@@ -67,24 +67,24 @@
             // 
             // splitContainer2.Panel2
             // 
-            this.splitContainer2.Panel2.Controls.Add(this.treeImageView1);
+            this.splitContainer2.Panel2.Controls.Add(this.diagramView1);
             this.splitContainer2.Size = new System.Drawing.Size(659, 426);
             this.splitContainer2.SplitterDistance = 343;
             this.splitContainer2.TabIndex = 7;
             // 
-            // treeImageView1
+            // diagramView1
             // 
-            this.treeImageView1.AutoScroll = true;
-            this.treeImageView1.AutoScrollMinSize = new System.Drawing.Size(1, 1);
-            this.treeImageView1.BackColor = System.Drawing.Color.White;
-            this.treeImageView1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.treeImageView1.Location = new System.Drawing.Point(0, 0);
-            this.treeImageView1.Name = "treeImageView1";
-            this.treeImageView1.Size = new System.Drawing.Size(312, 426);
-            this.treeImageView1.TabIndex = 5;
-            this.treeImageView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.TreeImageView1_NodeMouseClick);
-            this.treeImageView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.TreeImageView1_NodeMouseDoubleClick);
-            this.treeImageView1.NodeActivated += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.TreeImageView1_NodeActivated);
+            this.diagramView1.AutoScroll = true;
+            this.diagramView1.AutoScrollMinSize = new System.Drawing.Size(1, 1);
+            this.diagramView1.BackColor = System.Drawing.Color.White;
+            this.diagramView1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.diagramView1.Location = new System.Drawing.Point(0, 0);
+            this.diagramView1.Name = "diagramView1";
+            this.diagramView1.Size = new System.Drawing.Size(312, 426);
+            this.diagramView1.TabIndex = 5;
+            this.diagramView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseClick);
+            this.diagramView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseDoubleClick);
+            this.diagramView1.NodeActivated += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.DiagramView1_NodeActivated);
             // 
             // TreeViewer
             // 
@@ -107,7 +107,7 @@
 
         private CascadeControl.Views.Columns.CascadeCheckboxView cascadeView1;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private CascadeControl.Views.TreeImage.CascadeTreeImageView treeImageView1;
+        private CascadeControl.Views.Diagram.CascadeDiagramView diagramView1;
     }
 }
 

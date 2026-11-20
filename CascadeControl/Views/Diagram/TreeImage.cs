@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace CascadeControl.Views.TreeImage
+namespace CascadeControl.Views.Diagram
 {
     /// <summary>
     /// <see cref="TreeDrawer.RenderImage"/> 畫出來的圖，連同每個節點方塊在圖上的位置，用來找出滑鼠點到哪個節點。

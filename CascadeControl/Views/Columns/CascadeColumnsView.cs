@@ -25,14 +25,14 @@ namespace CascadeControl.Views.Columns
     /// 改樹的每一個操作都記進 <see cref="History"/>，可以復原與重做；
     /// 快捷鍵為 Ctrl+C / Ctrl+X / Ctrl+V、Ctrl+Shift+C（複製路徑）、Delete、F2、Ctrl+I（在後面插入）、Ctrl+N（建立子節點）、Ctrl+A、Ctrl+Z（復原）、Ctrl+Y 或 Ctrl+Shift+Z（重做）。
     /// 欄位 ListBox 一律由控制項自己建立和移除，不接受從外部加入子控制項：
-    /// 設計階段由 <see cref="CascadeViewDesigner"/> 取消容器行為，執行階段由 <see cref="CreateControlsInstance"/> 擋下。
-    /// 這個檔案只放對外 API；排版、輸入、繪製、多選、編輯分別在 CascadeView.Columns / Input / Rendering / MultiSelect / Editing。
+    /// 設計階段由 <see cref="CascadeColumnsViewDesigner"/> 取消容器行為，執行階段由 <see cref="CreateControlsInstance"/> 擋下。
+    /// 這個檔案只放對外 API；排版、輸入、繪製、多選、編輯分別在 CascadeColumnsView.Columns / Input / Rendering / MultiSelect / Editing。
     /// </remarks>
     [DesignerCategory("")]
-    [Designer(typeof(CascadeViewDesigner))]
+    [Designer(typeof(CascadeColumnsViewDesigner))]
     [ToolboxItem(true)]
     [DefaultEvent(nameof(SelectedPathChanged))]
-    public partial class CascadeView : Panel, ICascadeView
+    public partial class CascadeColumnsView : Panel, ICascadeView
     {
         private const int DEFAULT_COLUMN_WIDTH = 160;
         private const int MIN_COLUMN_WIDTH = 20;
@@ -59,7 +59,7 @@ namespace CascadeControl.Views.Columns
         /// <summary>
         /// 建立控制項。欄位多到放不下時會出現水平捲軸。
         /// </summary>
-        public CascadeView()
+        public CascadeColumnsView()
         {
             AutoScroll = true;
             _state = CreateDefaultState() ?? throw new InvalidOperationException($"{nameof(CreateDefaultState)} 不可回傳 null。");

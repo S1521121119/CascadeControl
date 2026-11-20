@@ -14,7 +14,7 @@ using System.Windows.Forms;
 namespace CascadeControl.Views.Columns
 {
     // 編輯：唯讀切換、內建快顯功能表、就地編輯框、Windows 剪貼簿，以及插入／建立子節點／改名／複製／剪下／貼上／刪除。
-    public partial class CascadeView
+    public partial class CascadeColumnsView
     {
         /// <summary>
         /// 複製節點時放到 Windows 剪貼簿上的自訂格式名稱；內容是 UTF-8 的 CSV 文字（<see cref="MenuRowStyle.Expanded"/>，含表頭）。

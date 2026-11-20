@@ -6,7 +6,7 @@ using System.Drawing;
 namespace CascadeControl.Views.Columns
 {
     /// <summary>
-    /// <see cref="CascadeView.DrawNode"/> 的事件參數。把 <see cref="Handled"/> 設為 true 就會略過預設繪製。
+    /// <see cref="CascadeColumnsView.DrawNode"/> 的事件參數。把 <see cref="Handled"/> 設為 true 就會略過預設繪製。
     /// </summary>
     /// <remarks>
     /// 不繼承 <see cref="CascadeNodeEventArgs"/>：繪製時關心的是「這一列」，不是選取路徑；
@@ -58,7 +58,7 @@ namespace CascadeControl.Views.Columns
         public bool IsTrailNode { get; }
 
         /// <summary>
-        /// 這一列是否為多選的節點（見 <see cref="CascadeView.MultiSelectedNodes"/>）；為 true 時 <see cref="IsSelected"/> 也是 true。
+        /// 這一列是否為多選的節點（見 <see cref="CascadeColumnsView.MultiSelectedNodes"/>）；為 true 時 <see cref="IsSelected"/> 也是 true。
         /// </summary>
         public bool IsMultiSelected { get; }
 

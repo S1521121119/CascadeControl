@@ -659,7 +659,7 @@ namespace CascadeControl.Graphs
         #endregion 與樹互轉
 
         /// <summary>
-        /// 為每個來源頂點建立一個 <see cref="MenuGraphNode"/>，作為 <see cref="ICascadeNode"/> 使用端（例如 CascadeView）的第一層。
+        /// 為每個來源頂點建立一個 <see cref="MenuGraphNode"/>，作為 <see cref="ICascadeNode"/> 使用端（例如 CascadeColumnsView）的第一層。
         /// </summary>
         /// <returns>第一層節點，依 <see cref="Sources"/> 的順序，序號由 1 起算。</returns>
         /// <remarks>節點是建立當下的快照；圖被修改後請重新呼叫。</remarks>

@@ -6,7 +6,7 @@ using System.Linq;
 namespace CascadeControl.Views.Columns
 {
     /// <summary>
-    /// <see cref="CascadeView.TreeEdited"/> 對樹做了哪一種編輯。
+    /// <see cref="CascadeColumnsView.TreeEdited"/> 對樹做了哪一種編輯。
     /// </summary>
     public enum CascadeEditAction
     {
@@ -28,15 +28,15 @@ namespace CascadeControl.Views.Columns
         /// <summary>刪除。</summary>
         Delete,
 
-        /// <summary>復原了一個改到樹的步驟（<see cref="CascadeView.Undo"/>）。只改勾選的步驟不觸發 <see cref="CascadeView.TreeEdited"/>。</summary>
+        /// <summary>復原了一個改到樹的步驟（<see cref="CascadeColumnsView.Undo"/>）。只改勾選的步驟不觸發 <see cref="CascadeColumnsView.TreeEdited"/>。</summary>
         Undo,
 
-        /// <summary>重做了一個改到樹的步驟（<see cref="CascadeView.Redo"/>）。只改勾選的步驟不觸發 <see cref="CascadeView.TreeEdited"/>。</summary>
+        /// <summary>重做了一個改到樹的步驟（<see cref="CascadeColumnsView.Redo"/>）。只改勾選的步驟不觸發 <see cref="CascadeColumnsView.TreeEdited"/>。</summary>
         Redo,
     }
 
     /// <summary>
-    /// <see cref="CascadeView.TreeEdited"/> 的事件參數。
+    /// <see cref="CascadeColumnsView.TreeEdited"/> 的事件參數。
     /// </summary>
     public class CascadeTreeEditedEventArgs : EventArgs
     {

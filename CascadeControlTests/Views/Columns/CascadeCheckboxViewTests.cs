@@ -30,7 +30,7 @@ namespace CascadeControlTests.Views.Columns
                 Assert.IsNull(view.CheckSet);
 
                 var tree = TestTrees.Template();
-                CascadeView asBase = view;
+                CascadeColumnsView asBase = view;
                 asBase.SetTree(tree);   // 以基底型別呼叫也要建立 CheckSet
 
                 Assert.AreSame(tree, view.CheckSet.Tree);
@@ -77,7 +77,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void InterfaceContracts_NavigateAndCheckThroughInterfaces()
         {
-            using (var plain = new CascadeView())
+            using (var plain = new CascadeColumnsView())
             using (var checkable = new CascadeCheckboxView())
             {
                 ICascadeView plainView = plain;
@@ -718,12 +718,12 @@ namespace CascadeControlTests.Views.Columns
             }
         }
 
-        private sealed class PlainProbeView : CascadeView
+        private sealed class PlainProbeView : CascadeColumnsView
         {
             public void Draw(CascadeDrawNodeEventArgs e) => OnDrawNode(e);
         }
 
-        private static int[] Render(CascadeView view, ICascadeNode node)
+        private static int[] Render(CascadeColumnsView view, ICascadeNode node)
         {
             using (var bitmap = new Bitmap(120, 20))
             using (var g = Graphics.FromImage(bitmap))

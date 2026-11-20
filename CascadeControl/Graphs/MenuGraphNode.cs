@@ -5,7 +5,7 @@ using System.Linq;
 namespace CascadeControl.Graphs
 {
     /// <summary>
-    /// 沿著某條路徑走到的頂點，讓圖可以交給 <see cref="ICascadeNode"/> 的使用端（例如 CascadeView）逐欄顯示。
+    /// 沿著某條路徑走到的頂點，讓圖可以交給 <see cref="ICascadeNode"/> 的使用端（例如 CascadeColumnsView）逐欄顯示。
     /// </summary>
     /// <remarks>
     /// 同一個頂點從不同前驅走進來，會是不同的 <see cref="MenuGraphNode"/>，所以序號、深度、路徑都有明確的值。

@@ -11,7 +11,7 @@ using System.Windows.Forms;
 namespace CascadeControlTests.Views.Columns
 {
     [TestClass]
-    public class CascadeViewLayoutTests
+    public class CascadeColumnsViewLayoutTests
     {
         #region 右緣與視窗起點
 
@@ -24,7 +24,7 @@ namespace CascadeControlTests.Views.Columns
         [DataRow(6, 2, true, 3, DisplayName = "記憶中還有更深的欄位：右緣仍只到下一欄")]
         public void RightEdgeColumn_ReservesNextColumnWhenActiveColumnHasBranch(int columnCount, int activeColumnIndex, bool reserveNext, int expected)
         {
-            Assert.AreEqual(expected, CascadeView.RightEdgeColumn(columnCount, activeColumnIndex, reserveNext));
+            Assert.AreEqual(expected, CascadeColumnsView.RightEdgeColumn(columnCount, activeColumnIndex, reserveNext));
         }
 
         [DataTestMethod]
@@ -36,23 +36,23 @@ namespace CascadeControlTests.Views.Columns
         [DataRow(5, 4, 3, false, 2, DisplayName = "很深的葉節點")]
         public void ViewportStartColumn_AlignsRightEdge(int columnCount, int activeColumnIndex, int viewportColumns, bool reserveNext, int expected)
         {
-            Assert.AreEqual(expected, CascadeView.ViewportStartColumn(columnCount, activeColumnIndex, viewportColumns, reserveNext));
+            Assert.AreEqual(expected, CascadeColumnsView.ViewportStartColumn(columnCount, activeColumnIndex, viewportColumns, reserveNext));
         }
 
         [TestMethod]
         public void ViewportStartColumn_SelectingLeafOrSteppingBackFromLeaf_DoesNotMove()
         {
             // 停在第 2 層（有子節點，顯示第 3 欄） → 選第 3 層的葉節點 → 再退回第 2 層：欄數都是 3，起點都一樣。
-            Assert.AreEqual(1, CascadeView.ViewportStartColumn(3, 1, 2, true), "停在第 2 層");
-            Assert.AreEqual(1, CascadeView.ViewportStartColumn(3, 2, 2, false), "選到葉節點時不動");
+            Assert.AreEqual(1, CascadeColumnsView.ViewportStartColumn(3, 1, 2, true), "停在第 2 層");
+            Assert.AreEqual(1, CascadeColumnsView.ViewportStartColumn(3, 2, 2, false), "選到葉節點時不動");
         }
 
         [TestMethod]
         public void ViewportStartColumn_SwitchingBetweenNodeAndLeafInSameColumn_DoesNotMove()
         {
             // 第 3 欄同時有節點與葉節點：選節點時長出第 4 欄，改選葉節點時第 4 欄拆掉但位置保留，畫面不動。
-            Assert.AreEqual(1, CascadeView.ViewportStartColumn(4, 2, 3, true), "選到節點 A");
-            Assert.AreEqual(1, CascadeView.ViewportStartColumn(3, 2, 3, true), "改選葉節點 B");
+            Assert.AreEqual(1, CascadeColumnsView.ViewportStartColumn(4, 2, 3, true), "選到節點 A");
+            Assert.AreEqual(1, CascadeColumnsView.ViewportStartColumn(3, 2, 3, true), "改選葉節點 B");
         }
 
         #endregion 右緣與視窗起點
@@ -182,7 +182,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void DisplayColumnCount_Negative_Throws()
         {
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             {
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => view.DisplayColumnCount = -1);
             }
@@ -194,7 +194,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void Colors_Unset_ReturnEffectiveDefaults()
         {
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             {
                 Assert.AreEqual(SystemColors.Highlight, view.SelectionBackColor);
                 Assert.AreEqual(SystemColors.HighlightText, view.SelectionForeColor);
@@ -203,17 +203,17 @@ namespace CascadeControlTests.Views.Columns
                 Assert.AreEqual(SystemColors.ControlLight, view.TrailBackColor);
 
                 var properties = TypeDescriptor.GetProperties(view);
-                Assert.IsFalse(properties[nameof(CascadeView.SelectionBackColor)].ShouldSerializeValue(view), "預設值不寫進 Designer.cs");
-                Assert.IsFalse(properties[nameof(CascadeView.SelectionForeColor)].ShouldSerializeValue(view));
-                Assert.IsFalse(properties[nameof(CascadeView.InactiveSelectionBackColor)].ShouldSerializeValue(view));
-                Assert.IsFalse(properties[nameof(CascadeView.TrailBackColor)].ShouldSerializeValue(view));
+                Assert.IsFalse(properties[nameof(CascadeColumnsView.SelectionBackColor)].ShouldSerializeValue(view), "預設值不寫進 Designer.cs");
+                Assert.IsFalse(properties[nameof(CascadeColumnsView.SelectionForeColor)].ShouldSerializeValue(view));
+                Assert.IsFalse(properties[nameof(CascadeColumnsView.InactiveSelectionBackColor)].ShouldSerializeValue(view));
+                Assert.IsFalse(properties[nameof(CascadeColumnsView.TrailBackColor)].ShouldSerializeValue(view));
             }
         }
 
         [TestMethod]
         public void Colors_SetThenReset_ReturnToDefaults()
         {
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             {
                 var inactiveDefault = view.InactiveSelectionBackColor;
 
@@ -223,8 +223,8 @@ namespace CascadeControlTests.Views.Columns
                 Assert.AreEqual(Color.Blue, view.TrailBackColor);
 
                 var properties = TypeDescriptor.GetProperties(view);
-                Assert.IsTrue(properties[nameof(CascadeView.InactiveSelectionBackColor)].ShouldSerializeValue(view));
-                properties[nameof(CascadeView.InactiveSelectionBackColor)].ResetValue(view);   // 屬性視窗的「重設」
+                Assert.IsTrue(properties[nameof(CascadeColumnsView.InactiveSelectionBackColor)].ShouldSerializeValue(view));
+                properties[nameof(CascadeColumnsView.InactiveSelectionBackColor)].ResetValue(view);   // 屬性視窗的「重設」
                 view.TrailBackColor = Color.Empty;
 
                 Assert.AreEqual(inactiveDefault, view.InactiveSelectionBackColor);
@@ -238,7 +238,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void SelectionBackColor_DrivesInactiveDefault()
         {
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             {
                 var systemInactive = view.InactiveSelectionBackColor;
 
@@ -252,8 +252,8 @@ namespace CascadeControlTests.Views.Columns
                 Assert.AreEqual(Color.Pink, view.InactiveSelectionBackColor, "自己設定的非焦點選取色不受影響");
 
                 var properties = TypeDescriptor.GetProperties(view);
-                properties[nameof(CascadeView.SelectionBackColor)].ResetValue(view);
-                properties[nameof(CascadeView.SelectionForeColor)].ResetValue(view);
+                properties[nameof(CascadeColumnsView.SelectionBackColor)].ResetValue(view);
+                properties[nameof(CascadeColumnsView.SelectionForeColor)].ResetValue(view);
                 view.InactiveSelectionBackColor = Color.Empty;
 
                 Assert.AreEqual(SystemColors.Highlight, view.SelectionBackColor);
@@ -264,9 +264,9 @@ namespace CascadeControlTests.Views.Columns
 
         #endregion 屬性
 
-        private static CascadeView CreateView(CascadeColumnLayoutMode mode, int displayColumnCount)
+        private static CascadeColumnsView CreateView(CascadeColumnLayoutMode mode, int displayColumnCount)
         {
-            return new CascadeView
+            return new CascadeColumnsView
             {
                 Size = new Size(600, 300),
                 ColumnWidth = 40,
@@ -276,7 +276,7 @@ namespace CascadeControlTests.Views.Columns
         }
 
         // 建一棵 depth 層、每層兩個節點的樹，選到最深的第一個葉節點。
-        private static void SelectDeepestLeaf(CascadeView view, int depth)
+        private static void SelectDeepestLeaf(CascadeColumnsView view, int depth)
         {
             var tree = new MenuTree();
             tree.ExpandAndAddPaths(Enumerable.Range(1, depth).Select(level => $"L{level}a|L{level}b").ToArray());
@@ -285,6 +285,6 @@ namespace CascadeControlTests.Views.Columns
             Assert.IsTrue(view.TrySelectPath(tree.GetLeaves().First().FullPath));
         }
 
-        private static ListBox[] Columns(CascadeView view) => view.Controls.OfType<ListBox>().OrderBy(c => c.TabIndex).ToArray();
+        private static ListBox[] Columns(CascadeColumnsView view) => view.Controls.OfType<ListBox>().OrderBy(c => c.TabIndex).ToArray();
     }
 }

@@ -8,7 +8,7 @@ using System.Windows.Forms;
 namespace CascadeControl.Views.Columns
 {
     // 鍵盤與滑鼠操作。焦點固定在操作欄，所以按鍵一律以導覽狀態為準，不看是哪一欄收到的。
-    public partial class CascadeView
+    public partial class CascadeColumnsView
     {
         // 左鍵按在不改選取的位置（見 SelectsOnLeftClick）時，按在哪一欄的哪個節點；放開或失去滑鼠時清掉。
         private ListBox _pressedList;
@@ -520,9 +520,9 @@ namespace CascadeControl.Views.Columns
         /// </remarks>
         private sealed class ColumnListBox : ListBox
         {
-            private readonly CascadeView _owner;
+            private readonly CascadeColumnsView _owner;
 
-            public ColumnListBox(CascadeView owner)
+            public ColumnListBox(CascadeColumnsView owner)
             {
                 _owner = owner;
             }

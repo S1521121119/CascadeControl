@@ -3,14 +3,14 @@ using CascadeControl.State;
 using CascadeControl.Trees;
 using CascadeControl.Views;
 using CascadeControl.Views.Columns;
-using CascadeControl.Views.TreeImage;
+using CascadeControl.Views.Diagram;
 using CascadeControlTests.Trees;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CascadeControlTests.Views.TreeImage
+namespace CascadeControlTests.Views.Diagram
 {
     [TestClass]
     public class TreeDrawerTests
@@ -80,14 +80,14 @@ namespace CascadeControlTests.Views.TreeImage
 
         #endregion TreeDrawer
 
-        #region CascadeTreeImageView
+        #region CascadeDiagramView
 
         [TestMethod]
         public void IsExpanded_WithoutCheckInfo_DefaultsToCollapsed()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
-            using (var imageView = new CascadeTreeImageView { State = view.State })
+            using (var view = new CascadeColumnsView())
+            using (var imageView = new CascadeDiagramView { State = view.State })
             {
                 view.SetTree(tree);
                 Assert.IsFalse(imageView.IsExpanded(Find(tree, "Motor")));
@@ -104,7 +104,7 @@ namespace CascadeControlTests.Views.TreeImage
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeCheckboxView())
-            using (var imageView = new CascadeTreeImageView { State = view.State })
+            using (var imageView = new CascadeDiagramView { State = view.State })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -124,7 +124,7 @@ namespace CascadeControlTests.Views.TreeImage
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeCheckboxView())
-            using (var imageView = new CascadeTreeImageView { State = view.State })
+            using (var imageView = new CascadeDiagramView { State = view.State })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -144,7 +144,7 @@ namespace CascadeControlTests.Views.TreeImage
             }
         }
 
-        private sealed class ProbeImageView : CascadeTreeImageView
+        private sealed class ProbeImageView : CascadeDiagramView
         {
             public void Press(Keys key) => OnKeyDown(new KeyEventArgs(key));
 
@@ -157,7 +157,7 @@ namespace CascadeControlTests.Views.TreeImage
 
         private static Point RoundPoint(PointF point) => new Point((int)System.Math.Round(point.X), (int)System.Math.Round(point.Y));
 
-        private static TreeImageNode LayoutNodeOf(CascadeTreeImageView imageView, MenuTree tree, MenuNode target)
+        private static TreeImageNode LayoutNodeOf(CascadeDiagramView imageView, MenuTree tree, MenuNode target)
         {
             var checkSet = (imageView.State as CascadeCheckableState)?.CheckSet;
             var isChecked = checkSet == null ? (System.Func<MenuNode, bool>)null : checkSet.IsChecked;
@@ -177,7 +177,7 @@ namespace CascadeControlTests.Views.TreeImage
             firstState.SetTree(firstTree);
             secondState.SetTree(secondTree);
 
-            using (var imageView = new CascadeTreeImageView { State = firstState })
+            using (var imageView = new CascadeDiagramView { State = firstState })
             {
                 Assert.ThrowsException<System.ArgumentNullException>(() => imageView.State = null);
 
@@ -251,7 +251,7 @@ namespace CascadeControlTests.Views.TreeImage
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeCheckboxView { ReadOnly = false })
-            using (var imageView = new CascadeTreeImageView { State = view.State })
+            using (var imageView = new CascadeDiagramView { State = view.State })
             {
                 view.PathSeparator = "\\";
                 Assert.AreEqual("\\", imageView.PathSeparator, "共享 State 時 PathSeparator 兩邊一致");
@@ -273,7 +273,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void MouseClickAndDoubleClick_OnNodeAndBlank_RaiseEventsWithPathSeparator()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 Assert.AreEqual(" => ", view.PathSeparator);
@@ -321,7 +321,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void MouseClickAndDoubleClick_OnExpander_ToggleExpansionWithoutRaisingNodeEvents()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
@@ -352,7 +352,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void TreeContextMenu_ShowsUncheckedDisplayOnlyForCheckableState_AndUpdatesSettings()
         {
             using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ClientSize = new Size(300, 200), ShowInTaskbar = false })
-            using (var imageView = new CascadeTreeImageView { Dock = DockStyle.Fill })
+            using (var imageView = new CascadeDiagramView { Dock = DockStyle.Fill })
             {
                 form.Controls.Add(imageView);
                 form.Show();
@@ -386,7 +386,7 @@ namespace CascadeControlTests.Views.TreeImage
             var tree = TestTrees.Template();
             var motor = Find(tree, "Motor");
 
-            using (var cascade = new CascadeView())
+            using (var cascade = new CascadeColumnsView())
             using (var checkbox = new CascadeCheckboxView())
             using (var image = new ProbeImageView())
             {
@@ -409,7 +409,7 @@ namespace CascadeControlTests.Views.TreeImage
             }
         }
 
-        #endregion CascadeTreeImageView
+        #endregion CascadeDiagramView
 
         #region 鍵盤
 
@@ -417,7 +417,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void Down_CrossesParentsAndSkipsCollapsedChildren()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
@@ -442,7 +442,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void Down_WithoutSelection_SelectsFirstDrawnNode()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
@@ -455,7 +455,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void Right_OnCollapsedNode_DoesNothingUntilExpanded()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
@@ -476,7 +476,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void Enter_RaisesNodeActivatedForDrawnSelection()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
@@ -504,7 +504,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void LeftThenRight_ReturnsToRememberedChild()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
@@ -519,7 +519,7 @@ namespace CascadeControlTests.Views.TreeImage
                 Assert.AreSame(Find(tree, "Motor"), view.SelectedNode, "第一層按 ← 不動");
 
                 imageView.Press(Keys.Right);
-                Assert.AreSame(axisY, view.SelectedNode, "和 CascadeView 一樣走回記憶的子節點");
+                Assert.AreSame(axisY, view.SelectedNode, "和 CascadeColumnsView 一樣走回記憶的子節點");
             }
         }
 
@@ -527,7 +527,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void Space_TogglesSelectedNode()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
             {
                 view.SetTree(tree);
@@ -546,7 +546,7 @@ namespace CascadeControlTests.Views.TreeImage
         public void StepBackAndStepForward_ShareCascadeViewMemory()
         {
             var tree = TestTrees.Template();
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             {
                 view.SetTree(tree);
                 Assert.IsFalse(view.StepBack(), "未選取時不動");

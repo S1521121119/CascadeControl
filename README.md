@@ -1,6 +1,6 @@
 # CascadeControl
 
-`CascadeView` 是用 Miller Columns（多欄串接）呈現多層選單的 WinForms 控制項。
+`CascadeColumnsView` 是用 Miller Columns（多欄串接）呈現多層選單的 WinForms 控制項。
 選了某一項，如果它還有下一層，右邊就長出一欄；改選時，後面的欄位會整批換掉。
 適合 debug 選單、設定項目這類「路徑深淺不一，最後選到一個終點去執行」的情境。
 
@@ -18,7 +18,7 @@
 第 4 欄是 `Jog` 的子節點。選到任何一項再按 Enter 都會觸發 `NodeActivated`；進入下一層用 →。
 
 - **需求**：.NET Framework 4.8、Windows Forms，不需要第三方套件。
-- **命名空間**：`CascadeControl.State`（共享導覽與勾選狀態）、`CascadeControl.Views`（共用檢視介面與滑鼠事件）、`CascadeControl.Views.Columns`（Miller Columns 控制項 `CascadeView`／`CascadeCheckboxView`）、`CascadeControl.Views.TreeImage`（樹狀圖繪製與檢視 `TreeDrawer`／`CascadeTreeImageView`）、`CascadeControl.Trees`（選單樹與勾選）、`CascadeControl.Trees.Csv`（樹的文字與 CSV 讀寫）、`CascadeControl.Graphs`／`CascadeControl.Graphs.Csv`（有向圖與其 CSV 讀寫）、`CascadeControl.Common`（`ICascadeNode`、`|` 語法等基礎共用部分）。
+- **命名空間**：`CascadeControl.State`（共享導覽與勾選狀態）、`CascadeControl.Views`（共用檢視介面與滑鼠事件）、`CascadeControl.Views.Columns`（Miller Columns 控制項 `CascadeColumnsView`／`CascadeCheckboxView`）、`CascadeControl.Views.Diagram`（樹狀圖繪製與檢視 `TreeDrawer`／`CascadeDiagramView`）、`CascadeControl.Trees`（選單樹與勾選）、`CascadeControl.Trees.Csv`（樹的文字與 CSV 讀寫）、`CascadeControl.Graphs`／`CascadeControl.Graphs.Csv`（有向圖與其 CSV 讀寫）、`CascadeControl.Common`（`ICascadeNode`、`|` 語法等基礎共用部分）。
 
 **目錄**：[快速開始](#快速開始) · [常見任務](#常見任務) · [CSV 格式](#csv-格式) · [操作方式](#操作方式) · [勾選](#勾選) · [API 速查](#api-速查) · [注意事項](#注意事項)
 
@@ -40,12 +40,12 @@
 ### 2. 放到表單上
 
 在工具箱上按右鍵，選「選擇項目」，切到「.NET Framework 元件」分頁，按「瀏覽」選取 `CascadeControl.dll`，
-再勾選 `CascadeView`。之後就能從工具箱把它拖到表單上。
+再勾選 `CascadeColumnsView`。之後就能從工具箱把它拖到表單上。
 
 不想用設計工具的話，直接在程式碼裡建立也可以：
 
 ```csharp
-var cascadeView1 = new CascadeView { Dock = DockStyle.Fill };
+var cascadeView1 = new CascadeColumnsView { Dock = DockStyle.Fill };
 Controls.Add(cascadeView1);
 ```
 
@@ -382,7 +382,7 @@ ActionStep,ActionBurnIn,Init|Stop,
 - 多選的節點以淺黃色標出（`MultiSelectBackColor`），和選取路徑的藍色分開。
 - 編輯框：Enter 套用、Esc 取消；焦點離開（Tab、點了別的地方）也算套用。名稱空白當成取消，含有 `|` 時提示並繼續編輯。編輯中點欄位，那一下只用來結束編輯。
 - 同一層已有同名節點時（插入、改名、貼上），新名稱自動加上後綴，例如 `Axis X - 2`。
-- 剪貼簿：Copy / Cut 在 Windows 剪貼簿放兩種格式：`CascadeView.CLIPBOARD_FORMAT`（給 Paste 用）與 CSV 純文字（可以直接貼到記事本或 Excel）。Paste 只認前者。
+- 剪貼簿：Copy / Cut 在 Windows 剪貼簿放兩種格式：`CascadeColumnsView.CLIPBOARD_FORMAT`（給 Paste 用）與 CSV 純文字（可以直接貼到記事本或 Excel）。Paste 只認前者。
 - 程式也可以直接呼叫：`Copy()`、`Cut()`、`Paste(before)`、`PasteAsChild()`、`Delete()`、`BeginInsert(before)`、`BeginCreateChild()`、`BeginRename()`、`EndEdit(commit)`，對象是多選的節點或 `SelectedNode`。
 - 每次改完樹都會觸發 `TreeEdited`（`e.Action`、`e.Nodes`），這時欄位與選取已經更新好；復原、重做改到樹時也會觸發（`e.Action` 是 `Undo` / `Redo`）。
 
@@ -402,11 +402,11 @@ ActionStep,ActionBurnIn,Init|Stop,
 
 ## 勾選
 
-`CascadeCheckboxView` 是每一列前面多一個勾選框的 `CascadeView`，用來在樹上**勾選多個節點**，再一次輸出勾選的部分。
+`CascadeCheckboxView` 是每一列前面多一個勾選框的 `CascadeColumnsView`，用來在樹上**勾選多個節點**，再一次輸出勾選的部分。
 選取（目前走到哪裡）和勾選（選了哪些）是兩回事：勾選狀態存在 `MenuCheckSet`，不存在節點上，所以 `MenuNode` 與 `MenuTree` 都不必改。
 
 ```csharp
-// 用法和 CascadeView 一樣；SetTree 會自動建立一份針對這棵樹的 MenuCheckSet。
+// 用法和 CascadeColumnsView 一樣；SetTree 會自動建立一份針對這棵樹的 MenuCheckSet。
 cascadeCheckboxView1.SetTree(menu);
 cascadeCheckboxView1.CheckedChanged += (s, e) =>
     Debug.WriteLine($"{e.Reason}：+{e.Added.Count} / -{e.Removed.Count}");
@@ -479,7 +479,7 @@ cascadeCheckboxView1.RefreshColumns();
 
 ## API 速查
 
-**`CascadeView`**（`CascadeControl.Views.Columns`，繼承自 `Panel`，實作 `ICascadeView`）
+**`CascadeColumnsView`**（`CascadeControl.Views.Columns`，繼承自 `Panel`，實作 `ICascadeView`）
 
 | 成員 | 說明 |
 |---|---|
@@ -518,7 +518,7 @@ cascadeCheckboxView1.RefreshColumns();
 `OnColumnBlankMouseClick(columnIndex, nodes, button, screenLocation)`（可覆寫，點欄位空白處時呼叫）、
 `OnContextMenuOpening(menu)`（可覆寫，內建功能表開啟前設定自己項目的 `Available`）、`OnTreeEdited`、`OnMultiSelectionChanged`；`SetTree` 是 virtual。
 
-**`CascadeCheckboxView`**（`CascadeControl.Views.Columns`，繼承自 `CascadeView`，實作 `ICascadeCheckableView`）
+**`CascadeCheckboxView`**（`CascadeControl.Views.Columns`，繼承自 `CascadeColumnsView`，實作 `ICascadeCheckableView`）
 
 | 成員 | 說明 |
 |---|---|
@@ -526,21 +526,21 @@ cascadeCheckboxView1.RefreshColumns();
 | `CheckedChanged` | `CheckSet` 的勾選狀態改變後觸發 |
 | `GetCheckBoxBounds(rowBounds)` | 勾選框在某一列裡的位置 |
 
-**`CascadeTreeImageView`**（`CascadeControl.Views.TreeImage`，繼承自 `ScrollableControl`，實作 `ICascadeView`）
+**`CascadeDiagramView`**（`CascadeControl.Views.Diagram`，繼承自 `ScrollableControl`，實作 `ICascadeView`）
 
-把 `State` 的選單樹用 `TreeDrawer` 畫出來，跟著選取與勾選自動重畫；自己管捲軸，可以直接 `Dock = Fill`。可呼叫 `SetTree` 獨立運作，或共享 `CascadeView`／`CascadeCheckboxView` 的 `State` 同步顯示。
+把 `State` 的選單樹用 `TreeDrawer` 畫出來，跟著選取與勾選自動重畫；自己管捲軸，可以直接 `Dock = Fill`。可呼叫 `SetTree` 獨立運作，或共享 `CascadeColumnsView`／`CascadeCheckboxView` 的 `State` 同步顯示。
 
 ```csharp
-// 與 CascadeView 或 CascadeCheckboxView 共享狀態（選取、記憶、PathSeparator 與勾選會自動同步）
-treeImageView1.State = cascadeView1.State;
-treeImageView1.NodeMouseClick += (s, e) =>
+// 與 CascadeColumnsView 或 CascadeCheckboxView 共享狀態（選取、記憶、PathSeparator 與勾選會自動同步）
+diagramView1.State = cascadeView1.State;
+diagramView1.NodeMouseClick += (s, e) =>
 {
 	Debug.WriteLine(e.PathText);              // 例如 Motor => Axis X => Jog
-	treeImageView1.TrySelectPath(e.Path);     // 透過共享 State 讓兩邊一起跳到該節點
+	diagramView1.TrySelectPath(e.Path);     // 透過共享 State 讓兩邊一起跳到該節點
 };
 
-// 或脫離 CascadeView 獨立使用
-var standalone = new CascadeTreeImageView();
+// 或脫離 CascadeColumnsView 獨立使用
+var standalone = new CascadeDiagramView();
 standalone.SetTree(menu);
 ```
 
@@ -559,7 +559,7 @@ standalone.SetTree(menu);
 | `IsExpanded(node)` / `SetExpanded(node, expanded)` | 節點是否展開／展開或收合並重畫。左鍵點 [+] 展開、點 [-] 收合（不觸發 `NodeMouseClick`）；沒點過的節點有子節點被勾選才展開，沒有勾選資訊時一律收合；換樹後重置 |
 | `SelectedPathChanged` | 選取路徑改變後觸發 |
 | `NodeMouseClick` / `NodeMouseDoubleClick` | 點了圖上的節點；參數 `CascadeNodeMouseEventArgs`（繼承 `CascadeNodeEventArgs`，含 `Node`、`Path`、`PathText`、`ColumnIndex`、`Button`、`Location`、`Bounds`、`ScreenLocation`） |
-| `NodeActivated` | 在選取的節點上按 Enter；參數與 `CascadeView.NodeActivated` 同為 `CascadeNodeEventArgs`（含 `Node`、`Path`、`PathText`、`IsLeaf`） |
+| `NodeActivated` | 在選取的節點上按 Enter；參數與 `CascadeColumnsView.NodeActivated` 同為 `CascadeNodeEventArgs`（含 `Node`、`Path`、`PathText`、`IsLeaf`） |
 | `DrawSettingsChanged` | 三個顯示設定改變後觸發，包含從右鍵功能表切換 |
 | `TreeContextMenu` | 右鍵功能表，含範圍、未勾選節點（`State` 為 `CascadeCheckableState` 時顯示）、顯示（原始尺寸／自動縮放） |
 
@@ -577,7 +577,7 @@ standalone.SetTree(menu);
 
 **`CascadeState` / `CascadeCheckableState`**（`CascadeControl.State`，不相依 WinForms）
 
-多個檢視控制項共享的資料、選取與勾選狀態。`CascadeView` 與 `CascadeTreeImageView` 預設建立 `CascadeState`，`CascadeCheckboxView` 預設建立 `CascadeCheckableState`。
+多個檢視控制項共享的資料、選取與勾選狀態。`CascadeColumnsView` 與 `CascadeDiagramView` 預設建立 `CascadeState`，`CascadeCheckboxView` 預設建立 `CascadeCheckableState`。
 
 | 成員 | 說明 |
 |---|---|
@@ -589,9 +589,9 @@ standalone.SetTree(menu);
 
 **`ICascadeView` / `ICascadeCheckableView`**（`CascadeControl.Views`，不相依 WinForms）
 
-導覽與勾選能力的檢視介面，不含編輯與復原成員。`CascadeView`、`CascadeCheckboxView` 與 `CascadeTreeImageView` 皆實作 `ICascadeView`，`CascadeCheckboxView` 另外實作 `ICascadeCheckableView`。
+導覽與勾選能力的檢視介面，不含編輯與復原成員。`CascadeColumnsView`、`CascadeCheckboxView` 與 `CascadeDiagramView` 皆實作 `ICascadeView`，`CascadeCheckboxView` 另外實作 `ICascadeCheckableView`。
 
-`CascadeView.Tree` 是 `SetTree` 設定的樹；用 `SetTopLevelNodes` 顯示其他資料或 `Clear` 後為 null。
+`CascadeColumnsView.Tree` 是 `SetTree` 設定的樹；用 `SetTopLevelNodes` 顯示其他資料或 `Clear` 後為 null。
 `TreeDrawer.RenderImage(...)` 和 `Render` 相同，另外帶回每個節點方塊與展開鈕的位置（`TreeImage.Nodes`、`GetNodeAt`、`GetExpanderAt`）。
 三個繪製方法都有選用參數 `isExpanded`：回傳 false 的節點畫 [+]、不畫子節點；null 時全部展開（[-]）。
 
@@ -680,7 +680,7 @@ Info|Status,Version|Uptime
 | `MenuGraph.GetDistances(start, [maxDistance])` / `IsAcyclic()` | 最少邊數、是否無環 |
 | `MenuGraph.FromRows(rows, out warnings)` / `ToRows(style)` | 與 `From,To` 二維字串陣列互轉，寫法見 `MenuGraphRowStyle`（`Expanded` / `Compact` / `Outline`） |
 | `MenuGraph.FromTree(tree)` / `ToTree([start,] out warnings)` | 與樹互轉：同名節點合併成一個頂點；展開成樹時共用頂點會被複製，環會被略過並警告 |
-| `MenuGraph.CreateTopLevelNodes()` | 建立 `MenuGraphNode`（實作 `ICascadeNode`），可交給 `CascadeView.SetTopLevelNodes` 顯示 |
+| `MenuGraph.CreateTopLevelNodes()` | 建立 `MenuGraphNode`（實作 `ICascadeNode`），可交給 `CascadeColumnsView.SetTopLevelNodes` 顯示 |
 | `MenuVertex.Successors` / `Predecessors` / `InDegree` / `OutDegree` / `IsSource` / `IsSink` / `IsConvergent` / `HasLoop` | 頂點的鄰接資訊 |
 | `MenuVertex.Rename(newName)` | 改名；改成既有名稱時把邊轉接過去並合併 |
 | `MenuGraphNode.SiblingNumber` / `Depth` / `FullPathText` / `IsRepeatedOnPath` | 依走進來的路徑決定的序號、深度、路徑，以及是否走進了環 |
@@ -697,7 +697,7 @@ Info|Status,Version|Uptime
 - **`SetTree`、`SetTopLevelNodes`、`Clear` 也會觸發 `SelectedPathChanged`**（未選取的狀態）。在表單建構式裡呼叫時，事件處理常式也會跑一次。
 - **按 ← 會改變選取**，`SelectedPathChanged` 跟著觸發。依賴「← 只移動焦點」的舊程式要留意。
 - **`DrawNode` 和 `ColumnWidthChanged` 不在屬性視窗裡**，需要時請在程式碼中訂閱。
-- **在程式裡直接改 `MenuNode` 之後要清除復原歷史**：`CascadeView` 呼叫 `History.Clear()`，`CascadeCheckboxView` 呼叫 `CheckSet.Reconcile()`（它也會清除），見[樹被編輯之後](#樹被編輯之後)。
+- **在程式裡直接改 `MenuNode` 之後要清除復原歷史**：`CascadeColumnsView` 呼叫 `History.Clear()`，`CascadeCheckboxView` 呼叫 `CheckSet.Reconcile()`（它也會清除），見[樹被編輯之後](#樹被編輯之後)。
 - **更新 dll 時要連同 `CascadeControl.xml` 一起換**，否則 IntelliSense 顯示的會是舊的說明。
 - 控制項用 `WS_EX_COMPOSITED` 做雙緩衝，避免改選時閃爍。一般大小的選單感覺不出額外負擔；
   如果單欄有上千項，請留意重繪效能。

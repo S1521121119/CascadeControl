@@ -9,7 +9,7 @@ using System.Windows.Forms;
 namespace CascadeControl.Views.Columns
 {
     // 依導覽狀態建立、拆除與排列欄位。
-    public partial class CascadeView
+    public partial class CascadeColumnsView
     {
         private const int MARGIN = 3;
 
@@ -250,9 +250,9 @@ namespace CascadeControl.Views.Columns
 
         private sealed class ColumnCollection : ControlCollection
         {
-            private readonly CascadeView _view;
+            private readonly CascadeColumnsView _view;
 
-            public ColumnCollection(CascadeView owner) : base(owner)
+            public ColumnCollection(CascadeColumnsView owner) : base(owner)
             {
                 _view = owner;
             }
@@ -262,7 +262,7 @@ namespace CascadeControl.Views.Columns
                 if (value != null && !_view._lists.Contains(value))
                 {
                     throw new InvalidOperationException(
-                        $"{nameof(CascadeView)} 的欄位由控制項自行建立與移除，不可加入其他控制項（{value.GetType().Name} '{value.Name}'）。");
+                        $"{nameof(CascadeColumnsView)} 的欄位由控制項自行建立與移除，不可加入其他控制項（{value.GetType().Name} '{value.Name}'）。");
                 }
 
                 base.Add(value);

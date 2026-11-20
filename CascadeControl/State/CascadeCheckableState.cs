@@ -9,7 +9,7 @@ namespace CascadeControl.State
     /// 具備節點勾選狀態的 <see cref="CascadeState"/>：在 <see cref="SetTree"/> 時一併建立對應的 <see cref="MenuCheckSet"/>。
     /// </summary>
     /// <remarks>
-    /// 這個檔案不相依 System.Windows.Forms，可同時綁定到 <see cref="Views.Columns.CascadeCheckboxView"/> 與 <see cref="Views.TreeImage.CascadeTreeImageView"/>。
+    /// 這個檔案不相依 System.Windows.Forms，可同時綁定到 <see cref="Views.Columns.CascadeCheckboxView"/> 與 <see cref="Views.Diagram.CascadeDiagramView"/>。
     /// </remarks>
     public class CascadeCheckableState : CascadeState
     {

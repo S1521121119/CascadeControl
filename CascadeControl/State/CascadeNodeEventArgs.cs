@@ -6,7 +6,7 @@ using System.Linq;
 namespace CascadeControl.State
 {
     /// <summary>
-    /// <see cref="Views.Columns.CascadeView.SelectedPathChanged"/> 與 <see cref="Views.Columns.CascadeView.NodeActivated"/> 共用的事件參數，所有內容都由選取路徑推算而來。
+    /// <see cref="Views.Columns.CascadeColumnsView.SelectedPathChanged"/> 與 <see cref="Views.Columns.CascadeColumnsView.NodeActivated"/> 共用的事件參數，所有內容都由選取路徑推算而來。
     /// </summary>
     /// <remarks>
     /// 只保存 <see cref="Path"/>，其他屬性都從路徑推算，不會有兩份資料不一致的問題。

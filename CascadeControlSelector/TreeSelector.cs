@@ -4,7 +4,7 @@ using CascadeControl.Trees;
 using CascadeControl.Trees.Csv;
 using CascadeControl.Views;
 using CascadeControl.Views.Columns;
-using CascadeControl.Views.TreeImage;
+using CascadeControl.Views.Diagram;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -34,7 +34,7 @@ namespace CascadeControlSelector
         public TreeSelector(string startupPath)
         {
             InitializeComponent();
-            treeImageView1.State = cascadeView1.State;
+            diagramView1.State = cascadeView1.State;
 
             // Demo 預設開啟編輯；勾選 ReadOnly 切回唯讀（只能點選、多選與複製）。
 
@@ -72,7 +72,7 @@ namespace CascadeControlSelector
             LogMessage($"已載入 {filePath}：{_menu.GetLeaves().Count()} 條路徑，最深 {_menu.Height} 層。");
             Text = $"TestForm - {Path.GetFileName(filePath)}";
 
-            // SetTree 觸發 SelectedPathChanged，treeImageView1 會跟著重畫新的樹。
+            // SetTree 觸發 SelectedPathChanged，diagramView1 會跟著重畫新的樹。
             cascadeView1.SetTree(_menu);
             cascadeView1.ColumnWidth = 40;
             cascadeView1.ColumnLayoutMode = CascadeColumnLayoutMode.Sliding;
@@ -82,7 +82,7 @@ namespace CascadeControlSelector
             // 從建構式呼叫時表單還沒顯示，這一行不會有作用，由 OnShown 補做。
             cascadeView1.FocusActiveColumn();
 
-            treeImageView1.DrawScope = TreeDrawScope.WholeTree;
+            diagramView1.DrawScope = TreeDrawScope.WholeTree;
         }
 
         #region 拖放載入
@@ -92,7 +92,7 @@ namespace CascadeControlSelector
         /// </summary>
         /// <remarks>
         /// 拖放事件不會從子控制項往上傳到表單，只設表單的 AllowDrop，拖到選單或樹狀圖上時游標會是禁止符號。
-        /// <see cref="CascadeView"/> 的欄位 ListBox 是之後才動態建立的，所以也接 ControlAdded，新加入的子控制項一樣能接收。
+        /// <see cref="CascadeColumnsView"/> 的欄位 ListBox 是之後才動態建立的，所以也接 ControlAdded，新加入的子控制項一樣能接收。
         /// </remarks>
         private void EnableFileDrop(Control control)
         {
@@ -162,7 +162,7 @@ namespace CascadeControlSelector
 
         private void CascadeView1_SelectedPathChanged(object sender, CascadeNodeEventArgs e)
         {
-            // 樹狀圖由 treeImageView1 自己跟著選取重畫。
+            // 樹狀圖由 diagramView1 自己跟著選取重畫。
 
             if (e.Node == null)
             {
@@ -185,14 +185,14 @@ namespace CascadeControlSelector
         /// <summary>
         /// 點了右側樹狀圖上的節點：左鍵讓選單跳到那個節點，左右鍵都把路徑寫進記錄。
         /// </summary>
-        private void TreeImageView1_NodeMouseClick(object sender, CascadeNodeMouseEventArgs e)
+        private void DiagramView1_NodeMouseClick(object sender, CascadeNodeMouseEventArgs e)
         {
-            LogMessage($"TreeImage NodeMouseClick（{e.Button}）：{e.PathText}");
+            LogMessage($"Diagram NodeMouseClick（{e.Button}）：{e.PathText}");
 
             if (e.Button == MouseButtons.Left) cascadeView1.TrySelectPath(e.Path);
         }
 
-        private void TreeImageView1_NodeMouseDoubleClick(object sender, CascadeNodeMouseEventArgs e)
+        private void DiagramView1_NodeMouseDoubleClick(object sender, CascadeNodeMouseEventArgs e)
         {
             ExecuteSelection(e.PathText);
         }

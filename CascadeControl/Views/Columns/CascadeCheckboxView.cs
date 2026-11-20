@@ -10,21 +10,21 @@ using System.Windows.Forms.VisualStyles;
 namespace CascadeControl.Views.Columns
 {
     /// <summary>
-    /// 每一列前面多一個勾選框的 <see cref="CascadeView"/>：可以在樹上勾選多個節點，勾選狀態存在 <see cref="CheckSet"/>。
+    /// 每一列前面多一個勾選框的 <see cref="CascadeColumnsView"/>：可以在樹上勾選多個節點，勾選狀態存在 <see cref="CheckSet"/>。
     /// </summary>
     /// <remarks>
     /// 選取（目前走到哪裡）與勾選（選了哪些）是兩回事：選取仍然由基底管理，勾選交給 <see cref="MenuCheckSet"/>，
     /// 這個類別只負責把它畫出來，以及把滑鼠與鍵盤操作轉成對它的呼叫。
     /// 操作方式：點勾選框只切換勾選、不改選取（<see cref="CascadeColumnLayoutMode.Sliding"/> 時畫面也不會滑動），
     /// 按住 Shift 點勾選框是連同所有子節點一起勾選；點文字只選取；Space 切換目前選取的節點，Shift+Space 連同所有子節點；
-    /// 勾選與樹的編輯記在同一份 <see cref="CascadeView.History"/>，Ctrl+Z 依發生的順序復原，Ctrl+Y 或 Ctrl+Shift+Z 重做，之後選取會跳到那一步針對的節點。
-    /// 右鍵不改選取：勾選項目放在基底 <see cref="CascadeView.NodeContextMenu"/> 與 <see cref="CascadeView.ColumnContextMenu"/> 的最前面，後面接基底的復原、重做與編輯項目。
+    /// 勾選與樹的編輯記在同一份 <see cref="CascadeColumnsView.History"/>，Ctrl+Z 依發生的順序復原，Ctrl+Y 或 Ctrl+Shift+Z 重做，之後選取會跳到那一步針對的節點。
+    /// 右鍵不改選取：勾選項目放在基底 <see cref="CascadeColumnsView.NodeContextMenu"/> 與 <see cref="CascadeColumnsView.ColumnContextMenu"/> 的最前面，後面接基底的復原、重做與編輯項目。
     /// 勾了但子孫沒有全勾的節點畫成「部分勾選」，那只是提示，狀態仍然是已勾選。
     /// 只有屬於 <see cref="CheckSet"/> 那棵樹的 <see cref="MenuNode"/> 才有勾選框；其他節點的外觀與行為和基底相同。
     /// 剪下、刪除節點時，被移除節點的勾選會一起取消，和移除算同一步，所以復原時勾選也會回來。
     /// </remarks>
     [DesignerCategory("")]
-    public class CascadeCheckboxView : CascadeView, ICascadeCheckableView
+    public class CascadeCheckboxView : CascadeColumnsView, ICascadeCheckableView
     {
         private const string CHECK_SUBTREE_TEXT = "勾選(含所有子節點)";
         private const string CHECK_SIBLINGS_TEXT = "全部勾選";
@@ -112,12 +112,12 @@ namespace CascadeControl.Views.Columns
         /// 目前顯示的勾選狀態；null 表示不顯示勾選框。
         /// </summary>
         /// <remarks>
-        /// <see cref="CascadeView.SetTree"/> 會自動換上一份新的；想保留先前的勾選，或讓好幾個控制項共用同一份時，才需要自己設定。
+        /// <see cref="CascadeColumnsView.SetTree"/> 會自動換上一份新的；想保留先前的勾選，或讓好幾個控制項共用同一份時，才需要自己設定。
         /// 它的 <see cref="MenuCheckSet.Tree"/> 應該就是目前顯示的樹，否則所有節點都不會有勾選框。
-        /// 設定時會把它的 <see cref="MenuCheckSet.History"/> 換成這個控制項的 <see cref="CascadeView.History"/>，並清空歷史：
+        /// 設定時會把它的 <see cref="MenuCheckSet.History"/> 換成這個控制項的 <see cref="CascadeColumnsView.History"/>，並清空歷史：
         /// 勾選與樹的編輯才會排在同一條時間軸上，舊步驟也不會作用到換下來的那一份。
         /// </remarks>
-        /// <exception cref="InvalidOperationException"><see cref="CascadeView.State"/> 不是 <see cref="CascadeCheckableState"/> 時指派非 null 的勾選狀態。</exception>
+        /// <exception cref="InvalidOperationException"><see cref="CascadeColumnsView.State"/> 不是 <see cref="CascadeCheckableState"/> 時指派非 null 的勾選狀態。</exception>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public MenuCheckSet CheckSet
@@ -156,7 +156,7 @@ namespace CascadeControl.Views.Columns
         private void OnStateCheckSetChanged(object sender, EventArgs e) => SyncCheckSetWithHistory();
 
         /// <summary>
-        /// 剪下、刪除節點之後，先取消被移除節點（連同子孫）的勾選，再觸發 <see cref="CascadeView.TreeEdited"/>。
+        /// 剪下、刪除節點之後，先取消被移除節點（連同子孫）的勾選，再觸發 <see cref="CascadeColumnsView.TreeEdited"/>。
         /// </summary>
         /// <remarks>
         /// 基底在同一組歷史步驟裡呼叫這裡，所以取消勾選和移除算同一步，復原時一起回來。
@@ -265,12 +265,12 @@ namespace CascadeControl.Views.Columns
         }
 
         /// <summary>
-        /// 左鍵點在勾選框上就切換勾選（按住 Shift 時連同所有子節點），之後才觸發 <see cref="CascadeView.NodeMouseClick"/>，所以訂閱端看到的是切換之後的狀態。
+        /// 左鍵點在勾選框上就切換勾選（按住 Shift 時連同所有子節點），之後才觸發 <see cref="CascadeColumnsView.NodeMouseClick"/>，所以訂閱端看到的是切換之後的狀態。
         /// </summary>
         /// <remarks>
         /// 勾選框上的左鍵不改選取（見 <see cref="SelectsOnLeftClick"/>），基底只在按下與放開都在同一個勾選框上時才會呼叫這裡。
         /// Shift＋點勾選框：還沒全勾就 <see cref="MenuCheckSet.CheckSubtree"/>，已經全勾就取消，所以連點兩下會回到原狀。
-        /// 右鍵的快顯功能表由基底開啟，針對的節點記在 <see cref="CascadeView.ContextMenuNode"/>。
+        /// 右鍵的快顯功能表由基底開啟，針對的節點記在 <see cref="CascadeColumnsView.ContextMenuNode"/>。
         /// </remarks>
         protected override void OnNodeMouseClick(CascadeNodeMouseEventArgs e)
         {
@@ -289,8 +289,8 @@ namespace CascadeControl.Views.Columns
         /// 節點上是「勾選(含所有子節點)」，欄位空白處是「全部勾選」、「全部勾選(含子節點)」、「全部取消」（對象是那一欄的全部節點）。
         /// </summary>
         /// <remarks>
-        /// 欄位空白處的 <see cref="CascadeView.ContextMenuNode"/> 是那一欄的第一個節點，空欄時為 null，勾選項目也就不出現。
-        /// 基底的編輯項目依 <see cref="CascadeView.ReadOnly"/> 決定，沒有任何項目時就不開啟功能表。
+        /// 欄位空白處的 <see cref="CascadeColumnsView.ContextMenuNode"/> 是那一欄的第一個節點，空欄時為 null，勾選項目也就不出現。
+        /// 基底的編輯項目依 <see cref="CascadeColumnsView.ReadOnly"/> 決定，沒有任何項目時就不開啟功能表。
         /// </remarks>
         protected override void OnContextMenuOpening(ContextMenuStrip menu)
         {

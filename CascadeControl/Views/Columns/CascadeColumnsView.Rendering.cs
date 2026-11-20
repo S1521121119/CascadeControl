@@ -8,7 +8,7 @@ using System.Windows.Forms;
 namespace CascadeControl.Views.Columns
 {
     // 欄位的自繪與防閃爍。
-    public partial class CascadeView
+    public partial class CascadeColumnsView
     {
         // 沒有焦點的欄位中，選取色與背景色的混合比例；要淡到和焦點欄的實心選取色一眼就分得出來。
         private const double INACTIVE_SELECTION_BLEND = 0.12;

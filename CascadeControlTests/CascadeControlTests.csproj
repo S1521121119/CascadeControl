@@ -59,7 +59,7 @@
   <ItemGroup>
     <Compile Include="Common\CsvFileTests.cs" />
     <Compile Include="Common\MultiNameCellSyntaxTests.cs" />
-    <Compile Include="Views\TreeImage\TreeDrawerTests.cs" />
+    <Compile Include="Views\Diagram\TreeDrawerTests.cs" />
     <Compile Include="Trees\MenuCheckSetTests.cs" />
     <Compile Include="Trees\MenuHistoryTests.cs" />
     <Compile Include="Trees\MenuNodeTests.cs" />
@@ -82,9 +82,9 @@
     <Compile Include="State\CascadeStateTests.cs" />
     <Compile Include="Views\CascadeNodeTests.cs" />
     <Compile Include="Views\Columns\CascadeCheckboxViewTests.cs" />
-    <Compile Include="Views\Columns\CascadeViewHookTests.cs" />
-    <Compile Include="Views\Columns\CascadeViewLayoutTests.cs" />
-    <Compile Include="Views\Columns\CascadeViewMultiSelectTests.cs" />
+    <Compile Include="Views\Columns\CascadeColumnsViewHookTests.cs" />
+    <Compile Include="Views\Columns\CascadeColumnsViewLayoutTests.cs" />
+    <Compile Include="Views\Columns\CascadeColumnsViewMultiSelectTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

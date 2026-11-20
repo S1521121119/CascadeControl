@@ -46,9 +46,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Views\TreeImage\TreeDrawer.cs" />
-    <Compile Include="Views\TreeImage\TreeImage.cs" />
-    <Compile Include="Views\TreeImage\CascadeTreeImageView.cs" />
+    <Compile Include="Views\Diagram\TreeDrawer.cs" />
+    <Compile Include="Views\Diagram\TreeImage.cs" />
+    <Compile Include="Views\Diagram\CascadeDiagramView.cs" />
     <Compile Include="State\CascadeCheckableState.cs" />
     <Compile Include="State\CascadeNavigator.cs" />
     <Compile Include="State\CascadeNodeEventArgs.cs" />
@@ -60,23 +60,23 @@
     <Compile Include="Views\Columns\CascadeColumnLayoutMode.cs" />
     <Compile Include="Views\Columns\CascadeDrawNodeEventArgs.cs" />
     <Compile Include="Views\Columns\CascadeTreeEditedEventArgs.cs" />
-    <Compile Include="Views\Columns\CascadeView.cs" />
-    <Compile Include="Views\Columns\CascadeView.Columns.cs">
-      <DependentUpon>CascadeView.cs</DependentUpon>
+    <Compile Include="Views\Columns\CascadeColumnsView.cs" />
+    <Compile Include="Views\Columns\CascadeColumnsView.Columns.cs">
+      <DependentUpon>CascadeColumnsView.cs</DependentUpon>
     </Compile>
-    <Compile Include="Views\Columns\CascadeView.Editing.cs">
-      <DependentUpon>CascadeView.cs</DependentUpon>
+    <Compile Include="Views\Columns\CascadeColumnsView.Editing.cs">
+      <DependentUpon>CascadeColumnsView.cs</DependentUpon>
     </Compile>
-    <Compile Include="Views\Columns\CascadeView.Input.cs">
-      <DependentUpon>CascadeView.cs</DependentUpon>
+    <Compile Include="Views\Columns\CascadeColumnsView.Input.cs">
+      <DependentUpon>CascadeColumnsView.cs</DependentUpon>
     </Compile>
-    <Compile Include="Views\Columns\CascadeView.MultiSelect.cs">
-      <DependentUpon>CascadeView.cs</DependentUpon>
+    <Compile Include="Views\Columns\CascadeColumnsView.MultiSelect.cs">
+      <DependentUpon>CascadeColumnsView.cs</DependentUpon>
     </Compile>
-    <Compile Include="Views\Columns\CascadeView.Rendering.cs">
-      <DependentUpon>CascadeView.cs</DependentUpon>
+    <Compile Include="Views\Columns\CascadeColumnsView.Rendering.cs">
+      <DependentUpon>CascadeColumnsView.cs</DependentUpon>
     </Compile>
-    <Compile Include="Views\Columns\CascadeViewDesigner.cs" />
+    <Compile Include="Views\Columns\CascadeColumnsViewDesigner.cs" />
     <Compile Include="Common\CsvFile.cs" />
     <Compile Include="Common\ICascadeNode.cs" />
     <Compile Include="Common\MultiNameCellSyntax.cs" />

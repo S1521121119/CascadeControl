@@ -31,7 +31,7 @@ namespace CascadeControl.Views.Columns
 
     // 同一欄內的多選，比照檔案總管：Ctrl / Shift / Ctrl+Shift 點選與方向鍵、Ctrl+Space、拖曳框選、Ctrl+A。
     // 焦點就是選取路徑在這一欄的節點，右邊的欄位顯示它的子節點；多選決定 Copy / Cut / Delete 的對象。
-    public partial class CascadeView
+    public partial class CascadeColumnsView
     {
         // 多選的節點；只會在同一欄（_markColumnIndex）裡。_markSource 是那一欄的內容來源，欄位換了內容多選就作廢。
         private readonly HashSet<ICascadeNode> _marks = new HashSet<ICascadeNode>();

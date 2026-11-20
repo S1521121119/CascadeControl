@@ -17,7 +17,7 @@ namespace CascadeControlTests.Views.Columns
     /// 用來確認焦點移動後右邊的欄位換成焦點節點的子節點。
     /// </remarks>
     [TestClass]
-    public class CascadeViewMultiSelectTests
+    public class CascadeColumnsViewMultiSelectTests
     {
         private static readonly string[] Names = { "Info", "Status", "Config", "Power", "Clock", "Watchdog", "License", "About" };
 
@@ -283,15 +283,15 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void ShouldDrawFocusCue_FocusRowInFocusedColumn_RegardlessOfMarks()
         {
-            Assert.IsTrue(CascadeView.ShouldDrawFocusCue(handled: false, isFocusRow: true, isFocusedColumn: true));
-            Assert.IsFalse(CascadeView.ShouldDrawFocusCue(handled: true, isFocusRow: true, isFocusedColumn: true));
-            Assert.IsFalse(CascadeView.ShouldDrawFocusCue(handled: false, isFocusRow: false, isFocusedColumn: true));
-            Assert.IsFalse(CascadeView.ShouldDrawFocusCue(handled: false, isFocusRow: true, isFocusedColumn: false));
+            Assert.IsTrue(CascadeColumnsView.ShouldDrawFocusCue(handled: false, isFocusRow: true, isFocusedColumn: true));
+            Assert.IsFalse(CascadeColumnsView.ShouldDrawFocusCue(handled: true, isFocusRow: true, isFocusedColumn: true));
+            Assert.IsFalse(CascadeColumnsView.ShouldDrawFocusCue(handled: false, isFocusRow: false, isFocusedColumn: true));
+            Assert.IsFalse(CascadeColumnsView.ShouldDrawFocusCue(handled: false, isFocusRow: true, isFocusedColumn: false));
         }
 
-        private static ViewHost<CascadeView> CreateHost()
+        private static ViewHost<CascadeColumnsView> CreateHost()
         {
-            var host = new ViewHost<CascadeView>();
+            var host = new ViewHost<CascadeColumnsView>();
             host.View.SetTree(EightItems());
             return host;
         }
@@ -309,6 +309,6 @@ namespace CascadeControlTests.Views.Columns
             return new Point(row.Left + 5, row.Top + 2);
         }
 
-        private static string[] MarkedNames(CascadeView view) => view.MultiSelectedNodes.Select(node => node.Name).ToArray();
+        private static string[] MarkedNames(CascadeColumnsView view) => view.MultiSelectedNodes.Select(node => node.Name).ToArray();
     }
 }

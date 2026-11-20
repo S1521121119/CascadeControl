@@ -12,13 +12,13 @@ using System.Windows.Forms;
 namespace CascadeControlTests.Views.Columns
 {
     /// <summary>
-    /// 給衍生類別用的掛勾：<see cref="CascadeView.NodeMouseClick"/>、DrawDefaultNode(e, textBounds)、
-    /// <see cref="CascadeView.InvalidateNodes"/>、IsColumnFocused、可覆寫的 <see cref="CascadeView.SetTree"/>。
+    /// 給衍生類別用的掛勾：<see cref="CascadeColumnsView.NodeMouseClick"/>、DrawDefaultNode(e, textBounds)、
+    /// <see cref="CascadeColumnsView.InvalidateNodes"/>、IsColumnFocused、可覆寫的 <see cref="CascadeColumnsView.SetTree"/>。
     /// </summary>
     [TestClass]
-    public class CascadeViewHookTests
+    public class CascadeColumnsViewHookTests
     {
-        private sealed class ProbeView : CascadeView
+        private sealed class ProbeView : CascadeColumnsView
         {
             public int SetTreeCalls { get; private set; }
 
@@ -38,7 +38,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void RightClick_RaisesNodeMouseClickWithoutSelecting()
         {
-            using (var host = new ViewHost<CascadeView>())
+            using (var host = new ViewHost<CascadeColumnsView>())
             {
                 var tree = TwoLevelTree();
                 host.View.SetTree(tree);
@@ -119,7 +119,7 @@ namespace CascadeControlTests.Views.Columns
         }
 
         // 每一列左邊 10 像素是保留給衍生類別的範圍，並記下空白處的點擊。
-        private sealed class SelectionFreeProbeView : CascadeView
+        private sealed class SelectionFreeProbeView : CascadeColumnsView
         {
             public List<System.Tuple<int, IReadOnlyList<ICascadeNode>>> BlankClicks { get; } = new List<System.Tuple<int, IReadOnlyList<ICascadeNode>>>();
 
@@ -134,7 +134,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void LeftClick_RaisesNodeMouseClick()
         {
-            using (var host = new ViewHost<CascadeView>())
+            using (var host = new ViewHost<CascadeColumnsView>())
             {
                 var tree = TwoLevelTree();
                 host.View.SetTree(tree);
@@ -155,7 +155,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void ClickOnBlankArea_DoesNotRaiseOrSelect()
         {
-            using (var host = new ViewHost<CascadeView>())
+            using (var host = new ViewHost<CascadeColumnsView>())
             {
                 host.View.SetTree(TwoLevelTree());
 
@@ -244,7 +244,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void InvalidateNodes_KeepsColumnsAndSelection()
         {
-            using (var view = new CascadeView())
+            using (var view = new CascadeColumnsView())
             {
                 var tree = TwoLevelTree();
                 view.SetTree(tree);
@@ -267,7 +267,7 @@ namespace CascadeControlTests.Views.Columns
         {
             using (var view = new ProbeView())
             {
-                CascadeView asBase = view;
+                CascadeColumnsView asBase = view;
                 asBase.SetTree(TwoLevelTree());
 
                 Assert.AreEqual(1, view.SetTreeCalls);
@@ -295,7 +295,7 @@ namespace CascadeControlTests.Views.Columns
         [TestMethod]
         public void Focus_OnView_HandsFocusToActiveColumn()
         {
-            using (var host = new ViewHost<CascadeView>())
+            using (var host = new ViewHost<CascadeColumnsView>())
             {
                 var tree = TwoLevelTree();
                 host.View.SetTree(tree);
@@ -324,7 +324,7 @@ namespace CascadeControlTests.Views.Columns
     /// <summary>
     /// 把控制項放進一個真的顯示出來（但在螢幕外）的表單，讓欄位有 Handle，可以做點擊位置的換算。
     /// </summary>
-    internal sealed class ViewHost<TView> : System.IDisposable where TView : CascadeView, new()
+    internal sealed class ViewHost<TView> : System.IDisposable where TView : CascadeColumnsView, new()
     {
         public ViewHost()
         {
