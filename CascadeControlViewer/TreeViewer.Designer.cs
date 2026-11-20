@@ -81,6 +81,7 @@
             this.diagramView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.diagramView1.Location = new System.Drawing.Point(0, 0);
             this.diagramView1.Name = "diagramView1";
+            this.diagramView1.ShowChecks = true;
             this.diagramView1.Size = new System.Drawing.Size(312, 426);
             this.diagramView1.TabIndex = 5;
             this.diagramView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseClick);

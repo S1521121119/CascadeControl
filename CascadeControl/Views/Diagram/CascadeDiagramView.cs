@@ -33,7 +33,7 @@ namespace CascadeControl.Views.Diagram
     /// <remarks>
     /// 取代「可捲動的 Panel 包一個 AutoSize 的 PictureBox」：控制項自己畫圖、自己管捲軸，所以可以直接 Dock = Fill。
     /// 可以直接呼叫 <see cref="SetTree"/> 獨立顯示與導覽，也可以把與 <see cref="Columns.CascadeColumnsView"/> 相同的 <see cref="CascadeState"/> 指派給 <see cref="State"/> 同步顯示。
-    /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="State"/> 是 <see cref="CascadeCheckableState"/> 時
+    /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="ShowChecks"/> 為 true 且 <see cref="State"/> 是 <see cref="CascadeCheckableState"/> 時
     /// 多一組 <see cref="UncheckedDisplay"/>（沒有勾選資訊時用不到這個設定，所以不列出來）。
     /// 會自動重畫的時機：<see cref="CascadeState.SelectedPathChanged"/>（包含 <see cref="CascadeState.SetTree"/> 與 <see cref="CascadeState.Refresh"/>）、
     /// <see cref="CascadeCheckableState.CheckedChanged"/> 與 <see cref="CascadeCheckableState.CheckSetChanged"/>；在外部直接修改節點而未呼叫 <see cref="CascadeState.Refresh"/> 時，
@@ -41,7 +41,7 @@ namespace CascadeControl.Views.Diagram
     /// <para>
     /// 有子節點的節點可以收合：左鍵點方塊右側的 [+] 展開（變成 [-]、畫出子節點），點 [-] 收合；點展開鈕不會觸發 <see cref="NodeMouseClick"/>。
     /// 沒點過的節點依勾選決定：有任何子節點被勾選就展開（勾選子孫會補勾祖先，所以祖先跟著展開），否則收合；
-    /// 沒有勾選資訊（<see cref="State"/> 不是 <see cref="CascadeCheckableState"/>）時一律收合。
+    /// 沒有勾選資訊（<see cref="ShowChecks"/> 為 false，或 <see cref="State"/> 不是 <see cref="CascadeCheckableState"/>）時一律收合。
     /// 點過的節點記住使用者的選擇，換成另一棵樹時全部忘掉；選取的節點被收合藏起來時不會自動展開。
     /// </para>
     /// <para>
@@ -63,6 +63,7 @@ namespace CascadeControl.Views.Diagram
         private TreeImage _image;
         private TreeDrawScope _drawScope = TreeDrawScope.WholeTree;
         private UncheckedNodeDisplay _uncheckedDisplay = UncheckedNodeDisplay.Dimmed;
+        private bool _showChecks;
         private TreeImageSizeMode _sizeMode = TreeImageSizeMode.ActualSize;
 
         // 使用者點過展開鈕的節點；沒有的依勾選決定。屬於 _expandTree，換樹時清空。
@@ -205,10 +206,33 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 有勾選資訊（<see cref="State"/> 是 <see cref="CascadeCheckableState"/>）時，沒勾的節點怎麼呈現。
+        /// 是否依 <see cref="State"/> 的勾選狀態畫圖：沒勾的節點依 <see cref="UncheckedDisplay"/> 呈現，有勾選子節點的節點預設展開。
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Columns.CascadeColumnsView"/> 的 <see cref="Columns.CascadeColumnsView.State"/> 預設就是 <see cref="CascadeCheckableState"/>，
+        /// 所以不能用 State 的型別判斷要不要畫勾選；和 <see cref="Columns.CascadeColumnsView.CheckBoxes"/> 一樣由這個屬性決定。
+        /// <see cref="State"/> 不是 <see cref="CascadeCheckableState"/> 時沒有勾選資訊，設成 true 也沒有作用。
+        /// </remarks>
+        [Category("Cascade")]
+        [Description("true：依 State 的勾選狀態畫圖，沒勾的節點變淡或不畫；false：不畫勾選狀態。")]
+        [DefaultValue(false)]
+        public bool ShowChecks
+        {
+            get => _showChecks;
+            set
+            {
+                if (_showChecks == value) return;
+                _showChecks = value;
+                Redraw();
+                OnDrawSettingsChanged(EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// <see cref="ShowChecks"/> 為 true 且有勾選資訊時，沒勾的節點怎麼呈現。
         /// </summary>
         [Category("Cascade")]
-        [Description("State 是 CascadeCheckableState 時，沒勾的節點變淡或不畫。")]
+        [Description("ShowChecks 為 true 時，沒勾的節點變淡或不畫。")]
         [DefaultValue(UncheckedNodeDisplay.Dimmed)]
         public UncheckedNodeDisplay UncheckedDisplay
         {
@@ -298,7 +322,7 @@ namespace CascadeControl.Views.Diagram
         public event EventHandler<CascadeNodeEventArgs> NodeActivated;
 
         /// <summary>
-        /// <see cref="DrawScope"/>、<see cref="UncheckedDisplay"/> 或 <see cref="SizeMode"/> 改變後觸發，包含從右鍵功能表切換。
+        /// <see cref="DrawScope"/>、<see cref="ShowChecks"/>、<see cref="UncheckedDisplay"/> 或 <see cref="SizeMode"/> 改變後觸發，包含從右鍵功能表切換。
         /// </summary>
         [Category("Cascade")]
         public event EventHandler DrawSettingsChanged;
@@ -346,11 +370,14 @@ namespace CascadeControl.Views.Diagram
             var selected = _state.SelectedNode as MenuNode;
             if (_drawScope == TreeDrawScope.SelectedSubtree && selected == null) tree = null;
 
-            var checkSet = (_state as CascadeCheckableState)?.CheckSet;
+            var checkSet = DisplayedCheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
 
             UpdateImage(TreeDrawer.RenderImage(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded));
         }
+
+        // ShowChecks 關閉時當成沒有勾選資訊。
+        private MenuCheckSet DisplayedCheckSet => _showChecks ? (_state as CascadeCheckableState)?.CheckSet : null;
 
         /// <summary>
         /// 有子節點的節點是否展開。
@@ -367,7 +394,7 @@ namespace CascadeControl.Views.Diagram
             SyncExpandTree();
             if (_expandOverrides.TryGetValue(node, out var expanded)) return expanded;
 
-            var checkSet = (_state as CascadeCheckableState)?.CheckSet;
+            var checkSet = DisplayedCheckSet;
             return checkSet != null && node.Children.Any(checkSet.IsChecked);
         }
 
@@ -701,7 +728,7 @@ namespace CascadeControl.Views.Diagram
 
         #region 右鍵功能表
 
-        // 每次開啟前依目前的 State 重建：沒有勾選能力時不列出「未勾選節點」。
+        // 每次開啟前重建：沒開 ShowChecks 或 State 沒有勾選能力時不列出「未勾選節點」。
         private void ContextMenu_Opening(object sender, CancelEventArgs e)
         {
             var items = _contextMenu.Items;
@@ -712,7 +739,7 @@ namespace CascadeControl.Views.Diagram
             scopeMenu.DropDownItems.Add(CreateChoice("選取的子樹", _drawScope == TreeDrawScope.SelectedSubtree, () => DrawScope = TreeDrawScope.SelectedSubtree));
             items.Add(scopeMenu);
 
-            if (_state is CascadeCheckableState)
+            if (_showChecks && _state is CascadeCheckableState)
             {
                 var uncheckedMenu = new ToolStripMenuItem("未勾選節點");
                 uncheckedMenu.DropDownItems.Add(CreateChoice("變淡", _uncheckedDisplay == UncheckedNodeDisplay.Dimmed, () => UncheckedDisplay = UncheckedNodeDisplay.Dimmed));

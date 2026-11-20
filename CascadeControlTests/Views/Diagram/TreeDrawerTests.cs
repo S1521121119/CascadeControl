@@ -104,7 +104,7 @@ namespace CascadeControlTests.Views.Diagram
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeColumnsView { CheckBoxes = true })
-            using (var imageView = new CascadeDiagramView { State = view.State })
+            using (var imageView = new CascadeDiagramView { State = view.State, ShowChecks = true })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -124,7 +124,7 @@ namespace CascadeControlTests.Views.Diagram
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeColumnsView { CheckBoxes = true })
-            using (var imageView = new CascadeDiagramView { State = view.State })
+            using (var imageView = new CascadeDiagramView { State = view.State, ShowChecks = true })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");
@@ -168,6 +168,22 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
+        public void SharedStateFromColumnsView_ShowChecksOff_DrawsLevelColorsNotDimmed()
+        {
+            var tree = TestTrees.Template();
+            using (var view = new CascadeColumnsView())
+            using (var imageView = new CascadeDiagramView { State = view.State })
+            {
+                view.SetTree(tree);
+
+                var bounds = LayoutNodeOf(imageView, tree, Find(tree, "Motor")).Bounds;
+                var back = ((Bitmap)imageView.Image).GetPixel((int)(bounds.Left + 4), (int)bounds.Top + (int)(bounds.Height / 2));
+
+                Assert.AreNotEqual(Color.White.ToArgb(), back.ToArgb(), "沒開 ShowChecks 時節點要有層的底色，不是沒勾的白底");
+            }
+        }
+
+        [TestMethod]
         public void State_SwapNullGuardAndDispose_DetachesOldSubscriptionsAndRedraws()
         {
             var firstTree = TestTrees.Template();
@@ -177,7 +193,7 @@ namespace CascadeControlTests.Views.Diagram
             firstState.SetTree(firstTree);
             secondState.SetTree(secondTree);
 
-            using (var imageView = new CascadeDiagramView { State = firstState })
+            using (var imageView = new CascadeDiagramView { State = firstState, ShowChecks = true })
             {
                 Assert.ThrowsException<System.ArgumentNullException>(() => imageView.State = null);
 
@@ -363,6 +379,7 @@ namespace CascadeControlTests.Views.Diagram
                 CollectionAssert.AreEqual(new[] { "範圍", "顯示" }, plainItems);
 
                 imageView.State = new CascadeCheckableState();
+                imageView.ShowChecks = true;
                 imageView.TreeContextMenu.Show(imageView, new Point(10, 10));
                 var checkboxItems = imageView.TreeContextMenu.Items.Cast<ToolStripItem>().Select(item => item.Text).ToList();
                 CollectionAssert.AreEqual(new[] { "範圍", "未勾選節點", "顯示" }, checkboxItems);
