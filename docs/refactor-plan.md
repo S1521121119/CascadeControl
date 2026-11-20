@@ -1,6 +1,6 @@
 # CascadeControl 資料夾結構重構計畫
 
-這份文件記錄 `CascadeControl` 與 `CascadeControlTests` 的領域導向資料夾重組規劃與執行結果。先前的 Plan A、Plan B2 與 Post-B2 事件統一重構已完成於 commit `9a39f85`，成為本計畫的基線。第一輪（Step 1 至 Step 5，只搬資料夾、不改 namespace）的程式碼搬遷與自動化驗證已全部完成，僅餘 Visual Studio IDE 設計工具與方案總管的人工目視確認。
+這份文件記錄 `CascadeControl` 與 `CascadeControlTests` 的領域導向資料夾重組規劃與執行結果。先前的 Plan A、Plan B2 與 Post-B2 事件統一重構已完成於 commit `9a39f85`，成為本計畫的基線。第一輪（Step 1 至 Step 5，只搬資料夾、不改 namespace）的程式碼搬遷、自動化驗證與 Visual Studio IDE 設計工具確認已全部完成。
 
 ## 目標與限制
 
@@ -300,11 +300,11 @@ Write-Output "Forms OK"
   - 修改 `CascadeControl/CascadeControl.csproj`（新增兩筆 `<Compile Include>`）。
 - [x] **單一變更內容**：將混放三層依賴的 `CascadeNodeEventArgs.cs` 拆開，使 `CascadeNodeEventArgs.cs` 成為 100% 無 UI 依賴的檔案。
 - [x] **預期可見結果**：`CascadeNodeEventArgs.cs` 不再出現 `System.Drawing` 或 `System.Windows.Forms`；`CascadeControl.xml` 的 62 個 `T:` 識別碼不變。
-- [ ] **驗證（Unit / Live / Designer）**：
+- [x] **驗證（Unit / Live / Designer）**：
   - [x] Debug 與 Release MSBuild 通過（0 錯誤、0 新增警告）。
   - [x] `vstest.console.exe` 通過 440 / 440（14.41 秒）。
   - [x] PowerShell 反射探測輸出三個控制項設計工具 `OK` 與 `Forms OK`。
-  - [ ] Visual Studio 設計工具正常開啟 `CascadeControlSelector/TreeSelector.cs` 與 `CascadeControlViewer/TreeViewer.cs`（待操作者於 Visual Studio 確認）。
+  - [x] Visual Studio 設計工具正常開啟 `CascadeControlSelector/TreeSelector.cs` 與 `CascadeControlViewer/TreeViewer.cs`（操作者於 2026-11-20 確認通過）。
 
 ---
 
@@ -321,12 +321,12 @@ Write-Output "Forms OK"
   - 修改 `CascadeControl/CascadeControl.csproj` 與 `CascadeControlTests/CascadeControlTests.csproj` 的 `<Compile Include>`。
 - [x] **單一變更內容**：把 B2 抽出的共享狀態與導覽狀態機集中到 `State/`，測試同步對應。
 - [x] **預期可見結果**：`CascadeControl/State/` 共 4 檔，非註解程式碼對 `System.Windows.Forms`、`System.Drawing` 與控制項引用為 0 筆。
-- [ ] **驗證（Unit / Live / Designer）**：
+- [x] **驗證（Unit / Live / Designer）**：
   - [x] 靜態依賴檢查確認 `CascadeControl/State/` 無 `System.Windows.Forms`、`System.Drawing` 或控制項型別程式碼引用。
   - [x] Debug 與 Release MSBuild 通過（0 錯誤、0 新增警告）。
   - [x] `vstest.console.exe` 通過 440 / 440（14.38 秒）。
   - [x] PowerShell 反射探測輸出 `OK` 與 `Forms OK`。
-  - [ ] Visual Studio 設計工具正常開啟 `TreeSelector.cs` 與 `TreeViewer.cs`（待操作者於 Visual Studio 確認）。
+  - [x] Visual Studio 設計工具正常開啟 `TreeSelector.cs` 與 `TreeViewer.cs`（操作者於 2026-11-20 確認通過）。
 
 ---
 
@@ -341,12 +341,12 @@ Write-Output "Forms OK"
   - 修改 `CascadeControl/CascadeControl.csproj` 與 `CascadeControlTests/CascadeControlTests.csproj` 的 `<Compile Include>`。
 - [x] **單一變更內容**：把樹狀圖繪製引擎與 `CascadeTreeImageView` 集中至 `Views/TreeImage/`，讓 `Common/` 恢復純基礎層。
 - [x] **預期可見結果**：`CascadeControl/Common/` 只剩 3 個檔案（`ICascadeNode.cs`、`MultiNameCellSyntax.cs`、`CsvFile.cs`），對 `Trees`、`System.Drawing`、`System.Windows.Forms` 程式碼引用為 0 筆。
-- [ ] **驗證（Unit / Live / Designer）**：
+- [x] **驗證（Unit / Live / Designer）**：
   - [x] 靜態依賴檢查確認 `CascadeControl/Common/` 無 `CascadeControl.Trees`、`System.Drawing`、`System.Windows.Forms` 程式碼引用。
   - [x] Debug 與 Release MSBuild 通過（0 錯誤、0 新增警告）。
   - [x] `vstest.console.exe` 通過 440 / 440（13.80 秒）。
   - [x] PowerShell 反射探測輸出 `OK` 與 `Forms OK`。
-  - [ ] Visual Studio 設計工具正常開啟 `TreeSelector.cs` 與 `TreeViewer.cs`，確認右側 `treeImageView1` 正常顯示（待操作者於 Visual Studio 確認）。
+  - [x] Visual Studio 設計工具正常開啟 `TreeSelector.cs` 與 `TreeViewer.cs`，確認右側 `treeImageView1` 正常顯示（操作者於 2026-11-20 確認通過）。
 
 ---
 
@@ -381,12 +381,12 @@ Write-Output "Forms OK"
   - 修改 `CascadeControlTests/CascadeControlTests.csproj`：更新 4 筆 `<Compile Include>`。
 - [x] **單一變更內容**：將 Miller Columns 控制項家族（含所有 partial 檔與 `CascadeViewDesigner`）獨立到 `Views/Columns/`，並在方案總管以 `DependentUpon` 折疊 partial 檔。
 - [x] **預期可見結果**：`Views/` 根目錄只剩 3 個跨控制項共用檔（`ICascadeView.cs`、`ICascadeCheckableView.cs`、`CascadeNodeMouseEventArgs.cs`）；`Views/Columns/` 與 `Views/TreeImage/` 彼此無程式碼引用。
-- [ ] **驗證（Unit / Live / Designer）**：
+- [x] **驗證（Unit / Live / Designer）**：
   - [x] 靜態依賴檢查確認 `Views/Columns/` 無引用 `TreeDrawer`/`TreeImage`/`CascadeTreeImageView`，`Views/TreeImage/` 無引用 `CascadeView`/`CascadeCheckboxView`。
   - [x] Debug 與 Release MSBuild 通過（0 錯誤、0 新增警告）。
   - [x] `vstest.console.exe` 通過 440 / 440（13.27 秒）。
   - [x] PowerShell 反射探測輸出 `OK`、`Forms OK` 與 `DependentUpon count: 5`。
-  - [ ] Visual Studio 方案總管確認五個 `CascadeView.*.cs` 折疊在 `CascadeView.cs` 下方，且設計工具正常開啟 `TreeSelector.cs` 與 `TreeViewer.cs`（左側 `cascadeView1` 顯示 `CascadeViewDesigner` 的虛線外框與控制項名稱，且無法拖入子控制項；待操作者於 Visual Studio 確認）。
+  - [x] Visual Studio 方案總管確認五個 `CascadeView.*.cs` 折疊在 `CascadeView.cs` 下方，且設計工具正常開啟 `TreeSelector.cs` 與 `TreeViewer.cs`（操作者於 2026-11-20 確認通過）。
 
 ---
 
@@ -399,11 +399,11 @@ Write-Output "Forms OK"
   - `CascadeControl.xml` 的 62 筆 `T:` ID 與基線 62/62 完全一致（`Compare-Object` 零差異）。
   - `git log --follow` 驗證 `TreeDrawer.cs`、`CascadeState.cs`、`CascadeView.cs` 皆可追溯至重組前歷史。
   - `git diff 9a39f85..HEAD -- CascadeControlSelector CascadeControlViewer README.md` 為 0 行變更。
-- [ ] **驗證（Unit / Live / Designer）**：
+- [x] **驗證（Unit / Live / Designer）**：
   - [x] Debug 與 Release MSBuild 通過（0 錯誤、0 新增警告；既有 `TreeDrawer.cs(622)` 兩筆 CS1573 警告與基線相同）。
   - [x] `vstest.console.exe` 通過 440 / 440（13.27 秒）。
   - [x] PowerShell 反射探測與 XML ID 比對（62/62）全數通過。
-  - [ ] 實地於 Visual Studio 設計工具複驗 `TreeSelector.cs` 與 `TreeViewer.cs`，並展開 `Views/Columns/CascadeView.cs` 確認 `DependentUpon` 折疊（待操作者於 Visual Studio 確認）。
+  - [x] 實地於 Visual Studio 設計工具複驗 `TreeSelector.cs` 與 `TreeViewer.cs`，並展開 `Views/Columns/CascadeView.cs` 確認 `DependentUpon` 折疊（操作者於 2026-11-20 確認通過）。
 
 ---
 
@@ -413,12 +413,4 @@ Write-Output "Forms OK"
 - `cae95bb`（Step 2）：以 `git mv` 搬遷 4 個狀態檔與 2 個測試檔至 `State/`（全數 100% rename）。Debug 與 Release MSBuild 0 錯誤 0 新增警告，`vstest` 440 / 440（14.38 秒），`State/` 零 UI 程式碼引用。
 - `4fa70b5`（Step 3）：以 `git mv` 搬遷 `TreeDrawer.cs`、`TreeImage.cs`、`CascadeTreeImageView.cs` 與 `TreeDrawerTests.cs` 至 `Views/TreeImage/`（全數 100% rename）。Debug 與 Release MSBuild 0 錯誤 0 新增警告，`vstest` 440 / 440（13.80 秒），`Common/` 收斂為 3 個零依賴檔。
 - `8e82e72`（Step 4）：以 `git mv` 搬遷 11 個控制項檔與 4 個測試檔至 `Views/Columns/`（全數 100% rename），並為五個 `CascadeView.*.cs` 補上 `<DependentUpon>CascadeView.cs</DependentUpon>`。Debug 與 Release MSBuild 0 錯誤 0 新增警告，`vstest` 440 / 440（13.27 秒），XML 62 / 62 與基線完全一致，兩個 WinForms 專案與 `README.md` 皆為 0 變更。
-
----
-
-## 尚未實測項目（需在 Visual Studio 人工確認）
-
-以下兩項無法在命令列自動化替代，請在 Visual Studio IDE 確認：
-
-1. 在 Visual Studio 開啟 `CascadeControlSelector/TreeSelector.cs` 與 `CascadeControlViewer/TreeViewer.cs` 的 WinForms 設計工具視窗，確認 `CascadeViewDesigner` 虛線框繪製正常、無載入錯誤，且修改屬性後儲存不會產生異常 diff。
-2. 在 Visual Studio 方案總管展開 `CascadeControl/Views/Columns/CascadeView.cs`，確認五個 partial 檔正確透過 `<DependentUpon>` 巢狀折疊，且雙擊開啟的是程式碼編輯器而非誤觸 Component Designer。
+- `d85a2f1` + 本次收尾（Step 5）：Visual Studio IDE 設計工具（`TreeSelector.cs` 與 `TreeViewer.cs`）與方案總管 `DependentUpon` 折疊經操作者實測確認通過，第一輪資料夾重組全數結案。
