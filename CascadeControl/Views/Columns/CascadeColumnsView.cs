@@ -99,8 +99,8 @@ namespace CascadeControl.Views.Columns
 
         private void AttachState(CascadeState state)
         {
-            state.Invalidated += OnStateInvalidated;
-            state.SelectedPathChanged += OnStateSelectedPathChanged;
+            state.Invalidated += State_Invalidated;
+            state.SelectedPathChanged += State_SelectedPathChanged;
             state.TreeEdited += State_TreeEdited;
             AttachCheckableState(state);
         }
@@ -109,13 +109,13 @@ namespace CascadeControl.Views.Columns
         {
             if (state == null) return;
 
-            state.Invalidated -= OnStateInvalidated;
-            state.SelectedPathChanged -= OnStateSelectedPathChanged;
+            state.Invalidated -= State_Invalidated;
+            state.SelectedPathChanged -= State_SelectedPathChanged;
             state.TreeEdited -= State_TreeEdited;
             DetachCheckableState(state);
         }
 
-        private void OnStateInvalidated(CascadeStateInvalidation kind)
+        private void State_Invalidated(CascadeStateInvalidation kind)
         {
             switch (kind)
             {
@@ -150,7 +150,7 @@ namespace CascadeControl.Views.Columns
             }
         }
 
-        private void OnStateSelectedPathChanged(object sender, CascadeNodeEventArgs e) => OnSelectedPathChanged(e);
+        private void State_SelectedPathChanged(object sender, CascadeNodeEventArgs e) => OnSelectedPathChanged(e);
 
         #region 外觀
 

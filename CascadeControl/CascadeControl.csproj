@@ -47,10 +47,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Views\Diagram\TreeDrawer.cs" />
-    <Compile Include="Views\Diagram\TreeDrawScope.cs" />
     <Compile Include="Views\Diagram\TreeImage.cs" />
-    <Compile Include="Views\Diagram\TreeImageSizeMode.cs" />
-    <Compile Include="Views\Diagram\UncheckedNodeDisplay.cs" />
+    <Compile Include="Views\Diagram\CascadeDiagramDrawScope.cs" />
+    <Compile Include="Views\Diagram\CascadeDiagramSizeMode.cs" />
+    <Compile Include="Views\Diagram\CascadeDiagramUncheckedDisplay.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramView.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramView.ContextMenu.cs">
       <DependentUpon>CascadeDiagramView.cs</DependentUpon>

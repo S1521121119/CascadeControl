@@ -23,7 +23,7 @@ namespace CascadeControl.Views.Diagram
     /// 底色依原樹的深度決定色系，同一欄由上往下，同一個父節點的子節點算一組，各組輪流用該色系的 A 色（較淺）與 B 色（較深），
     /// 相鄰兩組的葉節點才分得出來；
     /// 有底色的節點，外框是同色系的深色；
-    /// 有勾選資訊時，勾選的節點外框加粗、底色不變（全勾是實線，勾了但子孫沒有全勾是虛線），沒勾的依 <see cref="UncheckedNodeDisplay"/> 變淡或不畫；
+    /// 有勾選資訊時，勾選的節點外框加粗、底色不變（全勾是實線，勾了但子孫沒有全勾是虛線），沒勾的依 <see cref="CascadeDiagramUncheckedDisplay"/> 變淡或不畫；
     /// 選取的節點在原本的外框外圍另外畫一圈矩形紅框，原本的外框（實線或虛線）照畫、不被蓋住。連線一律黑色，只有通往沒勾節點的連線變淡。
     /// </para>
     /// </remarks>
@@ -144,16 +144,16 @@ namespace CascadeControl.Views.Diagram
         /// <param name="scope">要畫樹的哪個範圍。</param>
         /// <param name="uncheckedDisplay">有勾選資訊時，沒勾的節點怎麼呈現。</param>
         /// <param name="selectedNode">
-        /// 目前選取的節點，要屬於 <paramref name="tree"/>；<see cref="TreeDrawScope.SelectedSubtree"/> 從它開始畫，
-        /// <see cref="TreeDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
+        /// 目前選取的節點，要屬於 <paramref name="tree"/>；<see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 從它開始畫，
+        /// <see cref="CascadeDiagramDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
         public static void Draw(
             PictureBox pictureBox,
             MenuTree tree,
             Func<MenuNode, bool> isChecked = null,
-            TreeDrawScope scope = TreeDrawScope.WholeTree,
-            UncheckedNodeDisplay uncheckedDisplay = UncheckedNodeDisplay.Dimmed,
+            CascadeDiagramDrawScope scope = CascadeDiagramDrawScope.WholeTree,
+            CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed,
             MenuNode selectedNode = null,
             Func<MenuNode, bool> isExpanded = null)
         {
@@ -170,23 +170,23 @@ namespace CascadeControl.Views.Diagram
         /// 把選單樹畫成 <see cref="Bitmap"/>，大小依內容決定。
         /// </summary>
         /// <param name="tree">
-        /// 要畫的樹；null、空樹，或 <see cref="UncheckedNodeDisplay.Hidden"/> 下起點沒有勾選時，回傳 1×1 的空白圖。
+        /// 要畫的樹；null、空樹，或 <see cref="CascadeDiagramUncheckedDisplay.Hidden"/> 下起點沒有勾選時，回傳 1×1 的空白圖。
         /// </param>
         /// <param name="font">文字的字型；null 時使用系統預設字型。</param>
         /// <param name="isChecked">判斷節點是否勾選；null 時不畫勾選狀態，<paramref name="uncheckedDisplay"/> 也不使用。</param>
         /// <param name="scope">要畫樹的哪個範圍。</param>
         /// <param name="uncheckedDisplay">有勾選資訊時，沒勾的節點怎麼呈現。</param>
         /// <param name="selectedNode">
-        /// 目前選取的節點，要屬於 <paramref name="tree"/>；<see cref="TreeDrawScope.SelectedSubtree"/> 從它開始畫，
-        /// <see cref="TreeDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
+        /// 目前選取的節點，要屬於 <paramref name="tree"/>；<see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 從它開始畫，
+        /// <see cref="CascadeDiagramDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
         public static Bitmap Render(
             MenuTree tree,
             Font font,
             Func<MenuNode, bool> isChecked = null,
-            TreeDrawScope scope = TreeDrawScope.WholeTree,
-            UncheckedNodeDisplay uncheckedDisplay = UncheckedNodeDisplay.Dimmed,
+            CascadeDiagramDrawScope scope = CascadeDiagramDrawScope.WholeTree,
+            CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed,
             MenuNode selectedNode = null,
             Func<MenuNode, bool> isExpanded = null)
         {
@@ -208,8 +208,8 @@ namespace CascadeControl.Views.Diagram
             MenuTree tree,
             Font font,
             Func<MenuNode, bool> isChecked = null,
-            TreeDrawScope scope = TreeDrawScope.WholeTree,
-            UncheckedNodeDisplay uncheckedDisplay = UncheckedNodeDisplay.Dimmed,
+            CascadeDiagramDrawScope scope = CascadeDiagramDrawScope.WholeTree,
+            CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed,
             MenuNode selectedNode = null,
             Func<MenuNode, bool> isExpanded = null)
         {
@@ -223,8 +223,8 @@ namespace CascadeControl.Views.Diagram
             MenuTree tree,
             Font font,
             Func<MenuNode, bool> isChecked,
-            TreeDrawScope scope,
-            UncheckedNodeDisplay uncheckedDisplay,
+            CascadeDiagramDrawScope scope,
+            CascadeDiagramUncheckedDisplay uncheckedDisplay,
             MenuNode selectedNode,
             Func<MenuNode, bool> isExpanded,
             Placeholder placeholder)
@@ -233,7 +233,7 @@ namespace CascadeControl.Views.Diagram
             if (tree == null || !BelongsTo(selectedNode, tree)) selectedNode = null;
 
             // 沒有勾選資訊時每個節點都當成勾選，不會被隱藏。
-            var hideUnchecked = isChecked != null && uncheckedDisplay == UncheckedNodeDisplay.Hidden;
+            var hideUnchecked = isChecked != null && uncheckedDisplay == CascadeDiagramUncheckedDisplay.Hidden;
 
             var root = tree == null || tree.IsEmpty ? null : BuildLayout(tree, isChecked, scope, hideUnchecked, selectedNode, placeholder);
             if (root == null) return new TreeImage(CreateBlank(), new TreeImageNode[0]);
@@ -310,12 +310,12 @@ namespace CascadeControl.Views.Diagram
         /// 決定起點並建立要畫的節點；沒有東西可畫時回傳 null。
         /// </summary>
         /// <remarks>
-        /// <see cref="TreeDrawScope.SelectedSubtree"/> 有選取時從選取的節點開始，它就是圖的起點，不另外框起來。
+        /// <see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 有選取時從選取的節點開始，它就是圖的起點，不另外框起來。
         /// 其他情況畫整棵樹：第一層只有一個節點時直接從它開始；有多個時以沒有名稱的 Root 當起點，把它們接起來。
         /// </remarks>
-        private static LayoutNode BuildLayout(MenuTree tree, Func<MenuNode, bool> isChecked, TreeDrawScope scope, bool hideUnchecked, MenuNode selectedNode, Placeholder placeholder)
+        private static LayoutNode BuildLayout(MenuTree tree, Func<MenuNode, bool> isChecked, CascadeDiagramDrawScope scope, bool hideUnchecked, MenuNode selectedNode, Placeholder placeholder)
         {
-            if (scope == TreeDrawScope.SelectedSubtree && selectedNode != null) return BuildNode(selectedNode, 0, isChecked, hideUnchecked, null, placeholder);
+            if (scope == CascadeDiagramDrawScope.SelectedSubtree && selectedNode != null) return BuildNode(selectedNode, 0, isChecked, hideUnchecked, null, placeholder);
 
             // 佔位方塊在第一層時，要有 Root 才接得上。
             var placeholderAtTop = placeholder != null && ReferenceEquals(placeholder.Parent, tree.Root);

@@ -457,7 +457,7 @@ namespace CascadeControlTests.Views.Diagram
                 hideChoice.PerformClick();
                 imageView.TreeContextMenu.Close();
 
-                Assert.AreEqual(UncheckedNodeDisplay.Hidden, imageView.UncheckedDisplay);
+                Assert.AreEqual(CascadeDiagramUncheckedDisplay.Hidden, imageView.UncheckedDisplay);
                 Assert.AreEqual(1, settingsChanged);
             }
         }

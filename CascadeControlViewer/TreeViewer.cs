@@ -86,8 +86,8 @@ namespace CascadeControlViewer
             // 從建構式呼叫時表單還沒顯示，這一行不會有作用，由 OnShown 補做。
             cascadeView1.FocusActiveColumn();
 
-            diagramView1.DrawScope = TreeDrawScope.WholeTree;
-            diagramView1.UncheckedDisplay = UncheckedNodeDisplay.Dimmed;
+            diagramView1.DrawScope = CascadeDiagramDrawScope.WholeTree;
+            diagramView1.UncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed;
         }
 
         #region 拖放載入

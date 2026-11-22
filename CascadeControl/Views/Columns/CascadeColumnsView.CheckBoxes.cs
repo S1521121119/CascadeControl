@@ -139,25 +139,25 @@ namespace CascadeControl.Views.Columns
         {
             if (!(state is CascadeCheckableState checkable)) return;
 
-            checkable.CheckedChanged += OnStateCheckedChanged;
-            checkable.CheckSetChanged += OnStateCheckSetChanged;
+            checkable.CheckedChanged += State_CheckedChanged;
+            checkable.CheckSetChanged += State_CheckSetChanged;
         }
 
         private void DetachCheckableState(CascadeState state)
         {
             if (!(state is CascadeCheckableState checkable)) return;
 
-            checkable.CheckedChanged -= OnStateCheckedChanged;
-            checkable.CheckSetChanged -= OnStateCheckSetChanged;
+            checkable.CheckedChanged -= State_CheckedChanged;
+            checkable.CheckSetChanged -= State_CheckSetChanged;
         }
 
-        private void OnStateCheckedChanged(object sender, MenuCheckChangedEventArgs e)
+        private void State_CheckedChanged(object sender, MenuCheckChangedEventArgs e)
         {
             if (_checkBoxes) InvalidateNodes();
             OnCheckedChanged(e);
         }
 
-        private void OnStateCheckSetChanged(object sender, EventArgs e)
+        private void State_CheckSetChanged(object sender, EventArgs e)
         {
             if (_checkBoxes) InvalidateNodes();
         }

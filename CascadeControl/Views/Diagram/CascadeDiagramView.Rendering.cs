@@ -17,7 +17,7 @@ namespace CascadeControl.Views.Diagram
         /// 依 <see cref="State"/> 目前的樹、選取與勾選重畫。
         /// </summary>
         /// <remarks>
-        /// <see cref="TreeDrawScope.SelectedSubtree"/> 沒有選取時畫成空白；<see cref="State"/> 的 <see cref="CascadeState.Tree"/> 為 null 時也畫成空白。
+        /// <see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 沒有選取時畫成空白；<see cref="State"/> 的 <see cref="CascadeState.Tree"/> 為 null 時也畫成空白。
         /// 插入或建立子節點的編輯框開著時，新節點的位置另外畫一個空白方塊。
         /// </remarks>
         public void Redraw()
@@ -26,7 +26,7 @@ namespace CascadeControl.Views.Diagram
             SyncExpandTree();
 
             var selected = _state.SelectedNode as MenuNode;
-            if (_drawScope == TreeDrawScope.SelectedSubtree && selected == null) tree = null;
+            if (_drawScope == CascadeDiagramDrawScope.SelectedSubtree && selected == null) tree = null;
 
             var checkSet = DisplayedCheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
@@ -50,7 +50,7 @@ namespace CascadeControl.Views.Diagram
 
         private void UpdateScrollSize()
         {
-            AutoScrollMinSize = _sizeMode == TreeImageSizeMode.ActualSize && _image != null ? _image.Image.Size : Size.Empty;
+            AutoScrollMinSize = _sizeMode == CascadeDiagramSizeMode.ActualSize && _image != null ? _image.Image.Size : Size.Empty;
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         private void GetTransform(out float scale, out PointF offset)
         {
-            if (_sizeMode == TreeImageSizeMode.ActualSize || _image == null)
+            if (_sizeMode == CascadeDiagramSizeMode.ActualSize || _image == null)
             {
                 scale = 1f;
                 offset = AutoScrollPosition;
@@ -167,7 +167,7 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         private void EnsureVisible(MenuNode node)
         {
-            if (_sizeMode != TreeImageSizeMode.ActualSize) return;
+            if (_sizeMode != CascadeDiagramSizeMode.ActualSize) return;
 
             var imageNode = FindImageNode(node);
             if (imageNode == null) return;

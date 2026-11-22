@@ -32,7 +32,7 @@ namespace CascadeControl.Views.Diagram
     /// ↑↓ 在圖上看得到的同一層節點之間移動，可以跨父節點，被收合或隱藏的節點跳過；
     /// ← 同 <see cref="StepBack"/>；→ 同 <see cref="StepForward"/>，但選取的節點收合（[+]）時不動作，要先展開；
     /// 空白鍵展開或收合選取的節點；Enter 觸發 <see cref="NodeActivated"/>（和雙擊同樣用途，由訂閱端決定做什麼）。原始尺寸下會捲動到選取的節點。
-    /// <see cref="TreeDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
+    /// <see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
     /// </para>
     /// <para>
     /// 編輯快捷鍵與 <see cref="Columns.CascadeColumnsView"/> 相同（改名、複製、剪下、貼上、刪除、復原、重做），對象是選取的節點；右鍵功能表的對象是被點的節點。
@@ -49,10 +49,10 @@ namespace CascadeControl.Views.Diagram
 
         private CascadeState _state;
         private TreeImage _image;
-        private TreeDrawScope _drawScope = TreeDrawScope.WholeTree;
-        private UncheckedNodeDisplay _uncheckedDisplay = UncheckedNodeDisplay.Dimmed;
+        private CascadeDiagramDrawScope _drawScope = CascadeDiagramDrawScope.WholeTree;
+        private CascadeDiagramUncheckedDisplay _uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed;
         private bool _showChecks;
-        private TreeImageSizeMode _sizeMode = TreeImageSizeMode.ActualSize;
+        private CascadeDiagramSizeMode _sizeMode = CascadeDiagramSizeMode.ActualSize;
 
         /// <summary>
         /// 建立控制項。
@@ -180,8 +180,8 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         [Category("Cascade")]
         [Description("要畫樹的哪個範圍：整棵樹，或從選取的節點開始。")]
-        [DefaultValue(TreeDrawScope.WholeTree)]
-        public TreeDrawScope DrawScope
+        [DefaultValue(CascadeDiagramDrawScope.WholeTree)]
+        public CascadeDiagramDrawScope DrawScope
         {
             get => _drawScope;
             set
@@ -221,8 +221,8 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         [Category("Cascade")]
         [Description("ShowChecks 為 true 時，沒勾的節點變淡或不畫。")]
-        [DefaultValue(UncheckedNodeDisplay.Dimmed)]
-        public UncheckedNodeDisplay UncheckedDisplay
+        [DefaultValue(CascadeDiagramUncheckedDisplay.Dimmed)]
+        public CascadeDiagramUncheckedDisplay UncheckedDisplay
         {
             get => _uncheckedDisplay;
             set
@@ -239,8 +239,8 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         [Category("Cascade")]
         [Description("ActualSize：原始尺寸，放不下時出現捲軸；Zoom：維持長寬比例縮小到整張圖看得到。")]
-        [DefaultValue(TreeImageSizeMode.ActualSize)]
-        public TreeImageSizeMode SizeMode
+        [DefaultValue(CascadeDiagramSizeMode.ActualSize)]
+        public CascadeDiagramSizeMode SizeMode
         {
             get => _sizeMode;
             set

@@ -139,9 +139,9 @@ namespace CascadeControl.Views.Columns
             _columnPasteItem.Click += (sender, e) => RunMenuAction(() => PasteAtEnd(ContextMenuColumnIndex));
             _selectAllItem.Click += (sender, e) => RunMenuAction(() => SelectAllInColumn(ContextMenuColumnIndex));
 
-            NodeContextMenu.Opening += OnNodeContextMenuOpening;
+            NodeContextMenu.Opening += NodeContextMenu_Opening;
             NodeContextMenu.Closed += (sender, e) => SetContextMenuRow(null, null);
-            ColumnContextMenu.Opening += OnColumnContextMenuOpening;
+            ColumnContextMenu.Opening += ColumnContextMenu_Opening;
         }
 
         private MenuNode SingleContextMenuNode => ContextMenuNodes.Count == 1 ? ContextMenuNodes[0] : null;
@@ -184,7 +184,7 @@ namespace CascadeControl.Views.Columns
             if (!NodeContextMenu.Visible) SetContextMenuRow(null, null);
         }
 
-        // 右鍵功能表開著時，被點的那一列（見 OnColumnDrawItem 的虛線框）。
+        // 右鍵功能表開著時，被點的那一列（見 Column_DrawItem 的虛線框）。
         private ListBox _contextMenuRowList;
 
         private ICascadeNode _contextMenuRowNode;
@@ -217,7 +217,7 @@ namespace CascadeControl.Views.Columns
             ColumnContextMenu.Show(screenLocation);
         }
 
-        private void OnNodeContextMenuOpening(object sender, CancelEventArgs e)
+        private void NodeContextMenu_Opening(object sender, CancelEventArgs e)
         {
             var targets = ContextMenuNodes;
             var single = SingleContextMenuNode;
@@ -250,7 +250,7 @@ namespace CascadeControl.Views.Columns
             e.Cancel = !TidySeparators(NodeContextMenu);
         }
 
-        private void OnColumnContextMenuOpening(object sender, CancelEventArgs e)
+        private void ColumnContextMenu_Opening(object sender, CancelEventArgs e)
         {
             var columnIndex = ContextMenuColumnIndex;
             var editable = CanEdit && ColumnParent(columnIndex) != null;

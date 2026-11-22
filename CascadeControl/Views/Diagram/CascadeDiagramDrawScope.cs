@@ -3,7 +3,7 @@
     /// <summary>
     /// <see cref="TreeDrawer"/> 要畫樹的哪個範圍。
     /// </summary>
-    public enum TreeDrawScope
+    public enum CascadeDiagramDrawScope
     {
         /// <summary>
         /// 畫整棵樹；選取的節點在外框外圍另外畫一圈矩形紅框。

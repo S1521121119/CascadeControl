@@ -374,6 +374,15 @@ CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Drawing.Rectangle Bounds { get; }
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Int32 ColumnIndex { get; }
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: type public class : System.EventArgs
+CascadeControl.Views.Diagram.CascadeDiagramDrawScope :: type public enum : System.Int32
+CascadeControl.Views.Diagram.CascadeDiagramDrawScope :: value SelectedSubtree = 1
+CascadeControl.Views.Diagram.CascadeDiagramDrawScope :: value WholeTree = 0
+CascadeControl.Views.Diagram.CascadeDiagramSizeMode :: type public enum : System.Int32
+CascadeControl.Views.Diagram.CascadeDiagramSizeMode :: value ActualSize = 0
+CascadeControl.Views.Diagram.CascadeDiagramSizeMode :: value Zoom = 1
+CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay :: type public enum : System.Int32
+CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay :: value Dimmed = 0
+CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay :: value Hidden = 1
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Boolean IsInputKey(System.Windows.Forms.Keys keyData)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Boolean ProcessCmdKey(ref System.Windows.Forms.Message msg, System.Windows.Forms.Keys keyData)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void Dispose(System.Boolean disposing)
@@ -423,9 +432,9 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void Set
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.State.CascadeState State { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Trees.MenuTree Tree { get; }
-CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.TreeDrawScope DrawScope { get; set; }
-CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.TreeImageSizeMode SizeMode { get; set; }
-CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.UncheckedNodeDisplay UncheckedDisplay { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.CascadeDiagramDrawScope DrawScope { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.CascadeDiagramSizeMode SizeMode { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay UncheckedDisplay { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean CanRedo { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean CanUndo { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean IsEditing { get; }
@@ -438,12 +447,9 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.String
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.String SelectedPathText { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Windows.Forms.ContextMenuStrip TreeContextMenu { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: type public class : System.Windows.Forms.ScrollableControl, CascadeControl.Views.ICascadeView, System.ComponentModel.IComponent, System.ComponentModel.ISynchronizeInvoke, System.IDisposable, System.Windows.Forms.IBindableComponent, System.Windows.Forms.IDropTarget, System.Windows.Forms.IWin32Window
-CascadeControl.Views.Diagram.TreeDrawScope :: type public enum : System.Int32
-CascadeControl.Views.Diagram.TreeDrawScope :: value SelectedSubtree = 1
-CascadeControl.Views.Diagram.TreeDrawScope :: value WholeTree = 0
-CascadeControl.Views.Diagram.TreeDrawer :: public static method CascadeControl.Views.Diagram.TreeImage RenderImage(CascadeControl.Trees.MenuTree tree, System.Drawing.Font font, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.TreeDrawScope scope = CascadeControl.Views.Diagram.TreeDrawScope.WholeTree, CascadeControl.Views.Diagram.UncheckedNodeDisplay uncheckedDisplay = CascadeControl.Views.Diagram.UncheckedNodeDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
-CascadeControl.Views.Diagram.TreeDrawer :: public static method System.Drawing.Bitmap Render(CascadeControl.Trees.MenuTree tree, System.Drawing.Font font, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.TreeDrawScope scope = CascadeControl.Views.Diagram.TreeDrawScope.WholeTree, CascadeControl.Views.Diagram.UncheckedNodeDisplay uncheckedDisplay = CascadeControl.Views.Diagram.UncheckedNodeDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
-CascadeControl.Views.Diagram.TreeDrawer :: public static method System.Void Draw(System.Windows.Forms.PictureBox pictureBox, CascadeControl.Trees.MenuTree tree, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.TreeDrawScope scope = CascadeControl.Views.Diagram.TreeDrawScope.WholeTree, CascadeControl.Views.Diagram.UncheckedNodeDisplay uncheckedDisplay = CascadeControl.Views.Diagram.UncheckedNodeDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
+CascadeControl.Views.Diagram.TreeDrawer :: public static method CascadeControl.Views.Diagram.TreeImage RenderImage(CascadeControl.Trees.MenuTree tree, System.Drawing.Font font, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.CascadeDiagramDrawScope scope = CascadeControl.Views.Diagram.CascadeDiagramDrawScope.WholeTree, CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
+CascadeControl.Views.Diagram.TreeDrawer :: public static method System.Drawing.Bitmap Render(CascadeControl.Trees.MenuTree tree, System.Drawing.Font font, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.CascadeDiagramDrawScope scope = CascadeControl.Views.Diagram.CascadeDiagramDrawScope.WholeTree, CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
+CascadeControl.Views.Diagram.TreeDrawer :: public static method System.Void Draw(System.Windows.Forms.PictureBox pictureBox, CascadeControl.Trees.MenuTree tree, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.CascadeDiagramDrawScope scope = CascadeControl.Views.Diagram.CascadeDiagramDrawScope.WholeTree, CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
 CascadeControl.Views.Diagram.TreeDrawer :: type public static class
 CascadeControl.Views.Diagram.TreeImage :: public method CascadeControl.Trees.MenuNode GetExpanderAt(System.Drawing.PointF location)
 CascadeControl.Views.Diagram.TreeImage :: public method CascadeControl.Trees.MenuNode GetNodeAt(System.Drawing.PointF location)
@@ -456,12 +462,6 @@ CascadeControl.Views.Diagram.TreeImageNode :: public property System.Boolean IsE
 CascadeControl.Views.Diagram.TreeImageNode :: public property System.Drawing.RectangleF Bounds { get; }
 CascadeControl.Views.Diagram.TreeImageNode :: public property System.Drawing.RectangleF ExpanderBounds { get; }
 CascadeControl.Views.Diagram.TreeImageNode :: type public sealed class
-CascadeControl.Views.Diagram.TreeImageSizeMode :: type public enum : System.Int32
-CascadeControl.Views.Diagram.TreeImageSizeMode :: value ActualSize = 0
-CascadeControl.Views.Diagram.TreeImageSizeMode :: value Zoom = 1
-CascadeControl.Views.Diagram.UncheckedNodeDisplay :: type public enum : System.Int32
-CascadeControl.Views.Diagram.UncheckedNodeDisplay :: value Dimmed = 0
-CascadeControl.Views.Diagram.UncheckedNodeDisplay :: value Hidden = 1
 CascadeControl.Views.ICascadeCheckableView :: public event System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs> CheckedChanged
 CascadeControl.Views.ICascadeCheckableView :: public property CascadeControl.Trees.MenuCheckSet CheckSet { get; set; }
 CascadeControl.Views.ICascadeCheckableView :: type public interface : CascadeControl.Views.ICascadeView

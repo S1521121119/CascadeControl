@@ -141,7 +141,7 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         /// <param name="before">true 插在前面，false 插在後面。</param>
         /// <returns>
-        /// 有開啟編輯框時為 true；唯讀、沒有選取，或 <see cref="DrawScope"/> 是 <see cref="TreeDrawScope.SelectedSubtree"/>
+        /// 有開啟編輯框時為 true；唯讀、沒有選取，或 <see cref="DrawScope"/> 是 <see cref="CascadeDiagramDrawScope.SelectedSubtree"/>
         /// （選取的節點是圖的起點，旁邊沒有位置）時為 false。
         /// </returns>
         /// <remarks>按 Enter 之前樹與 <see cref="CascadeState.History"/> 都不變，空白方塊只畫在這個檢視上；取消時什麼都沒有發生。結束編輯的規則同 <see cref="BeginRename()"/>。</remarks>
@@ -268,7 +268,7 @@ namespace CascadeControl.Views.Diagram
 
         private bool BeginInsert(MenuNode anchor, bool before)
         {
-            if (!CanEditNode(anchor) || _drawScope == TreeDrawScope.SelectedSubtree) return false;
+            if (!CanEditNode(anchor) || _drawScope == CascadeDiagramDrawScope.SelectedSubtree) return false;
 
             _state.TrySelectNode(anchor);
             var position = anchor.SiblingNumber - 1 + (before ? 0 : 1);

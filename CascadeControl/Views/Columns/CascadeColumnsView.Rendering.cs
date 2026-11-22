@@ -30,7 +30,7 @@ namespace CascadeControl.Views.Columns
             }
         }
 
-        private void OnColumnDrawItem(object sender, DrawItemEventArgs e)
+        private void Column_DrawItem(object sender, DrawItemEventArgs e)
         {
             if (!(sender is ListBox list) || e.Index < 0 || e.Index >= list.Items.Count) return;
 

@@ -320,16 +320,21 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - `ICascadeView` 的 remarks 改寫：原本寫「不包含編輯」，現在說明編輯指令為什麼在 View 上，以及 `History`、`TreeEdited` 為什麼留在 State。
   - 這一步沒有改 Viewer 的行為，所以沒有在 Viewer 手動操作。
 
-- [ ] **B6（選做）改名**
+- [x] **B6（選做）改名**
   - Diagram 的三個 enum 改名為 `CascadeDiagramSizeMode`、`CascadeDiagramDrawScope`、`CascadeDiagramUncheckedDisplay`，同時更新 Selector 與 Viewer 的設計工具檔。
   - Columns 的事件處理常式改成 `來源_事件` 寫法。
   - Columns 的 KeyDown 改由 `ColumnListBox.OnKeyDown` 轉呼叫，和 KeyPress 一致。
   - 每一項各自一個 commit。
   - 驗證：共用驗證；API 比對差異只有預期的改名；在 Visual Studio 開啟兩個表單的設計工具，沒有錯誤。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。全套 553 個測試通過，沒有新增測試。
+  - enum 改名：三個檔用 `git mv` 改檔名，識別字用腳本以整字比對替換（13 個檔，54 行），換行與 BOM 不變。API 比對：把基準檔套用同樣的三個改名、排序後，和新的輸出完全相同；`tools/public-api.txt` 已更新，仍是 500 行。兩個表單的設計工具檔與 resx 都沒有寫到 `DrawScope`、`SizeMode`、`UncheckedDisplay`（都是預設值，不序列化），所以設計工具檔不用改。Visual Studio 的設計工具沒有開；改用腳本建立並顯示兩個表單（跑過 `InitializeComponent`），沒有錯誤，Diagram 三個屬性的型別是新名稱。
+  - 事件處理常式：Columns 的 16 個 `OnXxx` 處理常式改成 `來源_事件`，例如 `State_Invalidated`、`Column_DrawItem`、`NodeContextMenu_Opening`、`EditBox_LostFocus`，和 Diagram 一致。原本 LostFocus 與 GotFocus 共用的 `OnColumnFocusChanged` 拆成 `Column_LostFocus` 與共用的 `InvalidateSelectedItem`。Columns 剩下的 `OnXxx` 都是 protected virtual 的事件觸發方法或 override。`CascadeCheckableState.OnInnerCheckSetChanged` 也不符合 D8，但在 State、不在這一步的範圍，沒有改。
+  - KeyDown：`ColumnListBox.OnKeyDown` 先呼叫 `base.OnKeyDown`，再轉呼叫 `HandleColumnKeyDown(ListBox, KeyEventArgs)`，順序和原本訂閱 KeyDown 事件相同。拿掉這次轉呼叫時有 5 個測試失敗（多選測試透過反射呼叫 `OnKeyDown`）。用腳本開啟 Viewer，以 SendKeys 對 Columns 按 ↓、→、↓、←、3、1、Ctrl+Shift+↓，選取依序是 Motor、Motor/Axis X、Motor/Axis Y、Motor、Settings、Motor，最後多選 Motor 與 Diagnostics。
+  - 三項沒有分開 commit，留給使用者決定。
 
 ## 4. 下一步
 
-目前是 **B6（選做）改名**。A 段（A0 到 A6）、B1 到 B5 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+步驟清單全部完成。A 段（A0 到 A6）、B 段（B1 到 B6）都已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

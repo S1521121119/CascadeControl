@@ -3,7 +3,7 @@
     /// <summary>
     /// 有勾選資訊時，沒勾的節點怎麼呈現；沒有勾選資訊時不使用。
     /// </summary>
-    public enum UncheckedNodeDisplay
+    public enum CascadeDiagramUncheckedDisplay
     {
         /// <summary>
         /// 照樣畫出來但變淡：白底、灰框、灰字，不套用每層的底色。

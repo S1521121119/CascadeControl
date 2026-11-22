@@ -3,7 +3,7 @@
     /// <summary>
     /// <see cref="CascadeDiagramView"/> 的圖怎麼放進控制項。
     /// </summary>
-    public enum TreeImageSizeMode
+    public enum CascadeDiagramSizeMode
     {
         /// <summary>
         /// 照原始尺寸畫，放不下時出現水平／垂直捲軸。

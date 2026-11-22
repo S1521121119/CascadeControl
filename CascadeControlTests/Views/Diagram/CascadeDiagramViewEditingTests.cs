@@ -296,7 +296,7 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreSame(c, f.View.GetNodeAt(new System.Drawing.Point(box.Left + 2, box.Top + (box.Height / 2))));
 
                 // 只畫選取的子樹時 C 不在圖上，編輯框直接關掉。
-                f.View.DrawScope = TreeDrawScope.SelectedSubtree;
+                f.View.DrawScope = CascadeDiagramDrawScope.SelectedSubtree;
                 Assert.IsFalse(f.View.IsEditing);
                 Assert.AreEqual(0, f.Edits.Count);
             }
@@ -453,7 +453,7 @@ namespace CascadeControlTests.Views.Diagram
                 }
 
                 f.View.ReadOnly = false;
-                f.View.DrawScope = TreeDrawScope.SelectedSubtree;
+                f.View.DrawScope = CascadeDiagramDrawScope.SelectedSubtree;
                 Assert.IsFalse(f.View.BeginInsert(before: false), "只畫選取的子樹時，起點旁邊沒有位置");
                 Assert.IsFalse(f.View.IsEditing);
                 Assert.IsTrue(f.View.BeginCreateChild(), "子節點畫得出來");

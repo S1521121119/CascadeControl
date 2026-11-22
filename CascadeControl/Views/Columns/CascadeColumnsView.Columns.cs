@@ -22,7 +22,7 @@ namespace CascadeControl.Views.Columns
         private bool _redrawSuspended;
 
         // 使用者用 ↑↓、打字或滑鼠改了某一欄的選取。
-        private void OnColumnSelectedIndexChanged(object sender, EventArgs e)
+        private void Column_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_syncing) return;
 
@@ -221,18 +221,17 @@ namespace CascadeControl.Views.Columns
                 FormattingEnabled = true,
             };
 
-            list.Format += OnColumnFormat;
+            list.Format += Column_Format;
             list.Items.AddRange(nodes.Cast<object>().ToArray());
 
-            list.SelectedIndexChanged += OnColumnSelectedIndexChanged;
-            list.KeyDown += OnColumnKeyDown;
-            list.MouseUp += OnColumnMouseUp;
-            list.MouseMove += OnColumnMouseMove;
-            list.MouseCaptureChanged += OnColumnMouseCaptureChanged;
-            list.DoubleClick += OnColumnDoubleClick;
-            list.DrawItem += OnColumnDrawItem;
-            list.GotFocus += OnColumnGotFocus;
-            list.LostFocus += OnColumnFocusChanged;
+            list.SelectedIndexChanged += Column_SelectedIndexChanged;
+            list.MouseUp += Column_MouseUp;
+            list.MouseMove += Column_MouseMove;
+            list.MouseCaptureChanged += Column_MouseCaptureChanged;
+            list.DoubleClick += Column_DoubleClick;
+            list.DrawItem += Column_DrawItem;
+            list.GotFocus += Column_GotFocus;
+            list.LostFocus += Column_LostFocus;
 
             // 順序不可對調：ColumnCollection 只放行已登記在 _lists 裡的欄位。
             _lists.Add(list);
@@ -270,7 +269,7 @@ namespace CascadeControl.Views.Columns
             }
         }
 
-        private static void OnColumnFormat(object sender, ListControlConvertEventArgs e)
+        private static void Column_Format(object sender, ListControlConvertEventArgs e)
         {
             if (e.ListItem is ICascadeNode node) e.Value = node.DisplayText;
         }

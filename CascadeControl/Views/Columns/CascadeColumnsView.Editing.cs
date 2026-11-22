@@ -445,7 +445,7 @@ namespace CascadeControl.Views.Columns
             list.Controls.Add(frame);
             PositionEditBox();
 
-            box.LostFocus += OnEditBoxLostFocus;
+            box.LostFocus += EditBox_LostFocus;
             box.Focus();
             box.SelectAll();
         }
@@ -523,7 +523,7 @@ namespace CascadeControl.Views.Columns
         }
 
         // 焦點離開編輯框（Tab、點了表單上的其他控制項、切到別的程式）就套用；等這一輪訊息處理完再做，不在焦點切換的當下改欄位。
-        private void OnEditBoxLostFocus(object sender, EventArgs e)
+        private void EditBox_LostFocus(object sender, EventArgs e)
         {
             var session = _edit;
             if (session == null || session.Prompting || !IsHandleCreated) return;
@@ -631,7 +631,7 @@ namespace CascadeControl.Views.Columns
             _edit = null;
 
             var box = session.Box;
-            box.LostFocus -= OnEditBoxLostFocus;
+            box.LostFocus -= EditBox_LostFocus;
 
             if (keepFocus && !session.List.IsDisposed && session.List.CanFocus) session.List.Focus();
 

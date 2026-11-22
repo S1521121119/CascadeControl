@@ -23,21 +23,21 @@ namespace CascadeControl.Views.Diagram
             AddEditItems(items, _contextMenuNode ?? SelectedMenuNode);
 
             var scopeMenu = new ToolStripMenuItem("範圍");
-            scopeMenu.DropDownItems.Add(CreateChoice("整棵樹", _drawScope == TreeDrawScope.WholeTree, () => DrawScope = TreeDrawScope.WholeTree));
-            scopeMenu.DropDownItems.Add(CreateChoice("選取的子樹", _drawScope == TreeDrawScope.SelectedSubtree, () => DrawScope = TreeDrawScope.SelectedSubtree));
+            scopeMenu.DropDownItems.Add(CreateChoice("整棵樹", _drawScope == CascadeDiagramDrawScope.WholeTree, () => DrawScope = CascadeDiagramDrawScope.WholeTree));
+            scopeMenu.DropDownItems.Add(CreateChoice("選取的子樹", _drawScope == CascadeDiagramDrawScope.SelectedSubtree, () => DrawScope = CascadeDiagramDrawScope.SelectedSubtree));
             items.Add(scopeMenu);
 
             if (_showChecks && _state is CascadeCheckableState)
             {
                 var uncheckedMenu = new ToolStripMenuItem("未勾選節點");
-                uncheckedMenu.DropDownItems.Add(CreateChoice("變淡", _uncheckedDisplay == UncheckedNodeDisplay.Dimmed, () => UncheckedDisplay = UncheckedNodeDisplay.Dimmed));
-                uncheckedMenu.DropDownItems.Add(CreateChoice("隱藏", _uncheckedDisplay == UncheckedNodeDisplay.Hidden, () => UncheckedDisplay = UncheckedNodeDisplay.Hidden));
+                uncheckedMenu.DropDownItems.Add(CreateChoice("變淡", _uncheckedDisplay == CascadeDiagramUncheckedDisplay.Dimmed, () => UncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed));
+                uncheckedMenu.DropDownItems.Add(CreateChoice("隱藏", _uncheckedDisplay == CascadeDiagramUncheckedDisplay.Hidden, () => UncheckedDisplay = CascadeDiagramUncheckedDisplay.Hidden));
                 items.Add(uncheckedMenu);
             }
 
             var displayMenu = new ToolStripMenuItem("顯示");
-            displayMenu.DropDownItems.Add(CreateChoice("原始尺寸", _sizeMode == TreeImageSizeMode.ActualSize, () => SizeMode = TreeImageSizeMode.ActualSize));
-            displayMenu.DropDownItems.Add(CreateChoice("自動縮放", _sizeMode == TreeImageSizeMode.Zoom, () => SizeMode = TreeImageSizeMode.Zoom));
+            displayMenu.DropDownItems.Add(CreateChoice("原始尺寸", _sizeMode == CascadeDiagramSizeMode.ActualSize, () => SizeMode = CascadeDiagramSizeMode.ActualSize));
+            displayMenu.DropDownItems.Add(CreateChoice("自動縮放", _sizeMode == CascadeDiagramSizeMode.Zoom, () => SizeMode = CascadeDiagramSizeMode.Zoom));
             items.Add(displayMenu);
 
             // 清空項目後 ContextMenuStrip 會預設取消開啟，要明確允許。
@@ -63,7 +63,7 @@ namespace CascadeControl.Views.Diagram
                 {
                     // 插入前會選取 target；只畫選取的子樹時它就成了圖的起點，旁邊沒有位置。建立子節點只對葉節點。
                     var drawn = FindImageNode(target) != null;
-                    var insertMenu = new ToolStripMenuItem("插入") { Enabled = drawn && _drawScope != TreeDrawScope.SelectedSubtree };
+                    var insertMenu = new ToolStripMenuItem("插入") { Enabled = drawn && _drawScope != CascadeDiagramDrawScope.SelectedSubtree };
                     insertMenu.DropDownItems.Add(CreateCommand("之前", CascadeEditCommand.InsertBefore, true, () => BeginInsert(target, before: true)));
                     insertMenu.DropDownItems.Add(CreateCommand("之後", CascadeEditCommand.Insert, true, () => BeginInsert(target, before: false)));
                     items.Add(insertMenu);

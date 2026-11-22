@@ -17,9 +17,9 @@ namespace CascadeControl.Views.Columns
 
         // ← 退回上一層、→ 進入下一層、Enter 在選取的節點上觸發 NodeActivated；一般 ↑↓ 交給 ListBox 原生處理，
         // 搭配 Shift / Ctrl 的 ↑↓ Home End PgUp PgDn 是多選手勢（見 MultiSelectedNodes）；數字與字母是跳轉。
-        private void OnColumnKeyDown(object sender, KeyEventArgs e)
+        private void HandleColumnKeyDown(ListBox list, KeyEventArgs e)
         {
-            if (_lists.IndexOf(sender as ListBox) < 0) return;
+            if (_lists.IndexOf(list) < 0) return;
 
             if (TryGetDigit(e, out var digit))
             {
@@ -377,7 +377,7 @@ namespace CascadeControl.Views.Columns
         /// 左鍵點在 <see cref="SelectsOnLeftClick"/> 為 false 的位置時，按下那一刻已經被 <see cref="ColumnListBox"/> 攔下，
         /// 放開時也不改選取；按下與放開不在同一列、或放開時已經離開那個範圍，就當成沒點，什麼都不觸發。
         /// </remarks>
-        private void OnColumnMouseUp(object sender, MouseEventArgs e)
+        private void Column_MouseUp(object sender, MouseEventArgs e)
         {
             if ((e.Button != MouseButtons.Left && e.Button != MouseButtons.Right) || !(sender is ListBox list)) return;
 
@@ -471,7 +471,7 @@ namespace CascadeControl.Views.Columns
         }
 
         // 還沒放開就失去滑鼠（例如跳出對話框、切到別的程式），這一下就不算數；框選停在目前的範圍。
-        private void OnColumnMouseCaptureChanged(object sender, EventArgs e)
+        private void Column_MouseCaptureChanged(object sender, EventArgs e)
         {
             if (ReferenceEquals(sender, _pressedList)) EndSelectionFreePress();
             if (_band != null && ReferenceEquals(sender, _band.List) && !_band.List.Capture) EndBand();
@@ -513,6 +513,12 @@ namespace CascadeControl.Views.Columns
                     cp.Style |= NativeMethods.WS_CLIPCHILDREN;
                     return cp;
                 }
+            }
+
+            protected override void OnKeyDown(KeyEventArgs e)
+            {
+                base.OnKeyDown(e);
+                _owner.HandleColumnKeyDown(this, e);
             }
 
             protected override void OnKeyPress(KeyPressEventArgs e)
@@ -580,7 +586,7 @@ namespace CascadeControl.Views.Columns
             FocusActiveColumn();
         }
 
-        private void OnColumnDoubleClick(object sender, EventArgs e)
+        private void Column_DoubleClick(object sender, EventArgs e)
         {
             // 第一下點擊已經把選取移到這一欄，所以只要它是操作欄且有選取節點就觸發。
             var columnIndex = _lists.IndexOf(sender as ListBox);
@@ -589,17 +595,19 @@ namespace CascadeControl.Views.Columns
         }
 
         // 焦點只影響選取項的配色與焦點框，只重畫那一列；整欄重畫會讓整欄跟著閃一下。
-        private static void OnColumnFocusChanged(object sender, EventArgs e)
+        private static void InvalidateSelectedItem(object sender)
         {
             if (!(sender is ListBox list) || !list.IsHandleCreated || list.SelectedIndex < 0) return;
 
             list.Invalidate(list.GetItemRectangle(list.SelectedIndex));
         }
 
+        private static void Column_LostFocus(object sender, EventArgs e) => InvalidateSelectedItem(sender);
+
         // 操作欄可能在畫面外（例如使用者手動捲開後再用 Tab 回來），取得焦點時捲回來。
-        private void OnColumnGotFocus(object sender, EventArgs e)
+        private void Column_GotFocus(object sender, EventArgs e)
         {
-            OnColumnFocusChanged(sender, e);
+            InvalidateSelectedItem(sender);
             ScrollToActive();
         }
     }

@@ -322,7 +322,7 @@ namespace CascadeControl.Views.Columns
             band?.HideFrame();
         }
 
-        private void OnColumnMouseMove(object sender, MouseEventArgs e)
+        private void Column_MouseMove(object sender, MouseEventArgs e)
         {
             var band = _band;
             if (band == null || !ReferenceEquals(sender, band.List)) return;
