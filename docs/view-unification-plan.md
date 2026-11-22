@@ -203,11 +203,15 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 剪貼簿測試在 STA 執行緒上跑（`RunOnSta`）。`Copy()`、`Cut()` 回傳 false 表示剪貼簿被其他程式佔用，記為 Inconclusive，不算失敗（`RequireClipboard`）。
   - 已知問題：貼上偶爾貼進名稱全是 NUL 字元的節點，約每 20 輪失敗 1 次，見 issue #1，在 A4 處理。這種失敗不是該步的改動造成的，重跑即可；其他失敗都要查。
 
-- [ ] **A1 搬型別，並把已共有的成員加進 ICascadeView**
+- [x] **A1 搬型別，並把已共有的成員加進 ICascadeView**
   - `CascadeEditAction` 與 `CascadeTreeEditedEventArgs` 移到 `State/`，各自一個檔，命名空間改為 `CascadeControl.State`。
   - `State` 與 `NodeMouseClick` 加進 `ICascadeView`（兩個 View 都已實作）。
   - 更新 Viewer 與測試的 `using`。
   - 驗證：共用驗證；API 比對只有命名空間變動與介面新增成員。
+  - 結果：Debug 與 Release 建置成功，只有原本就有的 2 個 CS1573 警告（`TreeDrawer.cs:622`）。API 比對只有兩個型別換命名空間（連帶 `TreeEdited`、`OnTreeEdited` 的簽章）與 `ICascadeView` 新增 `State`、`NodeMouseClick`，`tools/public-api.txt` 已更新為 454 行。Viewer 與 Selector 原本就有 `using CascadeControl.State`，只有 `CascadeColumnsView.Editing.cs` 與 `CascadeColumnsViewEditingTests.cs` 需要補。
+  - 移過去的 XML 註解仍以完整名稱 cref 指向 `Views.Columns.CascadeColumnsView.TreeEdited`，A3 把事件搬到 State 時改掉。
+  - 拆出 enum 後，新檔與舊檔相似度低於 git 預設的 50%，同一個 commit 裡 git 不會把它認成改名。要讓 `git log --follow` 追得到，分兩個 commit：先 `git mv` 加改命名空間，再拆出 `CascadeEditAction.cs`。
+  - issue #1 的貼上失敗比 A0 記錄的頻繁：同一台機器上 `HEAD` 與 A1 各跑 4 輪全套，都有 2 輪失敗，失敗的都是剪貼簿貼上測試（`InsertAndPasteKeys_BeforeAndAsChild`、`UndoRedo_Paste_RemovesAndReturnsSameNodes`、`PasteAsChild_MultipleNodes_KeepsOrder_MultiSelectsThem`）。
 
 - [ ] **A2 History 改由 State 持有**
   - `CascadeState` 持有 `History`，`SetTree`、`SetTopLevelNodes`、`Clear` 時清空。
@@ -276,7 +280,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **A1 搬型別，並把已共有的成員加進 ICascadeView**。A0 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **A2 History 改由 State 持有**。A0、A1 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

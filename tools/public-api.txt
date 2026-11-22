@@ -104,6 +104,15 @@ CascadeControl.State.CascadeCheckableState :: public override method System.Void
 CascadeControl.State.CascadeCheckableState :: public override method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
 CascadeControl.State.CascadeCheckableState :: public property CascadeControl.Trees.MenuCheckSet CheckSet { get; set; }
 CascadeControl.State.CascadeCheckableState :: type public class : CascadeControl.State.CascadeState
+CascadeControl.State.CascadeEditAction :: type public enum : System.Int32
+CascadeControl.State.CascadeEditAction :: value CreateChild = 1
+CascadeControl.State.CascadeEditAction :: value Cut = 4
+CascadeControl.State.CascadeEditAction :: value Delete = 5
+CascadeControl.State.CascadeEditAction :: value Insert = 0
+CascadeControl.State.CascadeEditAction :: value Paste = 3
+CascadeControl.State.CascadeEditAction :: value Redo = 7
+CascadeControl.State.CascadeEditAction :: value Rename = 2
+CascadeControl.State.CascadeEditAction :: value Undo = 6
 CascadeControl.State.CascadeNodeEventArgs :: public ctor(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path, System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> topLevelNodes = null, System.String pathSeparator = " => ")
 CascadeControl.State.CascadeNodeEventArgs :: public property CascadeControl.Common.ICascadeNode Node { get; }
 CascadeControl.State.CascadeNodeEventArgs :: public property CascadeControl.Common.ICascadeNode Parent { get; }
@@ -134,6 +143,10 @@ CascadeControl.State.CascadeState :: public property System.String SelectedPathT
 CascadeControl.State.CascadeState :: public virtual method System.Void SetTopLevelNodes(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> topLevelNodes)
 CascadeControl.State.CascadeState :: public virtual method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
 CascadeControl.State.CascadeState :: type public class
+CascadeControl.State.CascadeTreeEditedEventArgs :: public ctor(CascadeControl.State.CascadeEditAction action, System.Collections.Generic.IEnumerable<CascadeControl.Trees.MenuNode> nodes)
+CascadeControl.State.CascadeTreeEditedEventArgs :: public property CascadeControl.State.CascadeEditAction Action { get; }
+CascadeControl.State.CascadeTreeEditedEventArgs :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Nodes { get; }
+CascadeControl.State.CascadeTreeEditedEventArgs :: type public class : System.EventArgs
 CascadeControl.Trees.Csv.MenuTreeCsvFile :: public static method CascadeControl.Trees.MenuTree Load(System.String filePath, out System.Collections.Generic.IList<System.String> warnings)
 CascadeControl.Trees.Csv.MenuTreeCsvFile :: public static method System.Void Save(CascadeControl.Trees.MenuTree tree, System.String filePath, CascadeControl.Trees.MenuRowStyle style = CascadeControl.Trees.MenuRowStyle.Expanded)
 CascadeControl.Trees.Csv.MenuTreeCsvFile :: type public static class
@@ -266,7 +279,7 @@ CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method Syst
 CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnNodeActivated(CascadeControl.State.CascadeNodeEventArgs e)
 CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnNodeMouseClick(CascadeControl.Views.CascadeNodeMouseEventArgs e)
 CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnSelectedPathChanged(CascadeControl.State.CascadeNodeEventArgs e)
-CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnTreeEdited(CascadeControl.Views.Columns.CascadeTreeEditedEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnTreeEdited(CascadeControl.State.CascadeTreeEditedEventArgs e)
 CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual property System.Int32 MinimumItemHeight { get; }
 CascadeControl.Views.Columns.CascadeColumnsView :: public const field System.String CLIPBOARD_FORMAT = "CascadeControl.MenuNodes"
 CascadeControl.Views.Columns.CascadeColumnsView :: public ctor()
@@ -274,10 +287,10 @@ CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHand
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler MultiSelectionChanged
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> NodeActivated
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> SelectedPathChanged
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.State.CascadeTreeEditedEventArgs> TreeEdited
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs> CheckedChanged
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseClick
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Views.Columns.CascadeDrawNodeEventArgs> DrawNode
-CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Views.Columns.CascadeTreeEditedEventArgs> TreeEdited
 CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean BeginCreateChild()
 CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean BeginInsert(System.Boolean before)
 CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean BeginRename()
@@ -350,19 +363,6 @@ CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Drawing.Rectangle Bounds { get; }
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Int32 ColumnIndex { get; }
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: type public class : System.EventArgs
-CascadeControl.Views.Columns.CascadeEditAction :: type public enum : System.Int32
-CascadeControl.Views.Columns.CascadeEditAction :: value CreateChild = 1
-CascadeControl.Views.Columns.CascadeEditAction :: value Cut = 4
-CascadeControl.Views.Columns.CascadeEditAction :: value Delete = 5
-CascadeControl.Views.Columns.CascadeEditAction :: value Insert = 0
-CascadeControl.Views.Columns.CascadeEditAction :: value Paste = 3
-CascadeControl.Views.Columns.CascadeEditAction :: value Redo = 7
-CascadeControl.Views.Columns.CascadeEditAction :: value Rename = 2
-CascadeControl.Views.Columns.CascadeEditAction :: value Undo = 6
-CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: public ctor(CascadeControl.Views.Columns.CascadeEditAction action, System.Collections.Generic.IEnumerable<CascadeControl.Trees.MenuNode> nodes)
-CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: public property CascadeControl.Views.Columns.CascadeEditAction Action { get; }
-CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Nodes { get; }
-CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: type public class : System.EventArgs
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Boolean IsInputKey(System.Windows.Forms.Keys keyData)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void Dispose(System.Boolean disposing)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnFontChanged(System.EventArgs e)
@@ -437,6 +437,7 @@ CascadeControl.Views.ICascadeCheckableView :: public property CascadeControl.Tre
 CascadeControl.Views.ICascadeCheckableView :: type public interface : CascadeControl.Views.ICascadeView
 CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> NodeActivated
 CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> SelectedPathChanged
+CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseClick
 CascadeControl.Views.ICascadeView :: public method System.Boolean StepBack()
 CascadeControl.Views.ICascadeView :: public method System.Boolean StepForward()
 CascadeControl.Views.ICascadeView :: public method System.Boolean TrySelectNode(CascadeControl.Trees.MenuNode node)
@@ -444,6 +445,7 @@ CascadeControl.Views.ICascadeView :: public method System.Boolean TrySelectPath(
 CascadeControl.Views.ICascadeView :: public method System.Void Clear()
 CascadeControl.Views.ICascadeView :: public method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
 CascadeControl.Views.ICascadeView :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
+CascadeControl.Views.ICascadeView :: public property CascadeControl.State.CascadeState State { get; set; }
 CascadeControl.Views.ICascadeView :: public property CascadeControl.Trees.MenuTree Tree { get; }
 CascadeControl.Views.ICascadeView :: public property System.Boolean IsLeafSelected { get; }
 CascadeControl.Views.ICascadeView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }

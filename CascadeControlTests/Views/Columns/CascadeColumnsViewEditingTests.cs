@@ -1,4 +1,5 @@
-﻿using CascadeControl.Trees;
+﻿using CascadeControl.State;
+using CascadeControl.Trees;
 using CascadeControl.Views.Columns;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
