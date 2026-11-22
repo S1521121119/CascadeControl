@@ -29,6 +29,7 @@ namespace MindMap
             Icon = Properties.Resources.MindMap;
             diagramView1.State.TreeEdited += State_TreeEdited;
             diagramView1.DrawSettingsChanged += (sender, e) => UpdateZoomStatus();
+            EnableFileDrop(this);
 
             if (!string.IsNullOrEmpty(startupPath) && File.Exists(startupPath)) OpenFile(startupPath);
             else NewDocument();
@@ -132,6 +133,51 @@ namespace MindMap
         }
 
         #endregion 文件
+
+        #region 拖放開啟
+
+        /// <summary>
+        /// 讓 <paramref name="control"/> 與它底下的所有子控制項都能接收拖進來的 CSV。
+        /// </summary>
+        /// <remarks>拖放事件不會從子控制項往上傳到表單，所以每個子控制項都要接；之後才加入的子控制項（例如編輯框）也接。</remarks>
+        private void EnableFileDrop(Control control)
+        {
+            control.AllowDrop = true;
+            control.DragEnter += Form_DragEnter;
+            control.DragDrop += Form_DragDrop;
+            control.ControlAdded += (sender, e) => EnableFileDrop(e.Control);
+
+            foreach (Control child in control.Controls) EnableFileDrop(child);
+        }
+
+        private void Form_DragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = TryGetDroppedCsv(e.Data, out _) ? DragDropEffects.Copy : DragDropEffects.None;
+        }
+
+        private void Form_DragDrop(object sender, DragEventArgs e)
+        {
+            if (!TryGetDroppedCsv(e.Data, out string filePath)) return;
+
+            // 在拖放事件裡跳出訊息框會讓來源的檔案總管卡住，等拖放結束再詢問與載入。
+            BeginInvoke(new Action(() =>
+            {
+                Activate();
+                if (ConfirmDiscardChanges()) OpenFile(filePath);
+            }));
+        }
+
+        /// <summary>
+        /// 拖進來的是不是一個 .csv 檔；拖了多個檔案時取第一個 .csv。
+        /// </summary>
+        private static bool TryGetDroppedCsv(IDataObject data, out string filePath)
+        {
+            filePath = (data?.GetData(DataFormats.FileDrop) as string[])?
+                .FirstOrDefault(path => string.Equals(Path.GetExtension(path), ".csv", StringComparison.OrdinalIgnoreCase) && File.Exists(path));
+            return filePath != null;
+        }
+
+        #endregion 拖放開啟
 
         #region 狀態列
 

@@ -1,4 +1,5 @@
 ﻿using CascadeControl.Trees;
+using CascadeControl.Views;
 using CascadeControl.Views.Diagram;
 using System;
 using System.Drawing;
@@ -75,6 +76,13 @@ namespace MindMap
 
             _pendingWheelDelta -= steps * SystemInformation.MouseWheelScrollDelta;
             SetZoomIndex(_zoomIndex + steps, e.Location);
+        }
+
+        /// <remarks>基底點節點只觸發事件、不改選取；心智圖左鍵點節點就選取它（畫紅框）。</remarks>
+        protected override void OnNodeMouseClick(CascadeNodeMouseEventArgs e)
+        {
+            base.OnNodeMouseClick(e);
+            if (e.Button == MouseButtons.Left) TrySelectPath(e.Path);
         }
 
         /// <summary>
