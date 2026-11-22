@@ -30,7 +30,7 @@ namespace CascadeControl.Views.Diagram
     /// <para>
     /// 取得焦點後可以用鍵盤操作，改的是 <see cref="State"/> 的選取，所以「進出記住位置」的記憶和共享同一份狀態的其他檢視一致：
     /// ↑↓ 在圖上看得到的同一層節點之間移動，可以跨父節點，被收合或隱藏的節點跳過；
-    /// ← 同 <see cref="StepBack"/>；→ 同 <see cref="StepForward"/>，但選取的節點收合（[+]）時不動作，要先展開；
+    /// ← 同 <see cref="StepBack"/>；→ 同 <see cref="StepForward"/>，選取的節點收合（[+]）時先展開再進入（<see cref="StepIntoCollapsed"/> 為 false 時不動作，要先展開）；
     /// 空白鍵展開或收合選取的節點；Enter 觸發 <see cref="NodeActivated"/>（和雙擊同樣用途，由訂閱端決定做什麼）。原始尺寸下會捲動到選取的節點。
     /// <see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
     /// </para>
@@ -38,6 +38,9 @@ namespace CascadeControl.Views.Diagram
     /// 編輯快捷鍵與 <see cref="Columns.CascadeColumnsView"/> 相同（改名、複製、剪下、貼上、刪除、復原、重做），對象是選取的節點；右鍵功能表的對象是被點的節點。
     /// 改名（F2）在節點方塊上開編輯框，Enter 套用、Esc 取消；樹被任何檢視改過時編輯框直接關掉。
     /// <see cref="ReadOnly"/> 預設為 true，只能複製。改樹由 <see cref="State"/> 執行，綁同一份 State 的檢視一起更新，也共用同一份復原歷史。
+    /// </para>
+    /// <para>
+    /// 拖曳框選與 Ctrl+點選可以多選節點，複製時一起複製，見 <see cref="MultiSelectedNodes"/>。
     /// </para>
     /// </remarks>
     [DesignerCategory("")]
@@ -255,6 +258,14 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
+        /// 選取的節點收合（[+]）時按 → 是否自動展開並進入下一層；預設為 true。false 時要先按空白鍵展開才進得去。
+        /// </summary>
+        [Category("Cascade")]
+        [Description("true：在收合 [+] 的節點上按 → 自動展開並進入；false：要先按空白鍵展開。")]
+        [DefaultValue(true)]
+        public bool StepIntoCollapsed { get; set; } = true;
+
+        /// <summary>
         /// <see cref="CascadeNodeEventArgs.PathText"/> 與 <see cref="SelectedPathText"/> 使用的層級分隔字串。
         /// </summary>
         [Category("Cascade")]
@@ -291,7 +302,7 @@ namespace CascadeControl.Views.Diagram
         public event EventHandler<CascadeNodeEventArgs> SelectedPathChanged;
 
         /// <summary>
-        /// 用滑鼠點了圖上的某個節點之後觸發（左鍵、右鍵都會）；點在空白處或 Root 上不會觸發。
+        /// 用滑鼠點了圖上的某個節點之後觸發（左鍵、右鍵都會）；點在空白處或 Root 上、Ctrl+點選（多選）與框選不會觸發。
         /// </summary>
         [Category("Cascade")]
         public event EventHandler<CascadeNodeMouseEventArgs> NodeMouseClick;

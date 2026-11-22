@@ -71,24 +71,25 @@ namespace CascadeControl.Views.Diagram
         #region 公開的編輯指令
 
         /// <summary>
-        /// 把 <see cref="SelectedNode"/> 連同子孫複製到 Windows 剪貼簿。唯讀時也可以用。
+        /// 把 <see cref="SelectedNode"/> 連同子孫複製到 Windows 剪貼簿；有多選時改成複製 <see cref="MultiSelectedNodes"/>。唯讀時也可以用。
         /// </summary>
         /// <returns>有複製到東西時為 true；沒有選取或剪貼簿被其他程式佔用時為 false。</returns>
+        /// <remarks>多選時依圖上的前序排列，祖先也被多選的節點不重複複製（祖先已經帶著它）。</remarks>
         public bool Copy()
         {
             CommitPendingEdit();
-            return CascadeClipboard.CopyNodes(Single(SelectedMenuNode));
+            return CascadeClipboard.CopyNodes(_marks.Count > 0 ? TopMostMarks() : Single(SelectedMenuNode));
         }
 
         /// <summary>
-        /// 把 <see cref="SelectedNode"/> 從第一層到它的路徑，以 CSV 文字（含表頭）複製到 Windows 剪貼簿；不含子孫。唯讀時也可以用。
+        /// 把 <see cref="SelectedNode"/> 從第一層到它的路徑，以 CSV 文字（含表頭）複製到 Windows 剪貼簿；不含子孫。有多選時改成每個多選節點的路徑。唯讀時也可以用。
         /// </summary>
         /// <returns>有複製到東西時為 true；沒有選取或剪貼簿被其他程式佔用時為 false。</returns>
         /// <remarks>只放純文字，不放 <see cref="CascadeClipboard.CLIPBOARD_FORMAT"/>：內容含上層路徑，不是要貼回控制項的節點。</remarks>
         public bool CopyPath()
         {
             CommitPendingEdit();
-            return CascadeClipboard.CopyNodePaths(Single(SelectedMenuNode));
+            return CascadeClipboard.CopyNodePaths(_marks.Count > 0 ? MultiSelectedNodes : Single(SelectedMenuNode));
         }
 
         /// <summary>

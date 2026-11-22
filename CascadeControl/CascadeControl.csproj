@@ -64,6 +64,9 @@
     <Compile Include="Views\Diagram\CascadeDiagramView.Input.cs">
       <DependentUpon>CascadeDiagramView.cs</DependentUpon>
     </Compile>
+    <Compile Include="Views\Diagram\CascadeDiagramView.MultiSelect.cs">
+      <DependentUpon>CascadeDiagramView.cs</DependentUpon>
+    </Compile>
     <Compile Include="Views\Diagram\CascadeDiagramView.Rendering.cs">
       <DependentUpon>CascadeDiagramView.cs</DependentUpon>
     </Compile>

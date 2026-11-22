@@ -534,11 +534,29 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
-        public void Right_OnCollapsedNode_DoesNothingUntilExpanded()
+        public void Right_OnCollapsedNode_ExpandsAndEntersByDefault()
         {
             var tree = TestTrees.Template();
             using (var view = new CascadeColumnsView())
             using (var imageView = new ProbeImageView { State = view.State })
+            {
+                Assert.IsTrue(imageView.StepIntoCollapsed, "預設為 true");
+                view.SetTree(tree);
+                var motor = Find(tree, "Motor");
+                view.TrySelectNode(motor);
+
+                imageView.Press(Keys.Right);
+                Assert.IsTrue(imageView.IsExpanded(motor), "→ 自動展開");
+                Assert.AreSame(Find(tree, "Motor", "Axis X"), view.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void Right_OnCollapsedNode_StepIntoCollapsedOff_DoesNothingUntilExpanded()
+        {
+            var tree = TestTrees.Template();
+            using (var view = new CascadeColumnsView())
+            using (var imageView = new ProbeImageView { State = view.State, StepIntoCollapsed = false })
             {
                 view.SetTree(tree);
                 var motor = Find(tree, "Motor");

@@ -72,8 +72,8 @@ namespace CascadeControl.Views.Diagram
                     items.Add(new ToolStripSeparator());
                 }
 
-                items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CascadeClipboard.CopyNodes(Single(target))));
-                items.Add(CreateCommand("複製(路徑)", CascadeEditCommand.CopyPath, true, () => CascadeClipboard.CopyNodePaths(Single(target))));
+                items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CascadeClipboard.CopyNodes(CopyTargets(target))));
+                items.Add(CreateCommand("複製(路徑)", CascadeEditCommand.CopyPath, true, () => CascadeClipboard.CopyNodePaths(CopyPathTargets(target))));
 
                 if (CanEdit)
                 {

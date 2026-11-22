@@ -43,6 +43,7 @@ namespace CascadeControl.Views.Diagram
             _image = image ?? TreeDrawer.RenderImage(null, Font);
             old?.Dispose();
 
+            PruneMarks();
             UpdateScrollSize();
             PositionEditBox();
             Invalidate();
@@ -89,6 +90,7 @@ namespace CascadeControl.Views.Diagram
             }
 
             e.Graphics.DrawImage(_image.Image, new RectangleF(offset.X, offset.Y, size.Width * scale, size.Height * scale));
+            PaintMarks(e.Graphics);
         }
 
         /// <inheritdoc />

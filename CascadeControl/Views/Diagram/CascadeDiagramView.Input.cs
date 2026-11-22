@@ -1,5 +1,6 @@
 ﻿using CascadeControl.State;
 using CascadeControl.Trees;
+using System;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -27,6 +28,7 @@ namespace CascadeControl.Views.Diagram
         {
             base.OnMouseMove(e);
             Cursor = GetNodeAt(e.Location) != null ? Cursors.Hand : Cursors.Default;
+            if (_press != null && e.Button == MouseButtons.Left) DragMarkPress(e.Location);
         }
 
         /// <inheritdoc />
@@ -44,6 +46,12 @@ namespace CascadeControl.Views.Diagram
 
             // 右鍵功能表接著開啟，對象是被點的節點；點在空白處時是選取的節點。
             _contextMenuNode = e.Button == MouseButtons.Right ? GetNodeAt(e.Location) : null;
+
+            // 展開鈕交給點擊處理；其他左鍵按壓可能是框選或 Ctrl+點選（見 MultiSelectedNodes）。
+            _press = null;
+            if (e.Button == MouseButtons.Left && !_swallowClick && GetExpanderAt(e.Location) == null)
+                BeginMarkPress(e.Location, (ModifierKeys & Keys.Control) != 0);
+
             base.OnMouseDown(e);
         }
 
@@ -51,10 +59,13 @@ namespace CascadeControl.Views.Diagram
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            if (_swallowClick || TryToggleExpander(e)) return;
+            if (_swallowClick || _press != null || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
-            if (node != null) OnNodeMouseClick(CreateMouseEventArgs(node, e));
+            if (node == null) return;
+
+            if (e.Button == MouseButtons.Left) ClearMultiSelection();
+            OnNodeMouseClick(CreateMouseEventArgs(node, e));
         }
 
         /// <inheritdoc />
@@ -63,18 +74,30 @@ namespace CascadeControl.Views.Diagram
             base.OnMouseDoubleClick(e);
 
             // 連點兩下時第二下只會送 DoubleClick，當成第二次點擊再切換一次。
-            if (_swallowClick || TryToggleExpander(e)) return;
+            if (_swallowClick || _press != null || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node != null) OnNodeMouseDoubleClick(CreateMouseEventArgs(node, e));
         }
 
         /// <inheritdoc />
-        /// <remarks>Click 與 DoubleClick 在 MouseUp 之前觸發，所以在這裡結束略過。</remarks>
+        /// <remarks>Click 與 DoubleClick 在 MouseUp 之前觸發，所以在這裡結束略過與多選手勢。</remarks>
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
             _swallowClick = false;
+            if (_press != null && e.Button == MouseButtons.Left) EndMarkPress();
+        }
+
+        /// <inheritdoc />
+        /// <remarks>按著左鍵時失去滑鼠（例如切到別的程式）：框選停在目前的範圍。</remarks>
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            base.OnMouseCaptureChanged(e);
+            if (Capture || _press == null) return;
+
+            _press = null;
+            Invalidate();
         }
 
         private CascadeNodeMouseEventArgs CreateMouseEventArgs(MenuNode node, MouseEventArgs e)
@@ -135,7 +158,7 @@ namespace CascadeControl.Views.Diagram
         /// 其他時候編輯快捷鍵查 <see cref="CascadeEditShortcuts"/>，對象是 <see cref="SelectedNode"/>；唯讀時不攔會改樹的指令。
         /// </summary>
         /// <remarks>
-        /// 多選與勾選只屬於 <see cref="Columns.CascadeColumnsView"/>，按鍵不攔。
+        /// 有多選時 Esc 取消多選；沒有多選時不攔，Ctrl+A 與勾選也不攔（屬於 <see cref="Columns.CascadeColumnsView"/>）。
         /// 不攔的按鍵照常交給表單（例如選單快捷鍵、Esc 的 CancelButton）。
         /// </remarks>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -154,6 +177,12 @@ namespace CascadeControl.Views.Diagram
                 }
 
                 return base.ProcessCmdKey(ref msg, keyData);
+            }
+
+            if (keyData == Keys.Escape && _marks.Count > 0)
+            {
+                ClearMultiSelection();
+                return true;
             }
 
             if (CascadeEditShortcuts.TryGetCommand(keyData, out var command)
@@ -212,7 +241,7 @@ namespace CascadeControl.Views.Diagram
 
         /// <summary>
         /// 進入下一層，照 <see cref="StepForward"/> 的規則走（有記憶走記憶，否則第一個子節點）；
-        /// 選取的節點收合（[+]）時不動作，要先按空白鍵展開。
+        /// 選取的節點收合（[+]）時，<see cref="StepIntoCollapsed"/> 為 true 先展開再進入，false 不動作。
         /// </summary>
         /// <remarks>
         /// 隱藏未勾選的節點時，記憶或第一個子節點可能沒畫出來，改選圖上第一個子節點；子節點全被隱藏時不動作。
@@ -220,6 +249,11 @@ namespace CascadeControl.Views.Diagram
         private void StepIn()
         {
             var node = SelectedMenuNode;
+            if (StepIntoCollapsed && node != null && node.Children.Count > 0 && !IsExpanded(node) && FindImageNode(node) != null)
+            {
+                SetExpanded(node, true);
+            }
+
             if (node != null && !node.Children.Any(child => FindImageNode(child) != null)) return;
 
             if (!_state.StepForward() || node == null) return;
