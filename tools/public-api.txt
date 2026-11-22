@@ -262,6 +262,8 @@ CascadeControl.Trees.MenuTree :: public static method CascadeControl.Trees.MenuT
 CascadeControl.Trees.MenuTree :: public static method CascadeControl.Trees.MenuTree FromRows(System.Collections.Generic.IEnumerable<System.String[]> rows, out System.Collections.Generic.IList<System.String> warnings)
 CascadeControl.Trees.MenuTree :: public static method CascadeControl.Trees.MenuTree FromSubtree(CascadeControl.Trees.MenuNode rootNode)
 CascadeControl.Trees.MenuTree :: type public sealed class
+CascadeControl.Views.CascadeClipboard :: public const field System.String CLIPBOARD_FORMAT = "CascadeControl.MenuNodes"
+CascadeControl.Views.CascadeClipboard :: type public static class
 CascadeControl.Views.CascadeNodeMouseEventArgs :: public ctor(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path, System.String pathSeparator, System.Windows.Forms.MouseButtons button, System.Drawing.Point location, System.Drawing.Rectangle bounds, System.Drawing.Point screenLocation)
 CascadeControl.Views.CascadeNodeMouseEventArgs :: public property System.Drawing.Point Location { get; }
 CascadeControl.Views.CascadeNodeMouseEventArgs :: public property System.Drawing.Point ScreenLocation { get; }
@@ -293,7 +295,6 @@ CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method Syst
 CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnNodeMouseClick(CascadeControl.Views.CascadeNodeMouseEventArgs e)
 CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnSelectedPathChanged(CascadeControl.State.CascadeNodeEventArgs e)
 CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual property System.Int32 MinimumItemHeight { get; }
-CascadeControl.Views.Columns.CascadeColumnsView :: public const field System.String CLIPBOARD_FORMAT = "CascadeControl.MenuNodes"
 CascadeControl.Views.Columns.CascadeColumnsView :: public ctor()
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler ColumnWidthChanged
 CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler MultiSelectionChanged

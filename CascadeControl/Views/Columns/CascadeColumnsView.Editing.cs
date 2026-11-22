@@ -1,15 +1,11 @@
 using CascadeControl.Common;
 using CascadeControl.State;
 using CascadeControl.Trees;
-using CascadeControl.Trees.Csv;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows.Forms;
 
 namespace CascadeControl.Views.Columns
@@ -17,18 +13,6 @@ namespace CascadeControl.Views.Columns
     // 編輯：唯讀切換、內建快顯功能表、就地編輯框、Windows 剪貼簿，以及插入／建立子節點／改名／複製／剪下／貼上／刪除。
     public partial class CascadeColumnsView
     {
-        /// <summary>
-        /// 複製節點時放到 Windows 剪貼簿上的自訂格式名稱；內容是 UTF-8 的 CSV 文字（<see cref="MenuRowStyle.Expanded"/>，含表頭）。
-        /// </summary>
-        /// <remarks>
-        /// 同時也會放一份純文字，可以直接貼到記事本或 Excel；但貼回控制項時只認這個格式，
-        /// 剪貼簿上隨便一段文字不會被當成節點貼進來。
-        /// </remarks>
-        public const string CLIPBOARD_FORMAT = "CascadeControl.MenuNodes";
-
-        private const int CLIPBOARD_RETRY_TIMES = 5;
-        private const int CLIPBOARD_RETRY_DELAY = 100;
-
         private static readonly IReadOnlyList<MenuNode> NoMenuNodes = new MenuNode[0];
 
         // 同一個 ToolStripItem 只能放在一個功能表裡，所以兩個功能表各有一組復原、重做。
@@ -202,8 +186,8 @@ namespace CascadeControl.Views.Columns
             _insertBeforeItem.Click += (sender, e) => RunMenuAction(() => BeginInsert(SingleContextMenuNode, before: true));
             _createChildItem.Click += (sender, e) => RunMenuAction(() => BeginCreateChild(SingleContextMenuNode));
             _renameItem.Click += (sender, e) => RunMenuAction(() => BeginRename(SingleContextMenuNode));
-            _copyItem.Click += (sender, e) => RunMenuAction(() => CopyNodes(ContextMenuNodes));
-            _copyPathItem.Click += (sender, e) => RunMenuAction(() => CopyNodePaths(ContextMenuNodes));
+            _copyItem.Click += (sender, e) => RunMenuAction(() => CascadeClipboard.CopyNodes(ContextMenuNodes));
+            _copyPathItem.Click += (sender, e) => RunMenuAction(() => CascadeClipboard.CopyNodePaths(ContextMenuNodes));
             _cutItem.Click += (sender, e) => RunMenuAction(() => CutNodes(ContextMenuNodes));
             _pasteNextItem.Click += (sender, e) => RunMenuAction(() => PasteBeside(SingleContextMenuNode, before: false));
             _pasteBeforeItem.Click += (sender, e) => RunMenuAction(() => PasteBeside(SingleContextMenuNode, before: true));
@@ -315,7 +299,7 @@ namespace CascadeControl.Views.Columns
             _insertItem.Enabled = single != null;
             _createChildItem.Enabled = singleLeaf;
             _renameItem.Enabled = single != null;
-            _pasteItem.Enabled = single != null && editable && ClipboardHasNodes();
+            _pasteItem.Enabled = single != null && editable && CascadeClipboard.ContainsNodes();
             _pasteChildItem.Enabled = singleLeaf;
 
             SetHistoryItems(_undoItem, _redoItem);
@@ -332,7 +316,7 @@ namespace CascadeControl.Views.Columns
 
             _columnInsertItem.Available = editable;
             _columnPasteItem.Available = editable;
-            _columnPasteItem.Enabled = editable && ClipboardHasNodes();
+            _columnPasteItem.Enabled = editable && CascadeClipboard.ContainsNodes();
             _selectAllItem.Available = SafeColumnNodes(columnIndex).Count > 0;
 
             SetHistoryItems(_columnUndoItem, _columnRedoItem);
@@ -400,7 +384,7 @@ namespace CascadeControl.Views.Columns
         public bool Copy()
         {
             CommitPendingEdit();
-            return CopyNodes(EditTargets());
+            return CascadeClipboard.CopyNodes(EditTargets());
         }
 
         /// <summary>
@@ -411,12 +395,12 @@ namespace CascadeControl.Views.Columns
         /// <remarks>
         /// 例如路徑是 Motor &gt; Axis Y &gt; Jog，多選了 Forward、Backward，得到
         /// <c>Level1,Level2,Level3,Level4</c> / <c>Motor,Axis Y,Jog,Forward</c> / <c>Motor,Axis Y,Jog,Backward</c>。
-        /// 只放純文字，不放 <see cref="CLIPBOARD_FORMAT"/>：內容含上層路徑，不是要貼回控制項的節點。
+        /// 只放純文字，不放 <see cref="CascadeClipboard.CLIPBOARD_FORMAT"/>：內容含上層路徑，不是要貼回控制項的節點。
         /// </remarks>
         public bool CopyPath()
         {
             CommitPendingEdit();
-            return CopyNodePaths(EditTargets());
+            return CascadeClipboard.CopyNodePaths(EditTargets());
         }
 
         /// <summary>
@@ -582,116 +566,11 @@ namespace CascadeControl.Views.Columns
 
         #endregion 對象與樹
 
-        #region 剪貼簿
-
-        private bool CopyNodes(IReadOnlyList<MenuNode> nodes)
-        {
-            if (nodes == null || nodes.Count == 0) return false;
-
-            string text;
-            try
-            {
-                text = FormatClipboardText(nodes);
-            }
-            catch (ArgumentException)
-            {
-                // 子樹大到展開後超過路徑上限，寫出去讀不回來。
-                return false;
-            }
-
-            var data = new DataObject();
-            data.SetData(CLIPBOARD_FORMAT, new MemoryStream(Encoding.UTF8.GetBytes(text)));
-            data.SetText(text);
-
-            try
-            {
-                Clipboard.SetDataObject(data, true, CLIPBOARD_RETRY_TIMES, CLIPBOARD_RETRY_DELAY);
-                return true;
-            }
-            catch (Exception ex) when (ex is ExternalException || ex is System.Threading.ThreadStateException)
-            {
-                return false;
-            }
-        }
-
-        // 每個節點從第一層到它的路徑寫成一列 CSV 純文字（不含子孫），順序與欄位中相同。
-        private static bool CopyNodePaths(IReadOnlyList<MenuNode> nodes)
-        {
-            if (nodes == null || nodes.Count == 0) return false;
-
-            string text;
-            try
-            {
-                var tree = new MenuTree();
-                foreach (var node in nodes) tree.AddPath(node.FullPath.Select(step => step.Name));
-
-                text = MenuTreeCsvText.Format(tree, MenuRowStyle.Expanded);
-            }
-            catch (ArgumentException)
-            {
-                // 名稱含保留字元或前後有空白，寫出去讀不回來。
-                return false;
-            }
-
-            try
-            {
-                Clipboard.SetDataObject(new DataObject(DataFormats.UnicodeText, text), true, CLIPBOARD_RETRY_TIMES, CLIPBOARD_RETRY_DELAY);
-                return true;
-            }
-            catch (Exception ex) when (ex is ExternalException || ex is System.Threading.ThreadStateException)
-            {
-                return false;
-            }
-        }
-
-        // 每個節點各自當成第一層，連同子孫寫成 CSV；讀回時第一層的順序就是複製時的順序。
-        private static string FormatClipboardText(IReadOnlyList<MenuNode> nodes)
-        {
-            var tree = new MenuTree();
-            foreach (var node in nodes) tree.Root.InsertChildAt(tree.Root.Children.Count, node);
-
-            return MenuTreeCsvText.Format(tree, MenuRowStyle.Expanded);
-        }
-
-        // 剪貼簿上的節點（第一層，依複製時的順序）；沒有本控制項的格式時為空集合。
-        private static IReadOnlyList<MenuNode> ReadClipboardNodes()
-        {
-            string text;
-            try
-            {
-                if (!Clipboard.ContainsData(CLIPBOARD_FORMAT)) return NoMenuNodes;
-
-                // 存的是 MemoryStream，取回來也是原始位元組，不經過 BinaryFormatter。
-                if (!(Clipboard.GetData(CLIPBOARD_FORMAT) is MemoryStream stream)) return NoMenuNodes;
-                text = Encoding.UTF8.GetString(stream.ToArray());
-            }
-            catch (Exception ex) when (ex is ExternalException || ex is System.Threading.ThreadStateException)
-            {
-                return NoMenuNodes;
-            }
-
-            return MenuTreeCsvText.Parse(text, out _).TopLevelNodes.ToList();
-        }
-
-        private static bool ClipboardHasNodes()
-        {
-            try
-            {
-                return Clipboard.ContainsData(CLIPBOARD_FORMAT);
-            }
-            catch (Exception ex) when (ex is ExternalException || ex is System.Threading.ThreadStateException)
-            {
-                return false;
-            }
-        }
-
-        #endregion 剪貼簿
-
         #region 剪下、貼上、刪除
 
         private bool CutNodes(IReadOnlyList<MenuNode> nodes)
         {
-            if (!CanEditNodes(nodes) || !CopyNodes(nodes)) return false;
+            if (!CanEditNodes(nodes) || !CascadeClipboard.CopyNodes(nodes)) return false;
 
             return KeepFocus(() => State.CutNodes(nodes));
         }
@@ -743,7 +622,7 @@ namespace CascadeControl.Views.Columns
         {
             if (!CanEdit || !_state.IsInTreeOrRoot(parent)) return false;
 
-            var sources = ReadClipboardNodes();
+            var sources = CascadeClipboard.ReadNodes();
             if (sources.Count == 0) return false;
 
             return KeepFocus(() => State.PasteNodes(parent, position, sources).Count > 0);

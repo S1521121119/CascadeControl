@@ -382,7 +382,7 @@ ActionStep,ActionBurnIn,Init|Stop,
 - 多選的節點以淺黃色標出（`MultiSelectBackColor`），和選取路徑的藍色分開。
 - 編輯框：Enter 套用、Esc 取消；焦點離開（Tab、點了別的地方）也算套用。名稱空白當成取消，含有 `|` 時提示並繼續編輯。編輯中點欄位，那一下只用來結束編輯。
 - 同一層已有同名節點時（插入、改名、貼上），新名稱自動加上後綴，例如 `Axis X - 2`。
-- 剪貼簿：Copy / Cut 在 Windows 剪貼簿放兩種格式：`CascadeColumnsView.CLIPBOARD_FORMAT`（給 Paste 用）與 CSV 純文字（可以直接貼到記事本或 Excel）。Paste 只認前者。
+- 剪貼簿：Copy / Cut 在 Windows 剪貼簿放兩種格式：`CascadeClipboard.CLIPBOARD_FORMAT`（給 Paste 用）與 CSV 純文字（可以直接貼到記事本或 Excel）。Paste 只認前者，內容不是以 `Level1` 表頭開頭的 CSV 時不貼。
 - 程式也可以直接呼叫：`Copy()`、`Cut()`、`Paste(before)`、`PasteAsChild()`、`Delete()`、`BeginInsert(before)`、`BeginCreateChild()`、`BeginRename()`、`EndEdit(commit)`，對象是多選的節點或 `SelectedNode`。
 - 每次改完樹都會觸發 `TreeEdited`（`e.Action`、`e.Nodes`），這時欄位與選取已經更新好；復原、重做改到樹時也會觸發（`e.Action` 是 `Undo` / `Redo`）。
 

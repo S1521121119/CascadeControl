@@ -58,6 +58,7 @@
       <DependentUpon>CascadeState.cs</DependentUpon>
     </Compile>
     <Compile Include="State\CascadeTreeEditedEventArgs.cs" />
+    <Compile Include="Views\CascadeClipboard.cs" />
     <Compile Include="Views\CascadeNodeMouseEventArgs.cs" />
     <Compile Include="Views\ICascadeCheckableView.cs" />
     <Compile Include="Views\ICascadeView.cs" />

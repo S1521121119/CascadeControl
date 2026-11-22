@@ -1,11 +1,15 @@
 ﻿using CascadeControl.State;
 using CascadeControl.Trees;
+using CascadeControl.Views;
 using CascadeControl.Views.Columns;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -208,6 +212,34 @@ namespace CascadeControlTests.Views.Columns
                 f.AssertShape("A", "A > C", "A > A1", "A > A2", "B", "C");
                 Assert.AreSame(f.Node("A > C"), f.View.SelectedNode);
                 f.AssertEdits(CascadeEditAction.Paste, f.Node("A > C"));
+            }
+        });
+
+        [DataTestMethod]
+        [DataRow("\0\0\0\0\0\0\0\0\0\0\0\0", DisplayName = "issue #1：長度正確但全是 NUL")]
+        [DataRow("A1\r\n", DisplayName = "沒有表頭")]
+        public void Paste_FormatContentIsNotNodeCsv_ChangesNothing(string content) => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                var before = f.Shape();
+                var data = new DataObject();
+                data.SetData(CascadeClipboard.CLIPBOARD_FORMAT, new MemoryStream(Encoding.UTF8.GetBytes(content)));
+                try
+                {
+                    Clipboard.SetDataObject(data, true, 5, 100);
+                }
+                catch (ExternalException)
+                {
+                    Assert.Inconclusive("SetDataObject 失敗：剪貼簿被其他程式佔用。");
+                }
+
+                f.Select("C");
+                Assert.IsFalse(f.View.Paste(before: false));
+
+                CollectionAssert.AreEqual(before, f.Shape());
+                Assert.AreEqual(0, f.Edits.Count);
+                Assert.AreEqual(0, f.View.State.History.UndoCount);
             }
         });
 

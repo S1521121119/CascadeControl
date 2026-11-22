@@ -201,7 +201,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 驗證：新測試全部通過；腳本連跑兩次輸出相同。
   - 結果：新增 22 個測試，全套 471 個。`tools/dump-public-api.ps1` 與基準 `tools/public-api.txt`（452 行、38 個公開型別）連跑兩次相同，Debug 與 Release 相同。
   - 剪貼簿測試在 STA 執行緒上跑（`RunOnSta`）。`Copy()`、`Cut()` 回傳 false 表示剪貼簿被其他程式佔用，記為 Inconclusive，不算失敗（`RequireClipboard`）。
-  - 已知問題：貼上偶爾貼進名稱全是 NUL 字元的節點，約每 20 輪失敗 1 次，見 issue #1，在 A4 處理。這種失敗不是該步的改動造成的，重跑即可；其他失敗都要查。
+  - 已知問題：貼上偶爾貼進名稱全是 NUL 字元的節點，約每 20 輪失敗 1 次，見 issue #1，已在 A4 修正。
 
 - [x] **A1 搬型別，並把已共有的成員加進 ICascadeView**
   - `CascadeEditAction` 與 `CascadeTreeEditedEventArgs` 移到 `State/`，各自一個檔，命名空間改為 `CascadeControl.State`。
@@ -239,9 +239,13 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 連帶變更：取消勾選改在選取更新之前執行，原本在之後；兩者都在同一組步驟裡，結果相同。`DeleteNodes`、`CutNodes` 遇到父節點不只一個時回傳 false，原本 Columns 只會傳同一欄的節點，所以不會發生。
   - Selector（`CascadeControlSelector/TreeSelector.cs`）也訂閱了 `TreeEdited`，和 Viewer 一起改成 `State.TreeEdited`，處理常式改名為 `State_TreeEdited`。
 
-- [ ] **A4 抽出剪貼簿**
+- [x] **A4 抽出剪貼簿**
   - Columns.Editing 的剪貼簿讀寫與 `CLIPBOARD_FORMAT` 移到 `Views/CascadeClipboard.cs`。類別為 public，只公開常數，方法為 internal。
   - 驗證：共用驗證；在 Viewer 複製節點後貼回另一處；複製後貼到記事本看得到 CSV 文字。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 2 個測試，全套 490 個通過。API 比對只有 `CLIPBOARD_FORMAT` 從 `CascadeColumnsView` 移到新的 `CascadeClipboard`（public static class），`tools/public-api.txt` 已更新。用腳本開啟 Viewer 表單，在 Columns 選 Motor 按 Ctrl+C，另一個程序讀到的純文字是 `Level1,Level2` / `Motor,Axis X` / `Motor,Axis Y`；選 Diagnostics 按 Ctrl+V 貼出 `Motor - 2` 與兩個子節點，記錄一行 Paste，Diagram 換了新影像；Ctrl+Z 回到原樣。
+  - issue #1 的原因：剪貼簿上的資料一直是對的。寫入後第一次用 OLE 讀（`Clipboard.GetData`）偶爾拿到同樣長度的 0 或 null，緊接著再讀一次，或用 Win32 `GetClipboardData` 讀，都正確。剪貼簿擁有者始終是自己的程序，中間沒有別的程式寫入。推測是剪貼簿歷程同時在讀造成的，未證實。在獨立小程式裡寫入後立刻讀 500 輪，約 4% 讀到錯的內容。
+  - issue #1 的修正：`ReadNodes` 只接受以 `Level1` 表頭開頭、不含 NUL 的內容。不合格時以寫入端相同的預算（5 次、間隔 100 ms）重讀，還是不合格就回傳空集合，貼上回傳 false。同一個小程式改用 `ReadNodes` 讀 2 × 500 輪，重讀了 44 次，每一輪都讀到正確的節點。`CascadeColumnsViewEditingTests` 連跑 20 輪沒有失敗，3 輪各有 1 個 Inconclusive（寫入時剪貼簿被佔用，約 630 ms，屬於設計上的行為）。新測試 `Paste_FormatContentIsNotNodeCsv_ChangesNothing` 放入全是 NUL 與沒有表頭的內容，拿掉驗證時兩個都失敗。
+  - 先懷疑過 WinForms `DataObject.GetDataHere` 輸出 `Stream` 時換掉呼叫端的 HGLOBAL，包一層自己的 `IDataObject` 驗證後沒有效果：OLE 清空剪貼簿時呼叫的是 `GetData`，資料寫得正確。這個方向已放棄，沒有留在程式裡。
 
 - [ ] **A5 快捷鍵對照表**
   - 新增 `Views/CascadeEditCommand.cs` 與 `Views/CascadeEditShortcuts.cs`。
@@ -290,7 +294,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **A4 抽出剪貼簿**。A0 到 A3 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **A5 快捷鍵對照表**。A0 到 A4 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 
