@@ -47,8 +47,23 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Views\Diagram\TreeDrawer.cs" />
+    <Compile Include="Views\Diagram\TreeDrawScope.cs" />
     <Compile Include="Views\Diagram\TreeImage.cs" />
+    <Compile Include="Views\Diagram\TreeImageSizeMode.cs" />
+    <Compile Include="Views\Diagram\UncheckedNodeDisplay.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramView.cs" />
+    <Compile Include="Views\Diagram\CascadeDiagramView.ContextMenu.cs">
+      <DependentUpon>CascadeDiagramView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Diagram\CascadeDiagramView.Expansion.cs">
+      <DependentUpon>CascadeDiagramView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Diagram\CascadeDiagramView.Input.cs">
+      <DependentUpon>CascadeDiagramView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Diagram\CascadeDiagramView.Rendering.cs">
+      <DependentUpon>CascadeDiagramView.cs</DependentUpon>
+    </Compile>
     <Compile Include="State\CascadeCheckableState.cs" />
     <Compile Include="State\CascadeEditAction.cs" />
     <Compile Include="State\CascadeNavigator.cs" />
@@ -71,6 +86,9 @@
       <DependentUpon>CascadeColumnsView.cs</DependentUpon>
     </Compile>
     <Compile Include="Views\Columns\CascadeColumnsView.Columns.cs">
+      <DependentUpon>CascadeColumnsView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Columns\CascadeColumnsView.ContextMenu.cs">
       <DependentUpon>CascadeColumnsView.cs</DependentUpon>
     </Compile>
     <Compile Include="Views\Columns\CascadeColumnsView.Editing.cs">

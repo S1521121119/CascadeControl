@@ -10,38 +10,6 @@ using System.Windows.Forms;
 namespace CascadeControl.Views.Diagram
 {
     /// <summary>
-    /// <see cref="TreeDrawer"/> 要畫樹的哪個範圍。
-    /// </summary>
-    public enum TreeDrawScope
-    {
-        /// <summary>
-        /// 畫整棵樹；選取的節點在外框外圍另外畫一圈矩形紅框。
-        /// </summary>
-        WholeTree,
-
-        /// <summary>
-        /// 從選取的節點開始，畫它和它底下的所有節點；選取的節點就是圖的起點，不另外框起來。沒有選取時畫整棵樹。
-        /// </summary>
-        SelectedSubtree,
-    }
-
-    /// <summary>
-    /// 有勾選資訊時，沒勾的節點怎麼呈現；沒有勾選資訊時不使用。
-    /// </summary>
-    public enum UncheckedNodeDisplay
-    {
-        /// <summary>
-        /// 照樣畫出來但變淡：白底、灰框、灰字，不套用每層的底色。
-        /// </summary>
-        Dimmed,
-
-        /// <summary>
-        /// 不畫，剩下的節點重新排版；編號與圓角／直角沿用原樹，才能對回原本的選單。
-        /// </summary>
-        Hidden,
-    }
-
-    /// <summary>
     /// 把 <see cref="MenuTree"/> 畫成由左到右展開的樹：一層一欄，節點是方塊（一行：編號在前、名稱在後，都靠左），
     /// 父子之間用貝茲曲線連接。
     /// </summary>

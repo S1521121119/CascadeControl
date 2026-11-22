@@ -256,12 +256,18 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 表格除了 D7 列的編輯鍵，也收了 Columns 原本在同一個 `ProcessCmdKey` 處理的 Esc（取消多選或清除選取）、Ctrl+A（全選）與 Ctrl+Space（切換多選）。哪些指令會改樹（唯讀時不攔）由 `CascadeEditShortcuts.ChangesTree` 決定，B2 的 Diagram 直接沿用。同一個指令有多個按鍵時（重做的 Ctrl+Y 與 Ctrl+Shift+Z），排在前面的那個是選單顯示的文字。
   - 編輯框開著時的 Enter（套用）與 Esc（取消）是編輯框自己的按鍵，不在表格裡，仍寫在 `ProcessCmdKey`。
 
-- [ ] **A6 拆檔，只搬不改**
+- [x] **A6 拆檔，只搬不改**
   - Diagram 拆成 `CascadeDiagramView.cs`、`.Rendering.cs`、`.Expansion.cs`、`.Input.cs`、`.ContextMenu.cs`。
   - `TreeImageSizeMode`、`TreeDrawScope`、`UncheckedNodeDisplay` 各自一個檔（這一步不改名）。
   - Columns 的右鍵選單從 `.Editing.cs` 抽到 `.ContextMenu.cs`。
   - csproj 補上 `DependentUpon`。
   - 驗證：共用驗證；API 比對沒有差異；`git log --follow` 追得到搬移前的歷史。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告（`TreeDrawer.cs` 少了兩個 enum，行號從 622 變成 590）。全套 533 個測試通過。API 比對沒有差異。
+  - 用腳本依行號範圍從 `HEAD` 複製到新檔，搬過去的每一行位元組都相同。比對搬移前後三個原檔與十一個新檔的所有行，被拿掉的只有 `class` 改成 `partial class`、Editing 的 region 名稱與檔頭註解；多出來的只有 namespace、大括號、using、檔頭註解與 region。
+  - 用 ildasm 比對 `HEAD` 與搬移後的 Release DLL（忽略成員順序與編譯器產生名稱裡的序號）：只有 `CascadeColumnsView` 建構式裡 `_readOnly = true` 移到四個右鍵功能表欄位初始化之後。這五個指派彼此獨立，行為不變。Diagram 的 IL 完全相同。
+  - 用腳本開啟 Viewer 表單，在 Diagram 按 ↓、Space、→、←、點展開鈕、切換縮放、掃一遍點擊判定，開 Diagram 右鍵功能表並點「選取的子樹」，再開 Columns 的節點功能表、欄位功能表與唯讀時的節點功能表，列出每個項目的文字、勾選、可見、可用與快捷鍵文字。`HEAD` 與搬移後的建置各跑一次，輸出完全相同。
+  - `git log --follow`：在暫時的 clone 裡直接 commit，原檔（`CascadeDiagramView.cs`、`TreeDrawer.cs`、`CascadeColumnsView.Editing.cs`）保有完整歷史，但八個新檔只看得到拆檔那個 commit，加 `-C -C` 也一樣，因為每一塊都遠低於 git 的 50% 相似度。`git blame -C -C` 追得到逐行歷史（`Input.cs` 170 行中有 158 行指回原本的 commit）。要讓新檔的 `--follow` 也追得到，每個新檔各開一個側分支，只做 `git mv 原檔 新檔`，再合併回來並以拆檔後的內容解決衝突；在 clone 裡對 `Input.cs` 試過，`--follow` 追到原本的 16 個 commit，最後的樹和直接 commit 相同。
+  - 使用者決定直接 commit，不用側分支合併。新檔的歷史用 `git blame -C -C` 查。
 
 ### B 段：新功能
 
@@ -297,7 +303,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **A6 拆檔，只搬不改**。A0 到 A5 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **B1 Diagram 預設 State 改成 `CascadeCheckableState`**。A 段（A0 到 A6）已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 
