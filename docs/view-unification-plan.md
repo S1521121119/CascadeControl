@@ -276,10 +276,16 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 1 個測試 `Standalone_ShowChecks_DrawsChecksSetThroughDefaultState`（`TreeDrawerTests.cs`），全套 534 個通過。這個測試單獨建立 Diagram、設 `ShowChecks = true` 並呼叫 `SetTree`，確認 Motor 一開始是沒勾的白底而且收合；透過 `State.CheckSet` 勾選 Axis X 之後，Motor 改成層的底色而且展開。把預設改回 `CascadeState` 時這個測試失敗（Motor 一開始就是層的底色）。屬性型別沒變，API 比對沒有差異。
   - `State` 加上 remarks 說明預設值；`ShowChecks` 的 remarks 改成兩個 View 預設都是 `CascadeCheckableState`。
 
-- [ ] **B2 Diagram 加上不需要輸入文字的編輯**
+- [x] **B2 Diagram 加上不需要輸入文字的編輯**
   - 加上 `ReadOnly`、`Copy`、`CopyPath`、`Cut`、`Paste`、`PasteAsChild`、`Delete`、`Undo`、`Redo`、`CanUndo`、`CanRedo`。
   - 透過 `ProcessCmdKey`（查 A5 的對照表）與右鍵選單觸發，對象是目前選取的節點。
   - 驗證：共用驗證；在 Viewer 的 Diagram 按 Delete，Columns 同步更新；在 Columns 按 Ctrl+Z 能復原 Diagram 的刪除。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 8 個測試（`CascadeControlTests/Views/Diagram/CascadeDiagramViewEditingTests.cs`），全套 542 個通過；其中一輪有 1 個剪貼簿測試記為 Inconclusive（剪貼簿被佔用），重跑全部通過。API 比對只有 Diagram 新增上面 11 個成員與 `ProcessCmdKey` 覆寫，`tools/public-api.txt` 已更新為 477 行。用腳本開啟 Viewer 表單載入 Motor／Diagnostics／Settings：在 Diagram 選 Motor 按 Delete、確認框按「是」，Columns 第一欄變成 Diagnostics、Settings，Diagram 換了新影像，記錄一行 Delete；焦點交給 Columns 按 Ctrl+Z，Motor 回來並被選取，Undo 0、Redo 1。接著在 Diagram 按 Ctrl+C、Ctrl+V、Ctrl+X、兩次 Ctrl+Z，樹形、選取與 Columns 每一步都對得上；Diagram 切成唯讀後按 Delete 不跳確認框、樹不變。
+  - 新檔 `Views/Diagram/CascadeDiagramView.Editing.cs` 放公開指令與對象判斷，`Input.cs` 加 `ProcessCmdKey`，`ContextMenu.cs` 加編輯項目。快捷鍵只攔 Diagram 已經做得到的指令：改名、插入、建立子節點（B3、B4 才有編輯框）與 Columns 專屬的 Esc、Ctrl+A、Ctrl+Space 不攔，照常交給表單。唯讀時不攔會改樹的按鍵，規則同 Columns（`CascadeEditShortcuts.ChangesTree`）。
+  - 右鍵功能表的對象是右鍵按下時點到的節點，點在空白處或用鍵盤開啟時是選取的節點，和 Columns「右鍵不改選取、對象是被點的那一列」一致。項目依序是復原、重做｜複製、複製(路徑)、剪下、貼上 ▸ 之前／之後／作為子節點｜刪除｜原本的顯示設定；唯讀時只有複製兩項，沒有對象時只有顯示設定。有樹而且開了 `ShowChecks` 時，唯讀也列出復原、重做（勾選可以復原）。沒有樹時不列，所以原本的 `TreeContextMenu_ShowsUncheckedDisplayOnlyForCheckableState_AndUpdatesSettings` 不用改。
+  - 刪除確認框的文字抽到 `Views/CascadeEditPrompts.cs`（internal），Columns 與 Diagram 共用，兩邊不會各自走樣。D10 沒有列這個檔；B3 的「名稱不可含有保留字元」提示也可以放這裡。
+  - Viewer 的 `diagramView1.ReadOnly` 跟著 `cascadeView1.ReadOnly` 設定。測試共用 `CascadeColumnsViewEditingTests.RunOnSta`，改成 internal。
+  - 右鍵功能表沒有 Columns 那種被點節點的虛線框，Diagram 原本就沒有；需要時另外做。
 
 - [ ] **B3 Diagram 就地改名**
   - TextBox 疊在節點方塊上，位置用現有的 `GetClientBoundsOf` 計算。
@@ -305,7 +311,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **B2 Diagram 加上不需要輸入文字的編輯**。A 段（A0 到 A6）與 B1 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **B3 Diagram 就地改名**。A 段（A0 到 A6）、B1 與 B2 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

@@ -279,16 +279,10 @@ namespace CascadeControl.Views.Columns
         {
             if (!CanEditNodes(nodes)) return false;
 
-            var hasChildren = nodes.Any(node => !node.IsLeaf);
-            var message = nodes.Count == 1
-                ? $"確定要刪除「{nodes[0].FullPathText}」？"
-                : $"確定要刪除選取的 {nodes.Count} 個節點？";
-            if (hasChildren) message += Environment.NewLine + "底下的子節點也會一起刪除。";
-
             var hadFocus = ContainsFocus;
-            var answer = MessageBox.Show(this, message, "刪除", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+            var confirmed = CascadeEditPrompts.ConfirmDelete(this, nodes);
             if (hadFocus) FocusActiveColumn();
-            if (answer != DialogResult.Yes) return false;
+            if (!confirmed) return false;
 
             // 對話框開著的時候樹可能被換掉，再確認一次。
             if (!CanEditNodes(nodes)) return false;

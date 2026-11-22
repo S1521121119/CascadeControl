@@ -34,6 +34,10 @@ namespace CascadeControl.Views.Diagram
     /// 空白鍵展開或收合選取的節點；Enter 觸發 <see cref="NodeActivated"/>（和雙擊同樣用途，由訂閱端決定做什麼）。原始尺寸下會捲動到選取的節點。
     /// <see cref="TreeDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
     /// </para>
+    /// <para>
+    /// 編輯快捷鍵與 <see cref="Columns.CascadeColumnsView"/> 相同（複製、剪下、貼上、刪除、復原、重做），對象是選取的節點；右鍵功能表的對象是被點的節點。
+    /// <see cref="ReadOnly"/> 預設為 true，只能複製。改樹由 <see cref="State"/> 執行，綁同一份 State 的檢視一起更新，也共用同一份復原歷史。
+    /// </para>
     /// </remarks>
     [DesignerCategory("")]
     [ToolboxItem(true)]
@@ -64,6 +68,7 @@ namespace CascadeControl.Views.Diagram
             AttachState(_state);
 
             _contextMenu.Opening += ContextMenu_Opening;
+            _contextMenu.Closed += ContextMenu_Closed;
             ContextMenuStrip = _contextMenu;
 
             UpdateImage(null);

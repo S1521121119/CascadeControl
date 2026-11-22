@@ -38,6 +38,7 @@ namespace CascadeControlViewer
 
             // Demo 預設開啟編輯；勾選 ReadOnly 切回唯讀（只能點選、多選與複製）。
             cascadeView1.ReadOnly = isReadonly;
+            diagramView1.ReadOnly = isReadonly;
             cascadeView1.State.TreeEdited += State_TreeEdited;
             cascadeView1.MultiSelectionChanged += CascadeView1_MultiSelectionChanged;
 
@@ -50,6 +51,7 @@ namespace CascadeControlViewer
                 _menu.AddPath("root");
                 cascadeView1.SetTree(_menu);
                 cascadeView1.ReadOnly = false;
+                diagramView1.ReadOnly = false;
 
                 return;
             }

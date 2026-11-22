@@ -491,7 +491,7 @@ namespace CascadeControlTests.Views.Columns
         /// <summary>
         /// 在 STA 執行緒上執行 <paramref name="body"/>：Windows 剪貼簿只能在 STA 存取，MTA 上複製會靜靜地失敗。
         /// </summary>
-        private static void RunOnSta(Action body)
+        internal static void RunOnSta(Action body)
         {
             Exception error = null;
             var thread = new Thread(() =>

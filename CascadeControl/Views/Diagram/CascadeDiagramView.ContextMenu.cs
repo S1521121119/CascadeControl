@@ -1,20 +1,26 @@
 ﻿using CascadeControl.State;
+using CascadeControl.Trees;
 using System;
 using System.ComponentModel;
 using System.Windows.Forms;
 
 namespace CascadeControl.Views.Diagram
 {
-    // 右鍵功能表：切換顯示設定。
+    // 右鍵功能表：編輯項目與切換顯示設定。
     public partial class CascadeDiagramView
     {
+        // 右鍵按下時點到的節點；點在空白處、用鍵盤開啟或功能表關閉後為 null。
+        private MenuNode _contextMenuNode;
+
         #region 右鍵功能表
 
-        // 每次開啟前重建：沒開 ShowChecks 或 State 沒有勾選能力時不列出「未勾選節點」。
+        // 每次開啟前重建：編輯項目依 ReadOnly 與對象決定；沒開 ShowChecks 或 State 沒有勾選能力時不列出「未勾選節點」。
         private void ContextMenu_Opening(object sender, CancelEventArgs e)
         {
             var items = _contextMenu.Items;
             items.Clear();
+
+            AddEditItems(items, _contextMenuNode ?? SelectedMenuNode);
 
             var scopeMenu = new ToolStripMenuItem("範圍");
             scopeMenu.DropDownItems.Add(CreateChoice("整棵樹", _drawScope == TreeDrawScope.WholeTree, () => DrawScope = TreeDrawScope.WholeTree));
@@ -36,6 +42,65 @@ namespace CascadeControl.Views.Diagram
 
             // 清空項目後 ContextMenuStrip 會預設取消開啟，要明確允許。
             e.Cancel = false;
+        }
+
+        private void ContextMenu_Closed(object sender, ToolStripDropDownClosedEventArgs e) => _contextMenuNode = null;
+
+        // 復原、重做 ｜ 複製、複製(路徑)、剪下、貼上 ｜ 刪除 ｜（顯示設定）。每一組以分隔線結尾，沒有編輯項目時不加。
+        private void AddEditItems(ToolStripItemCollection items, MenuNode target)
+        {
+            // 有樹而且能改樹或顯示勾選時一律顯示復原、重做，沒有步驟時停用，項目才不會忽隱忽現。
+            if (CanEdit || (Tree != null && _showChecks && _state is CascadeCheckableState))
+            {
+                items.Add(CreateCommand("復原", CascadeEditCommand.Undo, CanUndo, Undo));
+                items.Add(CreateCommand("重做", CascadeEditCommand.Redo, CanRedo, Redo));
+                items.Add(new ToolStripSeparator());
+            }
+
+            if (_state.IsInTree(target))
+            {
+                items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CascadeClipboard.CopyNodes(Single(target))));
+                items.Add(CreateCommand("複製(路徑)", CascadeEditCommand.CopyPath, true, () => CascadeClipboard.CopyNodePaths(Single(target))));
+
+                if (CanEdit)
+                {
+                    items.Add(CreateCommand("剪下", CascadeEditCommand.Cut, true, () => CutNode(target)));
+
+                    // 「作為子節點」只對葉節點有作用：已經有子節點時，請在子節點旁邊貼上。
+                    var pasteMenu = new ToolStripMenuItem("貼上") { Enabled = CascadeClipboard.ContainsNodes() };
+                    pasteMenu.DropDownItems.Add(CreateCommand("之前", CascadeEditCommand.PasteBefore, true, () => PasteBeside(target, before: true)));
+                    pasteMenu.DropDownItems.Add(CreateCommand("之後", CascadeEditCommand.Paste, true, () => PasteBeside(target, before: false)));
+                    pasteMenu.DropDownItems.Add(CreateCommand("作為子節點", CascadeEditCommand.PasteAsChild, target.IsLeaf, () => PasteIntoLeaf(target)));
+                    items.Add(pasteMenu);
+                    items.Add(new ToolStripSeparator());
+
+                    items.Add(CreateCommand("刪除", CascadeEditCommand.Delete, true, () => DeleteNode(target)));
+                }
+
+                items.Add(new ToolStripSeparator());
+            }
+        }
+
+        private ToolStripMenuItem CreateCommand(string text, CascadeEditCommand command, bool enabled, Func<bool> action)
+        {
+            var item = new ToolStripMenuItem(text)
+            {
+                ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(command),
+                Enabled = enabled,
+            };
+            item.Click += (sender, e) => RunMenuAction(action);
+            return item;
+        }
+
+        // 等功能表關掉之後才執行：刪除的確認框不會和正在關閉的功能表搶焦點。
+        private void RunMenuAction(Func<bool> action)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+
+            BeginInvoke(new Action(() =>
+            {
+                if (!IsDisposed) action();
+            }));
         }
 
         private static ToolStripMenuItem CreateChoice(string text, bool isChecked, Action apply)

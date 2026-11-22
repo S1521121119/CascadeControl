@@ -34,6 +34,9 @@ namespace CascadeControl.Views.Diagram
         {
             // 要有焦點，滾輪才捲得動。
             Focus();
+
+            // 右鍵功能表接著開啟，對象是被點的節點；點在空白處時是選取的節點。
+            _contextMenuNode = e.Button == MouseButtons.Right ? GetNodeAt(e.Location) : null;
             base.OnMouseDown(e);
         }
 
@@ -110,6 +113,43 @@ namespace CascadeControl.Views.Diagram
             e.Handled = true;
             e.SuppressKeyPress = true;
             EnsureVisible(SelectedMenuNode);
+        }
+
+        /// <summary>
+        /// 編輯快捷鍵查 <see cref="CascadeEditShortcuts"/>，對象是 <see cref="SelectedNode"/>；唯讀時不攔會改樹的指令。
+        /// </summary>
+        /// <remarks>
+        /// 還沒有就地編輯框，所以改名、插入、建立子節點的按鍵不攔；多選與勾選只屬於 <see cref="Columns.CascadeColumnsView"/>，也不攔。
+        /// 不攔的按鍵照常交給表單（例如選單快捷鍵、Esc 的 CancelButton）。
+        /// </remarks>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (CascadeEditShortcuts.TryGetCommand(keyData, out var command)
+                && (CanEdit || !CascadeEditShortcuts.ChangesTree(command))
+                && TryExecute(command))
+            {
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        // 回傳 false 表示這個指令 Diagram 不處理，按鍵交給表單。
+        private bool TryExecute(CascadeEditCommand command)
+        {
+            switch (command)
+            {
+                case CascadeEditCommand.Copy: Copy(); return true;
+                case CascadeEditCommand.CopyPath: CopyPath(); return true;
+                case CascadeEditCommand.Undo: Undo(); return true;
+                case CascadeEditCommand.Redo: Redo(); return true;
+                case CascadeEditCommand.Cut: Cut(); return true;
+                case CascadeEditCommand.Paste: Paste(before: false); return true;
+                case CascadeEditCommand.PasteBefore: Paste(before: true); return true;
+                case CascadeEditCommand.PasteAsChild: PasteAsChild(); return true;
+                case CascadeEditCommand.Delete: Delete(); return true;
+                default: return false;
+            }
         }
 
         private MenuNode SelectedMenuNode => _state.SelectedNode as MenuNode;

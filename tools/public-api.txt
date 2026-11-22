@@ -375,6 +375,7 @@ CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Int32 ColumnIndex { get; }
 CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: type public class : System.EventArgs
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Boolean IsInputKey(System.Windows.Forms.Keys keyData)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Boolean ProcessCmdKey(ref System.Windows.Forms.Message msg, System.Windows.Forms.Keys keyData)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void Dispose(System.Boolean disposing)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnFontChanged(System.EventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyDown(System.Windows.Forms.KeyEventArgs e)
@@ -396,11 +397,19 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHand
 CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseDoubleClick
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method CascadeControl.Trees.MenuNode GetExpanderAt(System.Drawing.Point clientLocation)
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method CascadeControl.Trees.MenuNode GetNodeAt(System.Drawing.Point clientLocation)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean Copy()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean CopyPath()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean Cut()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean Delete()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean IsExpanded(CascadeControl.Trees.MenuNode node)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean Paste(System.Boolean before)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean PasteAsChild()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean Redo()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean StepBack()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean StepForward()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean TrySelectNode(CascadeControl.Trees.MenuNode node)
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean TrySelectPath(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean Undo()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void Clear()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void Redraw()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void SetExpanded(CascadeControl.Trees.MenuNode node, System.Boolean expanded)
@@ -411,7 +420,10 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeContro
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.TreeDrawScope DrawScope { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.TreeImageSizeMode SizeMode { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.UncheckedNodeDisplay UncheckedDisplay { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean CanRedo { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean CanUndo { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean IsLeafSelected { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean ReadOnly { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean ShowChecks { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Drawing.Image Image { get; }

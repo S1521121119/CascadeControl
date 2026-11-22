@@ -55,6 +55,9 @@
     <Compile Include="Views\Diagram\CascadeDiagramView.ContextMenu.cs">
       <DependentUpon>CascadeDiagramView.cs</DependentUpon>
     </Compile>
+    <Compile Include="Views\Diagram\CascadeDiagramView.Editing.cs">
+      <DependentUpon>CascadeDiagramView.cs</DependentUpon>
+    </Compile>
     <Compile Include="Views\Diagram\CascadeDiagramView.Expansion.cs">
       <DependentUpon>CascadeDiagramView.cs</DependentUpon>
     </Compile>
@@ -75,6 +78,7 @@
     <Compile Include="State\CascadeTreeEditedEventArgs.cs" />
     <Compile Include="Views\CascadeClipboard.cs" />
     <Compile Include="Views\CascadeEditCommand.cs" />
+    <Compile Include="Views\CascadeEditPrompts.cs" />
     <Compile Include="Views\CascadeEditShortcuts.cs" />
     <Compile Include="Views\CascadeNodeMouseEventArgs.cs" />
     <Compile Include="Views\ICascadeCheckableView.cs" />
