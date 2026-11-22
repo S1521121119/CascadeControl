@@ -17,28 +17,28 @@ namespace CascadeControl.Views.Columns
 
         // 同一個 ToolStripItem 只能放在一個功能表裡，所以兩個功能表各有一組復原、重做。
 
-        private readonly ToolStripMenuItem _undoItem = new ToolStripMenuItem("復原") { ShortcutKeyDisplayString = "Ctrl+Z" };
-        private readonly ToolStripMenuItem _redoItem = new ToolStripMenuItem("重做") { ShortcutKeyDisplayString = "Ctrl+Y" };
-        private readonly ToolStripMenuItem _columnUndoItem = new ToolStripMenuItem("復原") { ShortcutKeyDisplayString = "Ctrl+Z" };
-        private readonly ToolStripMenuItem _columnRedoItem = new ToolStripMenuItem("重做") { ShortcutKeyDisplayString = "Ctrl+Y" };
+        private readonly ToolStripMenuItem _undoItem = new ToolStripMenuItem("復原") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Undo) };
+        private readonly ToolStripMenuItem _redoItem = new ToolStripMenuItem("重做") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Redo) };
+        private readonly ToolStripMenuItem _columnUndoItem = new ToolStripMenuItem("復原") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Undo) };
+        private readonly ToolStripMenuItem _columnRedoItem = new ToolStripMenuItem("重做") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Redo) };
 
         private readonly ToolStripMenuItem _insertItem = new ToolStripMenuItem("插入");
-        private readonly ToolStripMenuItem _insertBeforeItem = new ToolStripMenuItem("之前") { ShortcutKeyDisplayString = "Ctrl+Shift+I" };
-        private readonly ToolStripMenuItem _insertNextItem = new ToolStripMenuItem("之後") { ShortcutKeyDisplayString = "Ctrl+I" };
-        private readonly ToolStripMenuItem _createChildItem = new ToolStripMenuItem("建立子節點") { ShortcutKeyDisplayString = "Ctrl+N" };
-        private readonly ToolStripMenuItem _renameItem = new ToolStripMenuItem("重新命名") { ShortcutKeyDisplayString = "F2" };
-        private readonly ToolStripMenuItem _copyItem = new ToolStripMenuItem("複製") { ShortcutKeyDisplayString = "Ctrl+C" };
-        private readonly ToolStripMenuItem _copyPathItem = new ToolStripMenuItem("複製(路徑)") { ShortcutKeyDisplayString = "Ctrl+Shift+C" };
-        private readonly ToolStripMenuItem _cutItem = new ToolStripMenuItem("剪下") { ShortcutKeyDisplayString = "Ctrl+X" };
+        private readonly ToolStripMenuItem _insertBeforeItem = new ToolStripMenuItem("之前") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.InsertBefore) };
+        private readonly ToolStripMenuItem _insertNextItem = new ToolStripMenuItem("之後") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Insert) };
+        private readonly ToolStripMenuItem _createChildItem = new ToolStripMenuItem("建立子節點") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.CreateChild) };
+        private readonly ToolStripMenuItem _renameItem = new ToolStripMenuItem("重新命名") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Rename) };
+        private readonly ToolStripMenuItem _copyItem = new ToolStripMenuItem("複製") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Copy) };
+        private readonly ToolStripMenuItem _copyPathItem = new ToolStripMenuItem("複製(路徑)") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.CopyPath) };
+        private readonly ToolStripMenuItem _cutItem = new ToolStripMenuItem("剪下") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Cut) };
         private readonly ToolStripMenuItem _pasteItem = new ToolStripMenuItem("貼上");
-        private readonly ToolStripMenuItem _pasteBeforeItem = new ToolStripMenuItem("之前") { ShortcutKeyDisplayString = "Ctrl+Shift+V" };
-        private readonly ToolStripMenuItem _pasteNextItem = new ToolStripMenuItem("之後") { ShortcutKeyDisplayString = "Ctrl+V" };
-        private readonly ToolStripMenuItem _pasteChildItem = new ToolStripMenuItem("作為子節點") { ShortcutKeyDisplayString = "Ctrl+Alt+V" };
-        private readonly ToolStripMenuItem _deleteItem = new ToolStripMenuItem("刪除") { ShortcutKeyDisplayString = "Del" };
+        private readonly ToolStripMenuItem _pasteBeforeItem = new ToolStripMenuItem("之前") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.PasteBefore) };
+        private readonly ToolStripMenuItem _pasteNextItem = new ToolStripMenuItem("之後") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Paste) };
+        private readonly ToolStripMenuItem _pasteChildItem = new ToolStripMenuItem("作為子節點") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.PasteAsChild) };
+        private readonly ToolStripMenuItem _deleteItem = new ToolStripMenuItem("刪除") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.Delete) };
 
         private readonly ToolStripMenuItem _columnInsertItem = new ToolStripMenuItem("插入");
         private readonly ToolStripMenuItem _columnPasteItem = new ToolStripMenuItem("貼上");
-        private readonly ToolStripMenuItem _selectAllItem = new ToolStripMenuItem("全選") { ShortcutKeyDisplayString = "Ctrl+A" };
+        private readonly ToolStripMenuItem _selectAllItem = new ToolStripMenuItem("全選") { ShortcutKeyDisplayString = CascadeEditShortcuts.GetDisplayString(CascadeEditCommand.SelectAll) };
 
         private bool _readOnly = true;
 

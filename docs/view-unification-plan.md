@@ -247,11 +247,14 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - issue #1 的修正：`ReadNodes` 只接受以 `Level1` 表頭開頭、不含 NUL 的內容。不合格時以寫入端相同的預算（5 次、間隔 100 ms）重讀，還是不合格就回傳空集合，貼上回傳 false。同一個小程式改用 `ReadNodes` 讀 2 × 500 輪，重讀了 44 次，每一輪都讀到正確的節點。`CascadeColumnsViewEditingTests` 連跑 20 輪沒有失敗，3 輪各有 1 個 Inconclusive（寫入時剪貼簿被佔用，約 630 ms，屬於設計上的行為）。新測試 `Paste_FormatContentIsNotNodeCsv_ChangesNothing` 放入全是 NUL 與沒有表頭的內容，拿掉驗證時兩個都失敗。
   - 先懷疑過 WinForms `DataObject.GetDataHere` 輸出 `Stream` 時換掉呼叫端的 HGLOBAL，包一層自己的 `IDataObject` 驗證後沒有效果：OLE 清空剪貼簿時呼叫的是 `GetData`，資料寫得正確。這個方向已放棄，沒有留在程式裡。
 
-- [ ] **A5 快捷鍵對照表**
+- [x] **A5 快捷鍵對照表**
   - 新增 `Views/CascadeEditCommand.cs` 與 `Views/CascadeEditShortcuts.cs`。
   - Columns 的 `ProcessCmdKey` 與右鍵選單的 `ShortcutKeyDisplayString` 改成查表。
   - 新增表格測試，逐一列出現有的全部綁定。
   - 驗證：共用驗證；在 Viewer 逐一按每個快捷鍵，結果和改之前相同。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 43 個測試（17 個綁定、9 個未綁定的按鍵、16 個指令的顯示文字與是否改樹、1 個每個指令都有按鍵），全套 533 個通過。兩個新型別都是 internal，API 比對沒有差異。用腳本開啟 Viewer 表單，以 SendKeys 對 Columns 依序按全部 17 個綁定（含 Delete 確認框按「是」、編輯框內輸入後按 Enter 與 Esc），再切成唯讀按 Ctrl+X、Delete、F2、Ctrl+I、Ctrl+N、Ctrl+Alt+V、Ctrl+C、Ctrl+Z，每一步記下樹形、選取、多選、歷史筆數、編輯狀態、TreeEdited 次數與剪貼簿文字，並列出兩個右鍵選單每個項目的快捷鍵文字。改之前與改之後的建置各跑一次，輸出完全相同。
+  - 表格除了 D7 列的編輯鍵，也收了 Columns 原本在同一個 `ProcessCmdKey` 處理的 Esc（取消多選或清除選取）、Ctrl+A（全選）與 Ctrl+Space（切換多選）。哪些指令會改樹（唯讀時不攔）由 `CascadeEditShortcuts.ChangesTree` 決定，B2 的 Diagram 直接沿用。同一個指令有多個按鍵時（重做的 Ctrl+Y 與 Ctrl+Shift+Z），排在前面的那個是選單顯示的文字。
+  - 編輯框開著時的 Enter（套用）與 Esc（取消）是編輯框自己的按鍵，不在表格裡，仍寫在 `ProcessCmdKey`。
 
 - [ ] **A6 拆檔，只搬不改**
   - Diagram 拆成 `CascadeDiagramView.cs`、`.Rendering.cs`、`.Expansion.cs`、`.Input.cs`、`.ContextMenu.cs`。
@@ -294,7 +297,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **A5 快捷鍵對照表**。A0 到 A4 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **A6 拆檔，只搬不改**。A0 到 A5 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

@@ -290,87 +290,51 @@ namespace CascadeControl.Views.Columns
                 return base.ProcessCmdKey(ref msg, keyData);
             }
 
-            if (IsColumnFocused)
+            if (IsColumnFocused
+                && CascadeEditShortcuts.TryGetCommand(keyData, out var command)
+                && (CanEdit || !CascadeEditShortcuts.ChangesTree(command)))
             {
-                switch (keyData)
-                {
-                    case Keys.Escape:
-                        if (_marks.Count > 0) ClearMultiSelection();
-                        else _state.ClearSelection();
-                        FocusActiveColumn();
-                        return true;
-
-                    case Keys.Control | Keys.C:
-                        Copy();
-                        return true;
-
-                    case Keys.Control | Keys.Shift | Keys.C:
-                        CopyPath();
-                        return true;
-
-                    case Keys.Control | Keys.A:
-                        SelectAllInColumn(ActiveColumnIndex);
-                        return true;
-
-                    case Keys.Control | Keys.Space:
-                        ToggleFocusedNode();
-                        FocusActiveColumn();
-                        return true;
-
-                    case Keys.Control | Keys.Z:
-                        Undo();
-                        return true;
-
-                    case Keys.Control | Keys.Y:
-                    case Keys.Control | Keys.Shift | Keys.Z:
-                        Redo();
-                        return true;
-                }
-
-                if (CanEdit)
-                {
-                    switch (keyData)
-                    {
-                        case Keys.Control | Keys.X:
-                            Cut();
-                            return true;
-
-                        case Keys.Control | Keys.V:
-                            Paste(before: false);
-                            return true;
-
-                        case Keys.Control | Keys.Shift | Keys.V:
-                            Paste(before: true);
-                            return true;
-
-                        case Keys.Control | Keys.Alt | Keys.V:
-                            PasteAsChild();
-                            return true;
-
-                        case Keys.Delete:
-                            Delete();
-                            return true;
-
-                        case Keys.F2:
-                            BeginRename();
-                            return true;
-
-                        case Keys.Control | Keys.I:
-                            BeginInsert(before: false);
-                            return true;
-
-                        case Keys.Control | Keys.Shift | Keys.I:
-                            BeginInsert(before: true);
-                            return true;
-
-                        case Keys.Control | Keys.N:
-                            BeginCreateChild();
-                            return true;
-                    }
-                }
+                Execute(command);
+                return true;
             }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private void Execute(CascadeEditCommand command)
+        {
+            switch (command)
+            {
+                case CascadeEditCommand.ClearSelection:
+                    if (_marks.Count > 0) ClearMultiSelection();
+                    else _state.ClearSelection();
+                    FocusActiveColumn();
+                    break;
+
+                case CascadeEditCommand.Copy: Copy(); break;
+                case CascadeEditCommand.CopyPath: CopyPath(); break;
+                case CascadeEditCommand.SelectAll: SelectAllInColumn(ActiveColumnIndex); break;
+
+                case CascadeEditCommand.ToggleCheck:
+                    ToggleFocusedNode();
+                    FocusActiveColumn();
+                    break;
+
+                case CascadeEditCommand.Undo: Undo(); break;
+                case CascadeEditCommand.Redo: Redo(); break;
+                case CascadeEditCommand.Cut: Cut(); break;
+                case CascadeEditCommand.Paste: Paste(before: false); break;
+                case CascadeEditCommand.PasteBefore: Paste(before: true); break;
+                case CascadeEditCommand.PasteAsChild: PasteAsChild(); break;
+                case CascadeEditCommand.Delete: Delete(); break;
+                case CascadeEditCommand.Rename: BeginRename(); break;
+                case CascadeEditCommand.Insert: BeginInsert(before: false); break;
+                case CascadeEditCommand.InsertBefore: BeginInsert(before: true); break;
+                case CascadeEditCommand.CreateChild: BeginCreateChild(); break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(command), command, null);
+            }
         }
 
         /// <summary>
