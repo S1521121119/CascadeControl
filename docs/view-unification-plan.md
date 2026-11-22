@@ -226,13 +226,18 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 刪除時取消勾選仍然只在 `CheckBoxes = true` 時發生，A3 改成只要有 `CheckSet` 就取消。在那之前，`CheckBoxes = false` 時刪掉已勾選的節點，勾選會留在已經不在樹裡的節點上。
   - issue #1 第一輪全套出現一次，這次是 `Cut_SelectsNextSibling_AndCanBePastedBack`（貼回的節點名稱是 NUL）；重跑全部通過。
 
-- [ ] **A3 編輯邏輯移到 State**
+- [x] **A3 編輯邏輯移到 State**
   - 新增 `State/CascadeState.Editing.cs`（D4 的 API）與 `OnNodesRemoved` 掛鉤；`CascadeCheckableState` 覆寫它來取消勾選。
   - Columns 的 `ApplyEdit`、`RemoveNodes`、`PasteInto`、`Replay` 改成呼叫 State。
   - Columns 訂閱 `State.TreeEdited`，一次回來多個節點時（貼上、復原刪除）設定多選。
   - 刪除 `CascadeColumnsView.TreeEdited` 與 `OnTreeEdited`，Viewer 改訂閱 `State.TreeEdited`。
   - 新增 `CascadeControlTests/State/CascadeStateEditingTests.cs`（不需要 WinForms），涵蓋每個編輯方法的樹形、選取、事件與歷史，包含「刪除與取消勾選算同一步」。
   - 驗證：共用驗證；A0 的測試照常通過；在 Viewer 用 Columns 編輯，Diagram 跟著重畫，記錄區每次編輯只出現一行 TreeEdited。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 14 個測試，全套 488 個連跑 3 輪都通過。API 比對只有 State 新增 D4 的 API（含 `OnTreeEdited`、`OnNodesRemoved`）與 Columns 移除 `TreeEdited`、`OnTreeEdited`，`tools/public-api.txt` 已更新。用腳本開啟 Viewer 表單，在 Columns 依序插入、改名、建立子節點、貼上、剪下、復原、重做、貼成子節點，每一步 Diagram 都換了新影像，記錄區各出現一行 TreeEdited；複製與取消編輯沒有出現。直接呼叫 `State.PasteNodes` 貼兩個節點，以及復原、重做這一步，Columns 都把兩個節點設成多選。刪除會跳確認框，沒有在 Viewer 驅動，由 State 層測試涵蓋。
+  - `IsInTree`、`IsInTreeOrRoot` 從 Columns 移到 State（internal），Columns 改呼叫 `_state.IsInTree`。Columns 原本在 `FinishEdit` 裡把焦點交回操作欄，現在由 `KeepFocus` 包住每次呼叫 State 的地方。
+  - `TreeEdited` 仍在編輯的同一組歷史步驟裡觸發，處理常式改的勾選會和編輯算同一步，和原本 `OnTreeEdited` 的行為相同。
+  - 連帶變更：取消勾選改在選取更新之前執行，原本在之後；兩者都在同一組步驟裡，結果相同。`DeleteNodes`、`CutNodes` 遇到父節點不只一個時回傳 false，原本 Columns 只會傳同一欄的節點，所以不會發生。
+  - Selector（`CascadeControlSelector/TreeSelector.cs`）也訂閱了 `TreeEdited`，和 Viewer 一起改成 `State.TreeEdited`，處理常式改名為 `State_TreeEdited`。
 
 - [ ] **A4 抽出剪貼簿**
   - Columns.Editing 的剪貼簿讀寫與 `CLIPBOARD_FORMAT` 移到 `Views/CascadeClipboard.cs`。類別為 public，只公開常數，方法為 internal。
@@ -285,7 +290,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **A3 編輯邏輯移到 State**。A0、A1、A2 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **A4 抽出剪貼簿**。A0 到 A3 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

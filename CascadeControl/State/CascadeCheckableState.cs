@@ -89,6 +89,16 @@ namespace CascadeControl.State
         /// </summary>
         protected virtual void OnCheckSetChanged(EventArgs e) => CheckSetChanged?.Invoke(this, e);
 
+        /// <summary>
+        /// 取消被移除節點（連同子孫）的勾選；和移除在同一組歷史步驟裡，所以復原時勾選一起回來。
+        /// </summary>
+        /// <param name="nodes">被移除的節點（不含子孫）。</param>
+        protected override void OnNodesRemoved(IReadOnlyList<MenuNode> nodes)
+        {
+            base.OnNodesRemoved(nodes);
+            _checkSet?.UncheckRemoved(nodes);
+        }
+
         private void OnInnerCheckSetChanged(object sender, MenuCheckChangedEventArgs e) => OnCheckedChanged(e);
     }
 }

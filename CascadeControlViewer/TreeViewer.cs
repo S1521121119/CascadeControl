@@ -38,7 +38,7 @@ namespace CascadeControlViewer
 
             // Demo 預設開啟編輯；勾選 ReadOnly 切回唯讀（只能點選、多選與複製）。
             cascadeView1.ReadOnly = isReadonly;
-            cascadeView1.TreeEdited += CascadeView1_TreeEdited;
+            cascadeView1.State.TreeEdited += State_TreeEdited;
             cascadeView1.MultiSelectionChanged += CascadeView1_MultiSelectionChanged;
 
             // 拖進表單的任何地方都能載入：子控制項各自接收拖放，事件轉給同一組處理常式。
@@ -241,9 +241,9 @@ namespace CascadeControlViewer
         #region 編輯（按鈕轉呼叫控制項的編輯指令；右鍵功能表與快捷鍵由控制項自己處理）
 
         /// <summary>
-        /// 樹被編輯之後（功能表、快捷鍵或按鈕都會走到這裡）：寫記錄並重畫樹狀圖；勾選狀態已經由控制項自己對齊新的結構。
+        /// 樹被編輯之後（功能表、快捷鍵或按鈕都會走到這裡）：寫記錄；樹狀圖已經由共用的 State 通知重畫，被移除節點的勾選也已經由 State 取消。
         /// </summary>
-        private void CascadeView1_TreeEdited(object sender, CascadeTreeEditedEventArgs e)
+        private void State_TreeEdited(object sender, CascadeTreeEditedEventArgs e)
         {
             // 剪下與刪除的節點已經脫離樹，FullPathText 是空的，改寫名稱。
             var nodes = string.Join("、", e.Nodes.Select(node => node.Parent == null ? node.Name : node.FullPathText));

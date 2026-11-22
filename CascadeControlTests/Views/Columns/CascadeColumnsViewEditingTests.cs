@@ -12,7 +12,7 @@ using System.Windows.Forms;
 namespace CascadeControlTests.Views.Columns
 {
     /// <summary>
-    /// 透過 <see cref="CascadeColumnsView"/> 的公開 API 釘住編輯之後的樹形、選取，以及 <see cref="CascadeColumnsView.TreeEdited"/> 的內容。
+    /// 透過 <see cref="CascadeColumnsView"/> 的公開 API 釘住編輯之後的樹形、選取，以及 <see cref="CascadeState.TreeEdited"/> 的內容。
     /// </summary>
     /// <remarks>刪除會跳確認框，不在這裡測。用到 Windows 剪貼簿的測試在 STA 執行緒上執行。</remarks>
     [TestClass]
@@ -482,7 +482,7 @@ namespace CascadeControlTests.Views.Columns
         }
 
         /// <summary>
-        /// 顯示在螢幕外的 <see cref="CascadeColumnsView"/>，綁著 A &gt; A1、A &gt; A2、B、C 這棵樹，並記下每一次 <see cref="CascadeColumnsView.TreeEdited"/>。
+        /// 顯示在螢幕外的 <see cref="CascadeColumnsView"/>，綁著 A &gt; A1、A &gt; A2、B、C 這棵樹，並記下每一次 <see cref="CascadeState.TreeEdited"/>。
         /// </summary>
         private sealed class Fixture : IDisposable
         {
@@ -496,7 +496,7 @@ namespace CascadeControlTests.Views.Columns
                 Assert.IsTrue(View.ReadOnly, "預設唯讀");
                 View.ReadOnly = readOnly;
                 View.SetTree(Tree);
-                View.TreeEdited += (sender, e) => Edits.Add(e);
+                View.State.TreeEdited += (sender, e) => Edits.Add(e);
             }
 
             public MenuTree Tree { get; } = new MenuTree();
@@ -533,7 +533,7 @@ namespace CascadeControlTests.Views.Columns
                 if (!succeeded) Assert.Inconclusive($"{command} 回傳 false：剪貼簿被其他程式佔用。");
             }
 
-            /// <summary>到目前為止只觸發過一次 <see cref="CascadeColumnsView.TreeEdited"/>，內容如指定。</summary>
+            /// <summary>到目前為止只觸發過一次 <see cref="CascadeState.TreeEdited"/>，內容如指定。</summary>
             public void AssertEdits(CascadeEditAction action, params MenuNode[] nodes)
             {
                 Assert.AreEqual(1, Edits.Count);

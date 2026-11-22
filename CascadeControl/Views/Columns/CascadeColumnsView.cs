@@ -1,4 +1,4 @@
-using CascadeControl.Common;
+﻿using CascadeControl.Common;
 using CascadeControl.State;
 using CascadeControl.Trees;
 using System;
@@ -101,6 +101,7 @@ namespace CascadeControl.Views.Columns
         {
             state.Invalidated += OnStateInvalidated;
             state.SelectedPathChanged += OnStateSelectedPathChanged;
+            state.TreeEdited += State_TreeEdited;
             AttachCheckableState(state);
         }
 
@@ -110,6 +111,7 @@ namespace CascadeControl.Views.Columns
 
             state.Invalidated -= OnStateInvalidated;
             state.SelectedPathChanged -= OnStateSelectedPathChanged;
+            state.TreeEdited -= State_TreeEdited;
             DetachCheckableState(state);
         }
 

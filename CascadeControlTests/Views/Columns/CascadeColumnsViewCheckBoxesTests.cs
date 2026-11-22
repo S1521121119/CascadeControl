@@ -667,7 +667,7 @@ namespace CascadeControlTests.Views.Columns
                 var reboot = tree.TopLevelNodes[0].Children[0];
                 var motor = tree.TopLevelNodes[1];
                 var edits = new List<CascadeTreeEditedEventArgs>();
-                host.View.TreeEdited += (sender, e) => edits.Add(e);
+                host.View.State.TreeEdited += (sender, e) => edits.Add(e);
 
                 set.Check(reboot);                                      // 1. 勾選
                 Assert.IsTrue(host.View.TrySelectNode(reboot));

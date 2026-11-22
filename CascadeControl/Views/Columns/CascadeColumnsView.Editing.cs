@@ -161,27 +161,6 @@ namespace CascadeControl.Views.Columns
         public bool IsEditing => _edit != null;
 
         /// <summary>
-        /// 使用者透過功能表、快捷鍵或編輯框改了樹，或 <see cref="Undo"/>、<see cref="Redo"/> 退回或重做了改到樹的步驟之後觸發；選取與欄位已經更新完畢。
-        /// </summary>
-        /// <remarks>複製不改樹，所以不觸發。取消編輯、改名成原本的名稱、復原或重做只改勾選的步驟也不觸發。</remarks>
-        [Category("Cascade")]
-        public event EventHandler<CascadeTreeEditedEventArgs> TreeEdited;
-
-        /// <summary>
-        /// 觸發 <see cref="TreeEdited"/>。
-        /// </summary>
-        /// <remarks>
-        /// <see cref="CheckBoxes"/> 為 true 時，剪下、刪除之後會先取消被移除節點（連同子孫）的勾選再觸發，和移除算同一步，復原時一起回來。
-        /// </remarks>
-        protected virtual void OnTreeEdited(CascadeTreeEditedEventArgs e)
-        {
-            if (e == null) throw new ArgumentNullException(nameof(e));
-
-            UncheckRemovedNodes(e);
-            TreeEdited?.Invoke(this, e);
-        }
-
-        /// <summary>
         /// 內建快顯功能表開啟之前呼叫，內建項目的狀態已經設好；預設不做任何事。
         /// </summary>
         /// <param name="menu"><see cref="NodeContextMenu"/> 或 <see cref="ColumnContextMenu"/>。</param>
@@ -318,7 +297,7 @@ namespace CascadeControl.Views.Columns
             var targets = ContextMenuNodes;
             var single = SingleContextMenuNode;
             var show = targets.Count > 0;
-            var editable = show && CanEdit && targets.All(IsInTree);
+            var editable = show && CanEdit && targets.All(_state.IsInTree);
 
             _copyItem.Available = show;
             _copyPathItem.Available = show;
@@ -528,8 +507,8 @@ namespace CascadeControl.Views.Columns
         /// </summary>
         /// <returns>有復原時為 true；<see cref="CanUndo"/> 為 false，或樹已經和記錄時對不上（這時整份歷史會被清除）時為 false。</returns>
         /// <remarks>
-        /// 改到樹的步驟：重建欄位，選取跳到那一步的位置（回到樹裡的節點，或被拿掉的節點原位置的鄰居），回來的節點不只一個時全部多選，
-        /// 然後觸發 <see cref="TreeEdited"/>（<see cref="CascadeEditAction.Undo"/>）。只改勾選的步驟：選取跳到那一步針對的節點。
+        /// 由 <see cref="CascadeState.Undo"/> 執行：選取跳到那一步的位置，改到樹時觸發 <see cref="CascadeState.TreeEdited"/>。
+        /// 回來的節點不只一個時全部多選。
         /// </remarks>
         public bool Undo() => Replay(undo: true);
 
@@ -537,7 +516,7 @@ namespace CascadeControl.Views.Columns
         /// 重做最近一次被復原的步驟；進行中的就地編輯會先套用。
         /// </summary>
         /// <returns>有重做時為 true；<see cref="CanRedo"/> 為 false，或樹已經和記錄時對不上時為 false。</returns>
-        /// <remarks>選取與事件的規則同 <see cref="Undo"/>，事件的種類是 <see cref="CascadeEditAction.Redo"/>。</remarks>
+        /// <remarks>由 <see cref="CascadeState.Redo"/> 執行，規則同 <see cref="Undo"/>。</remarks>
         public bool Redo() => Replay(undo: false);
 
         #endregion 公開的編輯指令
@@ -549,23 +528,7 @@ namespace CascadeControl.Views.Columns
             CommitPendingEdit();
             if (!(undo ? CanUndo : CanRedo)) return false;
 
-            var hadFocus = ContainsFocus;
-            var result = undo ? State.History.Undo() : State.History.Redo();
-            if (result == null) return false;
-
-            if (result.TreeChanged)
-            {
-                // 節點回到樹裡（復原刪除、重做貼上）且不只一個時多選，和貼上之後一樣。
-                var restored = result.Nodes.Count > 1 && result.Nodes.All(IsInTree);
-                FinishEdit(undo ? CascadeEditAction.Undo : CascadeEditAction.Redo, result.Nodes, result.Focus, restored);
-            }
-            else if (IsInTree(result.Focus))
-            {
-                TrySelectNode(result.Focus);
-            }
-
-            if (hadFocus) FocusActiveColumn();
-            return true;
+            return KeepFocus(() => (undo ? State.Undo() : State.Redo()) != null);
         }
 
         #endregion 復原與重做
@@ -581,21 +544,6 @@ namespace CascadeControl.Views.Columns
 
             return SelectedNode is MenuNode node ? new[] { node } : NoMenuNodes;
         }
-
-        // 節點是否屬於目前顯示的樹；樹根不算。
-        private bool IsInTree(MenuNode node)
-        {
-            if (node == null || Tree == null || ReferenceEquals(node, Tree.Root)) return false;
-
-            for (var current = node.Parent; current != null; current = current.Parent)
-            {
-                if (ReferenceEquals(current, Tree.Root)) return true;
-            }
-
-            return false;
-        }
-
-        private bool IsInTreeOrRoot(MenuNode node) => Tree != null && (ReferenceEquals(node, Tree.Root) || IsInTree(node));
 
         // 第 columnIndex 欄的節點是誰的子節點：第一欄是樹根，其他欄是路徑上前一欄的節點；那一欄不存在時為 null。
         private MenuNode ColumnParent(int columnIndex)
@@ -614,23 +562,22 @@ namespace CascadeControl.Views.Columns
             return ColumnNodes(columnIndex);
         }
 
-        private bool CanEditNodes(IReadOnlyList<MenuNode> nodes) => CanEdit && nodes != null && nodes.Count > 0 && nodes.All(IsInTree);
+        private bool CanEditNodes(IReadOnlyList<MenuNode> nodes) => CanEdit && nodes != null && nodes.Count > 0 && nodes.All(_state.IsInTree);
 
-        /// <summary>
-        /// 改完樹之後：重建欄位並選取 <paramref name="select"/>（null 表示不選取），<paramref name="markNodes"/> 時把多個節點多選，最後觸發 <see cref="TreeEdited"/>。
-        /// </summary>
-        /// <remarks>
-        /// 使用者的編輯要在 <see cref="MenuHistory.BeginGroup"/> 裡呼叫，衍生類別在 <see cref="OnTreeEdited"/> 跟著做的異動（例如取消被刪節點的勾選）才會和編輯算同一步。
-        /// </remarks>
-        private void FinishEdit(CascadeEditAction action, IReadOnlyList<MenuNode> nodes, MenuNode select, bool markNodes)
+        // 編輯會重建欄位，焦點原本在控制項裡時交回操作欄。
+        private T KeepFocus<T>(Func<T> edit)
         {
             var hadFocus = ContainsFocus;
-
-            RefreshColumns(select?.FullPath ?? NoMenuNodes);
-            if (markNodes && nodes.Count > 1) SetMarks(nodes[0].Depth - 1, nodes);
+            var result = edit();
             if (hadFocus) FocusActiveColumn();
+            return result;
+        }
 
-            OnTreeEdited(new CascadeTreeEditedEventArgs(action, nodes));
+        // 任何一個綁同一份 State 的檢視編輯了樹：回到樹裡的節點不只一個時（貼上、復原刪除、重做貼上）全部多選。
+        private void State_TreeEdited(object sender, CascadeTreeEditedEventArgs e)
+        {
+            var nodes = e.Nodes;
+            if (nodes.Count > 1 && nodes.All(_state.IsInTree)) SetMarks(nodes[0].Depth - 1, nodes);
         }
 
         #endregion 對象與樹
@@ -746,8 +693,7 @@ namespace CascadeControl.Views.Columns
         {
             if (!CanEditNodes(nodes) || !CopyNodes(nodes)) return false;
 
-            RemoveNodes(CascadeEditAction.Cut, nodes);
-            return true;
+            return KeepFocus(() => State.CutNodes(nodes));
         }
 
         private bool DeleteNodes(IReadOnlyList<MenuNode> nodes)
@@ -768,35 +714,12 @@ namespace CascadeControl.Views.Columns
             // 對話框開著的時候樹可能被換掉，再確認一次。
             if (!CanEditNodes(nodes)) return false;
 
-            RemoveNodes(CascadeEditAction.Delete, nodes);
-            return true;
-        }
-
-        // 移除後選取原位置的下一個兄弟（沒有就選前一個），一個都不剩時選父節點。
-        // 對象都在同一欄，也就是同一個父節點底下；記下移除前的位置，復原時才接得回原處。
-        private void RemoveNodes(CascadeEditAction action, IReadOnlyList<MenuNode> nodes)
-        {
-            var parent = nodes[0].Parent;
-            var removed = nodes.Select(node => new KeyValuePair<int, MenuNode>(node.SiblingNumber - 1, node)).ToList();
-            var firstIndex = removed.Min(entry => entry.Key);
-
-            using (State.History.BeginGroup())
-            {
-                foreach (var node in nodes) node.RemoveFromParent();
-                State.History.RecordRemove(Tree, parent, removed);
-
-                MenuNode next = null;
-                if (parent.Children.Count > 0) next = parent.Children[Math.Min(firstIndex, parent.Children.Count - 1)];
-                else if (!ReferenceEquals(parent, Tree.Root)) next = parent;
-
-                ClearMultiSelection();
-                FinishEdit(action, nodes, next, markNodes: false);
-            }
+            return KeepFocus(() => State.DeleteNodes(nodes));
         }
 
         private bool PasteBeside(MenuNode target, bool before)
         {
-            if (!IsInTree(target)) return false;
+            if (!_state.IsInTree(target)) return false;
 
             var position = target.SiblingNumber - 1 + (before ? 0 : 1);
             return PasteInto(target.Parent, position);
@@ -805,7 +728,7 @@ namespace CascadeControl.Views.Columns
         // 貼成葉節點的子節點；已經有子節點的節點不接受，和建立子節點的規則一致。
         private bool PasteIntoLeaf(MenuNode target)
         {
-            if (!IsInTree(target) || !target.IsLeaf) return false;
+            if (!_state.IsInTree(target) || !target.IsLeaf) return false;
 
             return PasteInto(target, 0);
         }
@@ -818,26 +741,12 @@ namespace CascadeControl.Views.Columns
 
         private bool PasteInto(MenuNode parent, int position)
         {
-            if (!CanEdit || !IsInTreeOrRoot(parent)) return false;
+            if (!CanEdit || !_state.IsInTreeOrRoot(parent)) return false;
 
             var sources = ReadClipboardNodes();
             if (sources.Count == 0) return false;
 
-            using (State.History.BeginGroup())
-            {
-                // 名稱一律取不重複的，所以每一個都是新節點，不會合併進既有的節點。
-                var pasted = new List<MenuNode>(sources.Count);
-                foreach (var source in sources)
-                {
-                    pasted.Add(parent.InsertChildAt(position, source, parent.GetUniqueChildName(source.Name)));
-                    position++;
-                }
-
-                State.History.RecordInsert(Tree, parent, pasted);
-                FinishEdit(CascadeEditAction.Paste, pasted, pasted[0], markNodes: true);
-            }
-
-            return true;
+            return KeepFocus(() => State.PasteNodes(parent, position, sources).Count > 0);
         }
 
         #endregion 剪下、貼上、刪除
@@ -856,7 +765,7 @@ namespace CascadeControl.Views.Columns
         private bool BeginInsertAtEnd(int columnIndex)
         {
             var parent = ColumnParent(columnIndex);
-            if (!CanEdit || !IsInTreeOrRoot(parent)) return false;
+            if (!CanEdit || !_state.IsInTreeOrRoot(parent)) return false;
 
             CommitPendingEdit();
             ClearMultiSelection();
@@ -1119,48 +1028,28 @@ namespace CascadeControl.Views.Columns
             var hadFocus = session.Box.ContainsFocus;
             CloseEditBox(session, hadFocus);
 
-            using (State.History.BeginGroup())
+            // 編輯成功時 State 會 Refresh 重建欄位，多長出來的那一欄要先收掉。
+            _pendingChildParent = null;
+            var result = commit && name.Length > 0 ? ApplyEdit(session, name) : null;
+            if (result == null)
             {
-                var result = commit && name.Length > 0 ? ApplyEdit(session, name) : null;
-                _pendingChildParent = null;
-
-                if (result != null)
-                {
-                    FinishEdit(session.Action, new[] { result }, result, markNodes: false);
-                }
-                else
-                {
-                    RemovePlaceholder(session);
-                    SyncColumns();
-                }
+                RemovePlaceholder(session);
+                SyncColumns();
             }
 
             if (hadFocus) FocusActiveColumn();
             return true;
         }
 
-        // 套用輸入的名稱並記進 State.History；同一層已有同名節點時自動加上後綴，所以不會合併。對象已經不在樹裡，或改名成原本的名稱時回傳 null。
+        // 交給 State 套用輸入的名稱；對象已經不在樹裡，或改名成原本的名稱時回傳 null。
         private MenuNode ApplyEdit(EditSession session, string name)
         {
             switch (session.Action)
             {
-                case CascadeEditAction.Insert:
-                case CascadeEditAction.CreateChild:
-                    if (!IsInTreeOrRoot(session.Parent)) return null;
-                    var inserted = session.Parent.InsertChildAt(session.Position, new MenuNode(name), session.Parent.GetUniqueChildName(name));
-                    State.History.RecordInsert(Tree, session.Parent, new[] { inserted });
-                    return inserted;
-
-                case CascadeEditAction.Rename:
-                    var target = (MenuNode)session.RowNode;
-                    if (!IsInTree(target) || string.Equals(target.Name, name, StringComparison.Ordinal)) return null;
-                    var oldName = target.Name;
-                    var renamed = target.Rename(target.Parent.GetUniqueChildName(name));
-                    State.History.RecordRename(Tree, renamed, oldName);
-                    return renamed;
-
-                default:
-                    return null;
+                case CascadeEditAction.Insert: return State.InsertNode(session.Parent, session.Position, name);
+                case CascadeEditAction.CreateChild: return State.CreateChild(session.Parent, name);
+                case CascadeEditAction.Rename: return State.RenameNode((MenuNode)session.RowNode, name);
+                default: return null;
             }
         }
 

@@ -54,6 +54,9 @@
     <Compile Include="State\CascadeNavigator.cs" />
     <Compile Include="State\CascadeNodeEventArgs.cs" />
     <Compile Include="State\CascadeState.cs" />
+    <Compile Include="State\CascadeState.Editing.cs">
+      <DependentUpon>CascadeState.cs</DependentUpon>
+    </Compile>
     <Compile Include="State\CascadeTreeEditedEventArgs.cs" />
     <Compile Include="Views\CascadeNodeMouseEventArgs.cs" />
     <Compile Include="Views\ICascadeCheckableView.cs" />

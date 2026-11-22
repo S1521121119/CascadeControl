@@ -6,7 +6,7 @@ using System.Linq;
 namespace CascadeControl.State
 {
     /// <summary>
-    /// <see cref="Views.Columns.CascadeColumnsView.TreeEdited"/> 的事件參數。
+    /// <see cref="CascadeState.TreeEdited"/> 的事件參數。
     /// </summary>
     public class CascadeTreeEditedEventArgs : EventArgs
     {

@@ -67,8 +67,8 @@ namespace CascadeControl.Views.Columns
         /// 右鍵不改選取：勾選項目放在 <see cref="NodeContextMenu"/> 與 <see cref="ColumnContextMenu"/> 的最前面，後面接復原、重做與編輯項目。
         /// 勾了但子孫沒有全勾的節點畫成「部分勾選」，那只是提示，狀態仍然是已勾選。
         /// 只有屬於 <see cref="CheckSet"/> 那棵樹的 <see cref="MenuNode"/> 才有勾選框；其他節點的外觀與行為和沒有勾選框時相同。
-        /// 剪下、刪除節點時，被移除節點的勾選會一起取消，和移除算同一步，所以復原時勾選也會回來。
         /// false 時 <see cref="CheckSet"/> 與 <see cref="CheckedChanged"/> 照常可用，勾選也照常記進歷史，只是不畫也不操作勾選框；切換不會清空歷史。
+        /// 不論 true 或 false，剪下、刪除節點時，被移除節點的勾選都會一起取消（<see cref="CascadeCheckableState"/>），和移除算同一步，所以復原時勾選也會回來。
         /// </remarks>
         [Category("Cascade")]
         [Description("true：每一列前面顯示勾選框，可以勾選多個節點；false：只有選取。")]
@@ -160,18 +160,6 @@ namespace CascadeControl.Views.Columns
         private void OnStateCheckSetChanged(object sender, EventArgs e)
         {
             if (_checkBoxes) InvalidateNodes();
-        }
-
-        // 剪下、刪除節點之後先取消被移除節點（連同子孫）的勾選，再觸發 TreeEdited。
-        // 基底在同一組歷史步驟裡呼叫 OnTreeEdited，所以取消勾選和移除算同一步，復原時一起回來。
-        // 插入、貼上的新節點預設不勾選，改名不換節點，都不必處理；復原、重做的步驟自己帶著勾選的變化。
-        private void UncheckRemovedNodes(CascadeTreeEditedEventArgs e)
-        {
-            var checkSet = ActiveCheckSet;
-            if (checkSet != null && (e.Action == CascadeEditAction.Cut || e.Action == CascadeEditAction.Delete))
-            {
-                checkSet.UncheckRemoved(e.Nodes);
-            }
         }
 
         // 這個節點有沒有勾選框：要開著 CheckBoxes，而且是目前這份勾選的樹裡的節點。

@@ -1,4 +1,4 @@
-using CascadeControl.Common;
+﻿using CascadeControl.Common;
 using CascadeControl.Trees;
 using System;
 using System.Collections.Generic;
@@ -31,7 +31,7 @@ namespace CascadeControl.State
     /// 狀態集中在這個物件，檢視控制項只負責呈現與把使用者操作轉成對它的呼叫。
     /// 這個檔案不相依 System.Windows.Forms，可以在非 UI 邏輯與單元測試中直接使用。
     /// </remarks>
-    public class CascadeState
+    public partial class CascadeState
     {
         private static readonly IReadOnlyList<ICascadeNode> NoNodes = new ICascadeNode[0];
 
@@ -46,17 +46,6 @@ namespace CascadeControl.State
         /// 目前顯示的選單樹：由 <see cref="SetTree"/> 設定；以 <see cref="SetTopLevelNodes"/> 設定其他資料或 <see cref="Clear"/> 後為 null。
         /// </summary>
         public MenuTree Tree { get; private set; }
-
-        /// <summary>
-        /// 復原／重做的歷史：綁定這份狀態的所有檢視控制項共用同一條時間軸，樹的編輯與勾選（<see cref="CascadeCheckableState.CheckSet"/>）照發生的順序記在這裡；
-        /// 預設最多 <see cref="MenuHistory.DEFAULT_CAPACITY"/> 步。
-        /// </summary>
-        /// <remarks>
-        /// 複製不改樹，不進歷史。<see cref="SetTree"/>、<see cref="SetTopLevelNodes"/>、<see cref="Clear"/> 會清空歷史；換掉檢視控制項的 State 不會。
-        /// 在程式裡直接改 <see cref="MenuNode"/> 之後請呼叫 <see cref="MenuHistory.Clear"/>（或 <see cref="MenuCheckSet.Reconcile"/>，它也會清空）。
-        /// 要調整保留的步驟數，設定 <see cref="MenuHistory.Capacity"/>。
-        /// </remarks>
-        public MenuHistory History { get; } = new MenuHistory();
 
         /// <summary>
         /// 第一層的頂層節點清單；沒有資料時為空集合。

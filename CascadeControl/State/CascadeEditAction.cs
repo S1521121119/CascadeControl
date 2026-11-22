@@ -1,7 +1,7 @@
 namespace CascadeControl.State
 {
     /// <summary>
-    /// <see cref="Views.Columns.CascadeColumnsView.TreeEdited"/> 對樹做了哪一種編輯。
+    /// <see cref="CascadeState.TreeEdited"/> 對樹做了哪一種編輯。
     /// </summary>
     public enum CascadeEditAction
     {
@@ -23,10 +23,10 @@ namespace CascadeControl.State
         /// <summary>刪除。</summary>
         Delete,
 
-        /// <summary>復原了一個改到樹的步驟（<see cref="Views.Columns.CascadeColumnsView.Undo"/>）。只改勾選的步驟不觸發 <see cref="Views.Columns.CascadeColumnsView.TreeEdited"/>。</summary>
+        /// <summary>復原了一個改到樹的步驟（<see cref="CascadeState.Undo"/>）。只改勾選的步驟不觸發 <see cref="CascadeState.TreeEdited"/>。</summary>
         Undo,
 
-        /// <summary>重做了一個改到樹的步驟（<see cref="Views.Columns.CascadeColumnsView.Redo"/>）。只改勾選的步驟不觸發 <see cref="Views.Columns.CascadeColumnsView.TreeEdited"/>。</summary>
+        /// <summary>重做了一個改到樹的步驟（<see cref="CascadeState.Redo"/>）。只改勾選的步驟不觸發 <see cref="CascadeState.TreeEdited"/>。</summary>
         Redo,
     }
 }
