@@ -1,0 +1,69 @@
+# MindMap 圖示：左邊的根節點（綠）分出三條支線接到右邊三個子節點（淡紫），
+# 對應 MindMap 主畫面 CascadeDiagramView 畫出來的樹：根在左、子節點在右，用線連接。
+# 16 手繪；32 由方塊與線條組成，方塊內的 navy 橫條是節點文字。光源左上：l/L 亮、b/B 本體、s/S 暗。
+
+palette
+  . 00000000    # 透明
+  K FF000000    # 外框與連線
+  L FFC8E8B8    # 根節點亮邊
+  B FF90C878    # 根節點本體
+  S FF407030    # 根節點暗邊
+  l FFE8E0F0    # 子節點亮邊
+  b FFB8A8D0    # 子節點本體
+  s FF605080    # 子節點暗邊
+  N FF000080    # 節點文字
+end
+
+size 16
+.........KKKKKK.
+.........KlbbbK.
+.......KKKbbbsK.
+.......K.KKKKKK.
+KKKKKK.K........
+KLLLBK.K.KKKKKK.
+KLBBSKKKKKlbbbK.
+KLBBSK.K.KbbbsK.
+KBSSSK.K.KKKKKK.
+KKKKKK.K........
+.......K.KKKKKK.
+.......KKKlbbbK.
+.........KbbbsK.
+.........KKKKKK.
+................
+................
+end
+
+size 32
+..................KKKKKKKKKKKK..
+..................KlllllllllsK..
+..................KlbbbbbbbbsK..
+..................KlbbbbbbbbsK..
+..............KKKKKlbNNNNNbbsK..
+..............KKKKKlbNNNNNbbsK..
+..............KK..KlbbbbbbbbsK..
+..............KK..KlbbbbbbbbsK..
+..............KK..KssssssssssK..
+..............KK..KKKKKKKKKKKK..
+KKKKKKKKKKKK..KK................
+KLLLLLLLLLSK..KK..KKKKKKKKKKKK..
+KLBBBBBBBBSK..KK..KlllllllllsK..
+KLBBBBBBBBSK..KK..KlbbbbbbbbsK..
+KLBBBBBBBBSK..KK..KlbbbbbbbbsK..
+KLBNNNNNBBSKKKKKKKKlbNNNNNbbsK..
+KLBNNNNNBBSKKKKKKKKlbNNNNNbbsK..
+KLBBBBBBBBSK..KK..KlbbbbbbbbsK..
+KLBBBBBBBBSK..KK..KlbbbbbbbbsK..
+KLBBBBBBBBSK..KK..KssssssssssK..
+KSSSSSSSSSSK..KK..KKKKKKKKKKKK..
+KKKKKKKKKKKK..KK................
+..............KK..KKKKKKKKKKKK..
+..............KK..KlllllllllsK..
+..............KK..KlbbbbbbbbsK..
+..............KK..KlbbbbbbbbsK..
+..............KKKKKlbNNNNNbbsK..
+..............KKKKKlbNNNNNbbsK..
+..................KlbbbbbbbbsK..
+..................KlbbbbbbbbsK..
+..................KssssssssssK..
+..................KKKKKKKKKKKK..
+end

@@ -1,4 +1,4 @@
-using CascadeControl.State;
+﻿using CascadeControl.State;
 using CascadeControl.Trees;
 using System;
 using System.Collections.Generic;
@@ -317,7 +317,8 @@ namespace CascadeControl.Views.Diagram
             return new TextBox
             {
                 Name = "txtEdit",
-                Font = Font,
+                // 放大時用另外建立的字型，CloseEditBox 負責釋放。
+                Font = _zoomFactor == 1f ? Font : new Font(Font.FontFamily, Font.Size * _zoomFactor, Font.Style, Font.Unit),
                 Text = text,
                 ImeMode = ImeMode.NoControl,
             };
@@ -464,7 +465,9 @@ namespace CascadeControl.Views.Diagram
             if (box.ContainsFocus && CanFocus) Focus();
 
             Controls.Remove(box);
+            var zoomedFont = ReferenceEquals(box.Font, Font) ? null : box.Font;
             box.Dispose();
+            zoomedFont?.Dispose();
         }
 
         /// <summary>

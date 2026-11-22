@@ -59,6 +59,11 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         public void ClearMultiSelection() => SetMarks(NoMenuNodes);
 
+        /// <summary>
+        /// 多選圖上畫出來的所有節點；被收合或不在 <see cref="DrawScope"/> 範圍內的節點不算。
+        /// </summary>
+        public void SelectAll() => SetMarks(_image?.Nodes.Select(imageNode => imageNode.Node) ?? NoMenuNodes);
+
         private void SetMarks(IEnumerable<MenuNode> nodes)
         {
             var next = new HashSet<MenuNode>(nodes);

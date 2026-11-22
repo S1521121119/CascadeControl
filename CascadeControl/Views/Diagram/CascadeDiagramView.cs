@@ -56,6 +56,7 @@ namespace CascadeControl.Views.Diagram
         private CascadeDiagramUncheckedDisplay _uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed;
         private bool _showChecks;
         private CascadeDiagramSizeMode _sizeMode = CascadeDiagramSizeMode.ActualSize;
+        private float _zoomFactor = 1f;
 
         /// <summary>
         /// 建立控制項。
@@ -253,6 +254,30 @@ namespace CascadeControl.Views.Diagram
                 UpdateScrollSize();
                 PositionEditBox();
                 Invalidate();
+                OnDrawSettingsChanged(EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// 畫圖的放大倍率：1 是原始尺寸，2 是兩倍。整張圖以這個倍率重畫（不是拉伸點陣圖），文字與線條保持清晰；就地編輯框的字型一起放大。
+        /// </summary>
+        /// <remarks>
+        /// <see cref="SizeMode"/> 為 <see cref="CascadeDiagramSizeMode.Zoom"/> 時，放大後的圖仍會縮小到整張看得到。
+        /// 圖的任一邊超過點陣圖上限時，實際倍率會再縮小到放得下。
+        /// </remarks>
+        /// <exception cref="ArgumentOutOfRangeException">設為 0、負數、NaN 或無限大。</exception>
+        [Category("Cascade")]
+        [Description("畫圖的放大倍率：1 是原始尺寸，2 是兩倍。")]
+        [DefaultValue(1f)]
+        public float ZoomFactor
+        {
+            get => _zoomFactor;
+            set
+            {
+                if (!(value > 0f) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(nameof(value), value, "放大倍率必須是正數。");
+                if (_zoomFactor == value) return;
+                _zoomFactor = value;
+                Redraw();
                 OnDrawSettingsChanged(EventArgs.Empty);
             }
         }

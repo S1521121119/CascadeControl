@@ -364,6 +364,52 @@ namespace CascadeControlTests.Views.Diagram
             }
         }
 
+        [TestMethod]
+        public void SelectAll_MarksEveryDrawnNode_SkipsCollapsedChildren()
+        {
+            using (var f = new Fixture())
+            {
+                f.View.SelectAll();
+                f.AssertMarks("A", "A > A1", "A > A2", "B", "C");
+                Assert.AreEqual(1, f.MarkEvents);
+
+                f.View.ClearMultiSelection();
+                f.View.SetExpanded(f.Node("A"), false);
+                f.View.SelectAll();
+                f.AssertMarks("A", "B", "C");
+            }
+        }
+
+        [TestMethod]
+        public void ZoomFactor_ScalesDrawing_HitTestingFollows()
+        {
+            using (var f = new Fixture())
+            {
+                var normal = f.BoundsOf("B");
+                var normalWidth = f.View.Image.Width;
+
+                f.View.ZoomFactor = 2f;
+
+                var zoomed = f.BoundsOf("B");
+                Assert.AreEqual(normal.Width * 2, zoomed.Width, 2);
+                Assert.AreEqual(normal.Height * 2, zoomed.Height, 2);
+                Assert.AreEqual(normalWidth * 2, f.View.Image.Width, 2);
+                Assert.AreSame(f.Node("B"), f.View.GetNodeAt(new Point(normal.Left * 2 + 1, normal.Top * 2 + 1)));
+            }
+        }
+
+        [TestMethod]
+        public void ZoomFactor_RejectsNonPositive()
+        {
+            using (var view = new CascadeDiagramView())
+            {
+                foreach (var value in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
+                    Assert.ThrowsException<ArgumentOutOfRangeException>(() => view.ZoomFactor = value, value.ToString());
+
+                Assert.AreEqual(1f, view.ZoomFactor);
+            }
+        }
+
         private sealed class Fixture : IDisposable
         {
             public Fixture()
@@ -433,6 +479,8 @@ namespace CascadeControlTests.Views.Diagram
             }
 
             // 逐點用 GetNodeAt 找出節點方塊的範圍。
+            public Rectangle BoundsOf(string fullPathText) => Bounds(fullPathText);
+
             private Rectangle Bounds(string fullPathText)
             {
                 var node = Node(fullPathText);

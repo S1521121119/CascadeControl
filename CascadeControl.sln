@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CascadeControlSelector", "C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CascadeControlTests", "CascadeControlTests\CascadeControlTests.csproj", "{884CEF52-FBCC-4BBB-B88D-A4F64433A044}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MindMap", "MindMap\MindMap.csproj", "{F8F406BA-E3D4-4B04-B516-58A12B12052C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{884CEF52-FBCC-4BBB-B88D-A4F64433A044}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{884CEF52-FBCC-4BBB-B88D-A4F64433A044}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{884CEF52-FBCC-4BBB-B88D-A4F64433A044}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8F406BA-E3D4-4B04-B516-58A12B12052C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8F406BA-E3D4-4B04-B516-58A12B12052C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8F406BA-E3D4-4B04-B516-58A12B12052C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8F406BA-E3D4-4B04-B516-58A12B12052C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

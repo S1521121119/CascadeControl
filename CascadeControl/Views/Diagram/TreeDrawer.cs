@@ -265,7 +265,8 @@ namespace CascadeControl.Views.Diagram
             MenuNode selectedNode,
             Func<MenuNode, bool> isExpanded,
             Placeholder placeholder,
-            MovePreview preview = null)
+            MovePreview preview = null,
+            float zoom = 1f)
         {
             font = font ?? SystemFonts.DefaultFont;
             if (tree == null || !BelongsTo(selectedNode, tree)) selectedNode = null;
@@ -304,7 +305,7 @@ namespace CascadeControl.Views.Diagram
                     size = Arrange(g, font, format, roots, nodes);
                 }
 
-                var scale = Math.Min(1f, Math.Min(MAX_BITMAP_SIDE / size.Width, MAX_BITMAP_SIDE / size.Height));
+                var scale = Math.Min(zoom, Math.Min(MAX_BITMAP_SIDE / size.Width, MAX_BITMAP_SIDE / size.Height));
                 var bitmap = new Bitmap(
                     Math.Max(1, (int)Math.Ceiling(size.Width * scale)),
                     Math.Max(1, (int)Math.Ceiling(size.Height * scale)));
@@ -314,7 +315,7 @@ namespace CascadeControl.Views.Diagram
                     g.Clear(Color.White);
                     g.SmoothingMode = SmoothingMode.AntiAlias;
                     g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-                    if (scale < 1f) g.ScaleTransform(scale, scale);
+                    if (scale != 1f) g.ScaleTransform(scale, scale);
 
                     DrawLinks(g, nodes, showChecks, ghost: false);
                     foreach (var node in nodes.Where(node => !node.IsGhost)) DrawNode(g, font, format, node, showChecks);
@@ -762,7 +763,7 @@ namespace CascadeControl.Views.Diagram
                 {
                     lg.SmoothingMode = g.SmoothingMode;
                     lg.TextRenderingHint = g.TextRenderingHint;
-                    if (scale < 1f) lg.ScaleTransform(scale, scale);
+                    if (scale != 1f) lg.ScaleTransform(scale, scale);
 
                     DrawLinks(lg, nodes, showChecks, ghost: true);
                     foreach (var node in nodes.Where(node => node.IsGhost)) DrawNode(lg, font, format, node, showChecks);
