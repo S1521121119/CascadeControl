@@ -32,6 +32,32 @@ namespace CascadeControlTests.Views.Diagram
         #region TreeDrawer
 
         [TestMethod]
+        public void MovePreview_KeepsMovedNodesInPlace_AddsCopyUnderTarget()
+        {
+            var tree = new MenuTree();
+            tree.ExpandAndAddPaths("A", "A1|A2");
+            tree.AddPath(new[] { "B" });
+            tree.AddPath(new[] { "C" });
+            var a1 = Find(tree, "A", "A1");
+            var c = Find(tree, "C");
+
+            using (var plain = TreeDrawer.RenderImage(tree, SystemFonts.DefaultFont))
+            using (var preview = TreeDrawer.RenderImageWithPlaceholder(tree, SystemFonts.DefaultFont, null, CascadeDiagramDrawScope.WholeTree,
+                CascadeDiagramUncheckedDisplay.Dimmed, null, null, null, new TreeDrawer.MovePreview(c, new[] { a1 })))
+            {
+                Assert.AreEqual(2, preview.Nodes.Count(node => ReferenceEquals(node.Node, a1)), "原處一份、目標底下一份");
+
+                // 目標之前的節點（包括會被移走的 A1）位置不變，版面不會因為少了節點而跳動。
+                foreach (var path in new[] { new[] { "A" }, new[] { "A", "A1" }, new[] { "A", "A2" }, new[] { "B" } })
+                {
+                    var node = Find(tree, path);
+                    var name = node.FullPathText;
+                    Assert.AreEqual(plain.Nodes.First(n => ReferenceEquals(n.Node, node)).Bounds, preview.Nodes.First(n => ReferenceEquals(n.Node, node)).Bounds, name);
+                }
+            }
+        }
+
+        [TestMethod]
         public void RenderImage_WithoutIsExpanded_DrawsEveryNodeExpanded()
         {
             var tree = TestTrees.Template();

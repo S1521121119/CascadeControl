@@ -99,7 +99,8 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 拖曳移動時的預覽：<see cref="Nodes"/>（連同子孫）從原本的位置拿掉，改接在 <see cref="Parent"/> 的子節點最後面，畫成半透明。
+        /// 拖曳移動時的預覽：<see cref="Nodes"/>（連同子孫）另外接一份在 <see cref="Parent"/> 的子節點最後面，畫成半透明；
+        /// 原本的位置照樣畫出來，但調淡、外框改成灰色虛線，標示放開後會被移走。原處不拿掉，版面才不會因為少了節點而跳動。
         /// </summary>
         internal sealed class MovePreview
         {
@@ -143,6 +144,9 @@ namespace CascadeControl.Views.Diagram
 
             // 拖曳移動的預覽：接到新位置的節點（連同子孫），畫成半透明。
             public bool IsGhost { get; set; }
+
+            // 拖曳移動的預覽：留在原處、放開後會被移走的節點（連同子孫），調淡並畫灰色虛線外框。
+            public bool IsLeaving { get; set; }
 
             // 預覽移動時重新算的編號（1-based）；0 表示照原樹的 SiblingNumber。
             public int Number { get; set; }
@@ -371,15 +375,15 @@ namespace CascadeControl.Views.Diagram
             {
                 // 起點就是選取的節點，不另外框起來。
                 options.SelectedNode = null;
-                return BuildNode(selectedNode, 0, selectedNode.Depth, false, options);
+                return BuildNode(selectedNode, 0, selectedNode.Depth, false, false, options);
             }
 
-            // 佔位方塊在第一層時、或預覽移動時（第一層可能多出或少掉節點），要有 Root 才接得上。
+            // 佔位方塊在第一層時要有 Root 才接得上。預覽移動不改第一層：移走的節點留在原處，目標也不會是 Root。
             var placeholderAtTop = options.Placeholder != null && ReferenceEquals(options.Placeholder.Parent, tree.Root);
-            if (tree.TopLevelNodes.Count == 1 && !placeholderAtTop && options.Preview == null)
+            if (tree.TopLevelNodes.Count == 1 && !placeholderAtTop)
             {
                 var top = tree.TopLevelNodes[0];
-                return BuildNode(top, 0, top.Depth, false, options);
+                return BuildNode(top, 0, top.Depth, false, false, options);
             }
 
             var root = new LayoutNode { Source = tree.Root, Level = 0, Depth = 0, IsVirtualRoot = true };
@@ -392,7 +396,7 @@ namespace CascadeControl.Views.Diagram
 
         // 回傳 null 表示這個節點不畫（隱藏沒勾的節點時）。
         // depth 決定色系：一般就是原樹的深度；預覽移動時接到新位置的節點跟著新的父節點。
-        private static LayoutNode BuildNode(MenuNode source, int level, int depth, bool ghost, BuildOptions options)
+        private static LayoutNode BuildNode(MenuNode source, int level, int depth, bool ghost, bool leaving, BuildOptions options)
         {
             var isNodeChecked = options.IsChecked == null || options.IsChecked(source);
             if (!isNodeChecked && options.HideUnchecked) return null;
@@ -405,6 +409,7 @@ namespace CascadeControl.Views.Diagram
                 IsChecked = isNodeChecked,
                 IsSelected = ReferenceEquals(source, options.SelectedNode),
                 IsGhost = ghost,
+                IsLeaving = leaving,
             };
             AddChildren(node, options);
             node.IsFullyChecked &= isNodeChecked;
@@ -413,7 +418,7 @@ namespace CascadeControl.Views.Diagram
 
         // 加入子節點，並順便算出「子孫是否全勾」；被略過的子節點一定沒勾，所以父節點不算全勾。
         // 佔位方塊排在原樹第 Position 個子節點之前（隱藏沒勾的節點時照樣對得上），不算進全勾。
-        // 預覽移動時：被移動的節點從原處拿掉，接到新的父節點最後面（半透明），編號照移動後的順序重算。
+        // 預覽移動時：被移動的節點留在原處（標成會被移走，編號照原樹），另外接一份到新的父節點最後面（半透明）；其他節點的編號照移動後的順序重算。
         private static void AddChildren(LayoutNode parent, BuildOptions options)
         {
             var placeholder = options.Placeholder;
@@ -426,13 +431,13 @@ namespace CascadeControl.Views.Diagram
             for (var i = 0; i < children.Count; i++)
             {
                 if (placeholderHere != null && i == placeholderHere.Position) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
-                if (preview != null && preview.IsMoved(children[i])) continue;
+                var leaving = parent.IsLeaving || (preview != null && preview.IsMoved(children[i]));
+                if (!leaving) number++;
 
-                number++;
-                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, options);
+                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, leaving, options);
                 if (child != null)
                 {
-                    if (preview != null) child.Number = number;
+                    if (preview != null && !leaving) child.Number = number;
                     parent.Children.Add(child);
                 }
 
@@ -446,7 +451,7 @@ namespace CascadeControl.Views.Diagram
                 foreach (var moved in preview.Nodes)
                 {
                     number++;
-                    var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, true, options);
+                    var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, true, false, options);
                     if (ghost == null) continue;
 
                     ghost.Number = number;
@@ -682,7 +687,8 @@ namespace CascadeControl.Views.Diagram
         /// 有底色的節點，外框是同色系的深色（A、B 色各自調暗）；沒勾的節點一律白底、灰框、灰字，不分層也不分 A/B 色；
         /// 勾選的節點底色與外框顏色不變，外框加粗，全勾是實線、勾了但子孫沒有全勾是虛線。
         /// 有子節點的方塊在最右邊畫展開鈕（收合 [+]、展開 [-]）。
-        /// 選取的節點照樣畫原本的外框，再往外留 <see cref="SELECTED_BORDER_GAP"/> 的空隙另外畫一圈矩形紅框，不蓋住原本的外框。
+        /// 選取的節點照樣畫原本的外框，再往外留 <see cref="SELECTED_BORDER_GAP"/> 的空隙另外畫一圈矩形紅框，不蓋住原本的外框；
+        /// 預覽移動時會被移走的節點：底色往白色調淡 <see cref="LEAVING_FADE"/>，外框與文字用灰色，外框是虛線，不畫選取框。
         /// </remarks>
         private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks)
         {
@@ -707,6 +713,14 @@ namespace CascadeControl.Views.Diagram
             {
                 borderWidth = CHECKED_BORDER_WIDTH;
                 if (!node.IsFullyChecked) dashStyle = DashStyle.Dash;
+            }
+
+            if (node.IsLeaving)
+            {
+                back = Fade(back, LEAVING_FADE);
+                border = fore = DIMMED;
+                borderWidth = BORDER_WIDTH;
+                dashStyle = DashStyle.Dash;
             }
 
             // 圓角／直角依原樹決定：隱藏沒勾的節點時，子節點全被濾掉的節點仍然是圓角，看得出它原本還有下一層。
@@ -741,8 +755,17 @@ namespace CascadeControl.Views.Diagram
             }
 
             if (HasExpander(node)) DrawExpander(g, node, border);
-            if (node.IsSelected) DrawSelectionFrame(g, bounds, borderWidth);
+            if (node.IsSelected && !node.IsLeaving) DrawSelectionFrame(g, bounds, borderWidth);
         }
+
+        // 預覽移動時會被移走的節點，底色往白色調淡的比例（0 不變、1 全白）。
+        private const float LEAVING_FADE = 0.6f;
+
+        // 往白色調淡：每個 RGB 值往 255 靠近 ratio。
+        private static Color Fade(Color color, float ratio) => Color.FromArgb(
+            color.R + (int)((255 - color.R) * ratio),
+            color.G + (int)((255 - color.G) * ratio),
+            color.B + (int)((255 - color.B) * ratio));
 
         // 預覽移動時接到新位置的節點與連線的不透明度。
         private const float GHOST_OPACITY = 0.45f;
