@@ -1,0 +1,452 @@
+﻿CascadeControl.Common.CascadeNode :: public ctor(System.String name, System.String displayText, System.Object tag = null, System.Collections.Generic.IEnumerable<CascadeControl.Common.CascadeNode> children = null)
+CascadeControl.Common.CascadeNode :: public override method System.String ToString()
+CascadeControl.Common.CascadeNode :: public property System.Collections.Generic.IList<CascadeControl.Common.CascadeNode> Children { get; }
+CascadeControl.Common.CascadeNode :: public property System.Object Tag { get; }
+CascadeControl.Common.CascadeNode :: public property System.String DisplayText { get; }
+CascadeControl.Common.CascadeNode :: public property System.String Name { get; }
+CascadeControl.Common.CascadeNode :: type public sealed class : CascadeControl.Common.ICascadeNode
+CascadeControl.Common.ICascadeNode :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> Children { get; }
+CascadeControl.Common.ICascadeNode :: public property System.String DisplayText { get; }
+CascadeControl.Common.ICascadeNode :: public property System.String Name { get; }
+CascadeControl.Common.ICascadeNode :: type public interface
+CascadeControl.Common.MultiNameCellSyntax :: public const field System.Char NAME_SEPARATOR = |
+CascadeControl.Common.MultiNameCellSyntax :: public const field System.Int32 MAX_EXPANDED_ROWS = 65535
+CascadeControl.Common.MultiNameCellSyntax :: public static method System.String JoinNames(System.Collections.Generic.IEnumerable<System.String> names)
+CascadeControl.Common.MultiNameCellSyntax :: type public static class
+CascadeControl.Graphs.Csv.MenuGraphCsvFile :: public static method CascadeControl.Graphs.MenuGraph Load(System.String filePath, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.Csv.MenuGraphCsvFile :: public static method System.Void Save(CascadeControl.Graphs.MenuGraph graph, System.String filePath, CascadeControl.Graphs.MenuGraphRowStyle style = CascadeControl.Graphs.MenuGraphRowStyle.Expanded)
+CascadeControl.Graphs.Csv.MenuGraphCsvFile :: type public static class
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: public const field System.String HEADER_FROM = "From"
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: public const field System.String HEADER_TO = "To"
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: public static method CascadeControl.Graphs.MenuGraph Parse(System.String csvText, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: public static method System.String Format(CascadeControl.Graphs.MenuGraph graph, CascadeControl.Graphs.MenuGraphRowStyle style = CascadeControl.Graphs.MenuGraphRowStyle.Expanded)
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: public static method System.String[] CreateHeader()
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: public static method System.String[][] NormalizeRows(System.Collections.Generic.IEnumerable<System.String[]> rows, CascadeControl.Graphs.MenuGraphRowStyle style, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: public static method System.String[][] NormalizeRows(System.Collections.Generic.IEnumerable<System.String[]> rows, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.Csv.MenuGraphCsvText :: type public static class
+CascadeControl.Graphs.MenuEdge :: public ctor(CascadeControl.Graphs.MenuVertex from, CascadeControl.Graphs.MenuVertex to)
+CascadeControl.Graphs.MenuEdge :: public method System.Boolean Equals(CascadeControl.Graphs.MenuEdge other)
+CascadeControl.Graphs.MenuEdge :: public override method System.Boolean Equals(System.Object obj)
+CascadeControl.Graphs.MenuEdge :: public override method System.Int32 GetHashCode()
+CascadeControl.Graphs.MenuEdge :: public override method System.String ToString()
+CascadeControl.Graphs.MenuEdge :: public property CascadeControl.Graphs.MenuVertex From { get; }
+CascadeControl.Graphs.MenuEdge :: public property CascadeControl.Graphs.MenuVertex To { get; }
+CascadeControl.Graphs.MenuEdge :: public property System.Boolean IsConvergent { get; }
+CascadeControl.Graphs.MenuEdge :: public property System.Boolean IsLoop { get; }
+CascadeControl.Graphs.MenuEdge :: type public struct : System.IEquatable<CascadeControl.Graphs.MenuEdge>
+CascadeControl.Graphs.MenuGraph :: public const field System.Int32 MAX_EDGES = 65535
+CascadeControl.Graphs.MenuGraph :: public ctor()
+CascadeControl.Graphs.MenuGraph :: public method CascadeControl.Graphs.MenuEdge AddEdge(CascadeControl.Graphs.MenuVertex from, CascadeControl.Graphs.MenuVertex to)
+CascadeControl.Graphs.MenuGraph :: public method CascadeControl.Graphs.MenuEdge AddEdge(System.String fromName, System.String toName)
+CascadeControl.Graphs.MenuGraph :: public method CascadeControl.Graphs.MenuVertex GetOrAddVertex(System.String name)
+CascadeControl.Graphs.MenuGraph :: public method CascadeControl.Trees.MenuTree ToTree(CascadeControl.Graphs.MenuVertex start, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.MenuGraph :: public method CascadeControl.Trees.MenuTree ToTree(out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.MenuGraph :: public method System.Boolean ContainsVertex(System.String name)
+CascadeControl.Graphs.MenuGraph :: public method System.Boolean IsAcyclic()
+CascadeControl.Graphs.MenuGraph :: public method System.Boolean IsAdjacent(CascadeControl.Graphs.MenuVertex from, CascadeControl.Graphs.MenuVertex to)
+CascadeControl.Graphs.MenuGraph :: public method System.Boolean RemoveEdge(CascadeControl.Graphs.MenuVertex from, CascadeControl.Graphs.MenuVertex to)
+CascadeControl.Graphs.MenuGraph :: public method System.Boolean RemoveVertex(CascadeControl.Graphs.MenuVertex vertex)
+CascadeControl.Graphs.MenuGraph :: public method System.Boolean TryGetVertex(System.String name, out CascadeControl.Graphs.MenuVertex vertex)
+CascadeControl.Graphs.MenuGraph :: public method System.Collections.Generic.IReadOnlyDictionary<CascadeControl.Graphs.MenuVertex, System.Int32> GetDistances(CascadeControl.Graphs.MenuVertex start, System.Int32 maxDistance = 2147483647)
+CascadeControl.Graphs.MenuGraph :: public method System.Collections.Generic.IReadOnlyList<CascadeControl.Graphs.MenuEdge> ExpandAndAddEdges(System.String fromCell, System.String toCell)
+CascadeControl.Graphs.MenuGraph :: public method System.Collections.Generic.IReadOnlyList<CascadeControl.Graphs.MenuGraphNode> CreateTopLevelNodes()
+CascadeControl.Graphs.MenuGraph :: public method System.String[][] ToRows()
+CascadeControl.Graphs.MenuGraph :: public method System.String[][] ToRows(CascadeControl.Graphs.MenuGraphRowStyle style)
+CascadeControl.Graphs.MenuGraph :: public property System.Boolean IsEmpty { get; }
+CascadeControl.Graphs.MenuGraph :: public property System.Collections.Generic.IEnumerable<CascadeControl.Graphs.MenuEdge> Edges { get; }
+CascadeControl.Graphs.MenuGraph :: public property System.Collections.Generic.IEnumerable<CascadeControl.Graphs.MenuVertex> Sinks { get; }
+CascadeControl.Graphs.MenuGraph :: public property System.Collections.Generic.IEnumerable<CascadeControl.Graphs.MenuVertex> Sources { get; }
+CascadeControl.Graphs.MenuGraph :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Graphs.MenuVertex> Vertices { get; }
+CascadeControl.Graphs.MenuGraph :: public property System.Int32 EdgeCount { get; }
+CascadeControl.Graphs.MenuGraph :: public property System.Int32 VertexCount { get; }
+CascadeControl.Graphs.MenuGraph :: public static method CascadeControl.Graphs.MenuGraph FromRows(System.Collections.Generic.IEnumerable<System.String[]> rows, System.Collections.Generic.IReadOnlyList<System.Int32> sourceLineNumbers, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.MenuGraph :: public static method CascadeControl.Graphs.MenuGraph FromRows(System.Collections.Generic.IEnumerable<System.String[]> rows, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Graphs.MenuGraph :: public static method CascadeControl.Graphs.MenuGraph FromTree(CascadeControl.Trees.MenuTree tree)
+CascadeControl.Graphs.MenuGraph :: type public sealed class
+CascadeControl.Graphs.MenuGraphNode :: public override method System.String ToString()
+CascadeControl.Graphs.MenuGraphNode :: public property CascadeControl.Graphs.MenuGraphNode Parent { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property CascadeControl.Graphs.MenuVertex Vertex { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.Boolean IsLeaf { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.Boolean IsRepeatedOnPath { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Graphs.MenuGraphNode> Children { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Graphs.MenuGraphNode> FullPath { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.Int32 Depth { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.Int32 SiblingNumber { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.String DisplayText { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.String FullPathText { get; }
+CascadeControl.Graphs.MenuGraphNode :: public property System.String Name { get; }
+CascadeControl.Graphs.MenuGraphNode :: type public sealed class : CascadeControl.Common.ICascadeNode
+CascadeControl.Graphs.MenuGraphRowStyle :: type public enum : System.Int32
+CascadeControl.Graphs.MenuGraphRowStyle :: value Compact = 1
+CascadeControl.Graphs.MenuGraphRowStyle :: value Expanded = 0
+CascadeControl.Graphs.MenuGraphRowStyle :: value Outline = 2
+CascadeControl.Graphs.MenuVertex :: public method CascadeControl.Graphs.MenuVertex Rename(System.String newName)
+CascadeControl.Graphs.MenuVertex :: public method System.Boolean HasPredecessor(CascadeControl.Graphs.MenuVertex vertex)
+CascadeControl.Graphs.MenuVertex :: public method System.Boolean HasSuccessor(CascadeControl.Graphs.MenuVertex vertex)
+CascadeControl.Graphs.MenuVertex :: public override method System.String ToString()
+CascadeControl.Graphs.MenuVertex :: public property CascadeControl.Graphs.MenuGraph Graph { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Boolean HasLoop { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Boolean IsConvergent { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Boolean IsSink { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Boolean IsSource { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Graphs.MenuVertex> Predecessors { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Graphs.MenuVertex> Successors { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Int32 InDegree { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.Int32 OutDegree { get; }
+CascadeControl.Graphs.MenuVertex :: public property System.String Name { get; }
+CascadeControl.Graphs.MenuVertex :: type public sealed class
+CascadeControl.State.CascadeCheckableState :: protected virtual method System.Void OnCheckSetChanged(System.EventArgs e)
+CascadeControl.State.CascadeCheckableState :: protected virtual method System.Void OnCheckedChanged(CascadeControl.Trees.MenuCheckChangedEventArgs e)
+CascadeControl.State.CascadeCheckableState :: public ctor()
+CascadeControl.State.CascadeCheckableState :: public event System.EventHandler CheckSetChanged
+CascadeControl.State.CascadeCheckableState :: public event System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs> CheckedChanged
+CascadeControl.State.CascadeCheckableState :: public override method System.Void SetTopLevelNodes(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> topLevelNodes)
+CascadeControl.State.CascadeCheckableState :: public override method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
+CascadeControl.State.CascadeCheckableState :: public property CascadeControl.Trees.MenuCheckSet CheckSet { get; set; }
+CascadeControl.State.CascadeCheckableState :: type public class : CascadeControl.State.CascadeState
+CascadeControl.State.CascadeNodeEventArgs :: public ctor(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path, System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> topLevelNodes = null, System.String pathSeparator = " => ")
+CascadeControl.State.CascadeNodeEventArgs :: public property CascadeControl.Common.ICascadeNode Node { get; }
+CascadeControl.State.CascadeNodeEventArgs :: public property CascadeControl.Common.ICascadeNode Parent { get; }
+CascadeControl.State.CascadeNodeEventArgs :: public property System.Boolean IsLeaf { get; }
+CascadeControl.State.CascadeNodeEventArgs :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> Children { get; }
+CascadeControl.State.CascadeNodeEventArgs :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> Path { get; }
+CascadeControl.State.CascadeNodeEventArgs :: public property System.Int32 ColumnIndex { get; }
+CascadeControl.State.CascadeNodeEventArgs :: public property System.String PathText { get; }
+CascadeControl.State.CascadeNodeEventArgs :: type public class : System.EventArgs
+CascadeControl.State.CascadeState :: protected virtual method System.Void OnSelectedPathChanged(CascadeControl.State.CascadeNodeEventArgs e)
+CascadeControl.State.CascadeState :: public ctor()
+CascadeControl.State.CascadeState :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> SelectedPathChanged
+CascadeControl.State.CascadeState :: public method System.Boolean StepBack()
+CascadeControl.State.CascadeState :: public method System.Boolean StepForward()
+CascadeControl.State.CascadeState :: public method System.Boolean TrySelectNode(CascadeControl.Trees.MenuNode node)
+CascadeControl.State.CascadeState :: public method System.Boolean TrySelectPath(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path)
+CascadeControl.State.CascadeState :: public method System.Void Clear()
+CascadeControl.State.CascadeState :: public method System.Void ClearTrail()
+CascadeControl.State.CascadeState :: public method System.Void Refresh(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> selectPath = null)
+CascadeControl.State.CascadeState :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
+CascadeControl.State.CascadeState :: public property CascadeControl.Trees.MenuTree Tree { get; }
+CascadeControl.State.CascadeState :: public property System.Boolean IsLeafSelected { get; }
+CascadeControl.State.CascadeState :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }
+CascadeControl.State.CascadeState :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> TopLevelNodes { get; }
+CascadeControl.State.CascadeState :: public property System.Int32 ActiveColumnIndex { get; }
+CascadeControl.State.CascadeState :: public property System.String PathSeparator { get; set; }
+CascadeControl.State.CascadeState :: public property System.String SelectedPathText { get; }
+CascadeControl.State.CascadeState :: public virtual method System.Void SetTopLevelNodes(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> topLevelNodes)
+CascadeControl.State.CascadeState :: public virtual method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
+CascadeControl.State.CascadeState :: type public class
+CascadeControl.Trees.Csv.MenuTreeCsvFile :: public static method CascadeControl.Trees.MenuTree Load(System.String filePath, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Trees.Csv.MenuTreeCsvFile :: public static method System.Void Save(CascadeControl.Trees.MenuTree tree, System.String filePath, CascadeControl.Trees.MenuRowStyle style = CascadeControl.Trees.MenuRowStyle.Expanded)
+CascadeControl.Trees.Csv.MenuTreeCsvFile :: type public static class
+CascadeControl.Trees.Csv.MenuTreeCsvText :: public const field System.String HEADER_COLUMN_PREFIX = "Level"
+CascadeControl.Trees.Csv.MenuTreeCsvText :: public static method CascadeControl.Trees.MenuTree Parse(System.String csvText, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Trees.Csv.MenuTreeCsvText :: public static method System.String Format(CascadeControl.Trees.MenuTree tree, CascadeControl.Trees.MenuRowStyle style = CascadeControl.Trees.MenuRowStyle.Expanded)
+CascadeControl.Trees.Csv.MenuTreeCsvText :: public static method System.String[] CreateHeader(System.Int32 columnCount)
+CascadeControl.Trees.Csv.MenuTreeCsvText :: public static method System.String[][] NormalizeRows(System.Collections.Generic.IEnumerable<System.String[]> rows, CascadeControl.Trees.MenuRowStyle style, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Trees.Csv.MenuTreeCsvText :: public static method System.String[][] NormalizeRows(System.Collections.Generic.IEnumerable<System.String[]> rows, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Trees.Csv.MenuTreeCsvText :: type public static class
+CascadeControl.Trees.MenuCheckChangeReason :: type public enum : System.Int32
+CascadeControl.Trees.MenuCheckChangeReason :: value Apply = 3
+CascadeControl.Trees.MenuCheckChangeReason :: value Reconcile = 4
+CascadeControl.Trees.MenuCheckChangeReason :: value Redo = 2
+CascadeControl.Trees.MenuCheckChangeReason :: value Undo = 1
+CascadeControl.Trees.MenuCheckChangeReason :: value User = 0
+CascadeControl.Trees.MenuCheckChangedEventArgs :: public ctor(System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> added, System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> removed, CascadeControl.Trees.MenuNode target, CascadeControl.Trees.MenuCheckChangeReason reason)
+CascadeControl.Trees.MenuCheckChangedEventArgs :: public property CascadeControl.Trees.MenuCheckChangeReason Reason { get; }
+CascadeControl.Trees.MenuCheckChangedEventArgs :: public property CascadeControl.Trees.MenuNode Target { get; }
+CascadeControl.Trees.MenuCheckChangedEventArgs :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Added { get; }
+CascadeControl.Trees.MenuCheckChangedEventArgs :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Removed { get; }
+CascadeControl.Trees.MenuCheckChangedEventArgs :: type public class : System.EventArgs
+CascadeControl.Trees.MenuCheckSet :: public ctor(CascadeControl.Trees.MenuTree tree)
+CascadeControl.Trees.MenuCheckSet :: public event System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs> Changed
+CascadeControl.Trees.MenuCheckSet :: public method CascadeControl.Trees.MenuTree ToTree()
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean Apply(CascadeControl.Trees.MenuTree subset, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean Check(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean CheckAll()
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean CheckSiblingSubtrees(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean CheckSiblings(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean CheckSubtree(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean Contains(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean IsChecked(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean IsFullyChecked(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean Reconcile()
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean Toggle(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean Uncheck(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean UncheckAll()
+CascadeControl.Trees.MenuCheckSet :: public method System.Boolean UncheckSiblings(CascadeControl.Trees.MenuNode node)
+CascadeControl.Trees.MenuCheckSet :: public property CascadeControl.Trees.MenuHistory History { get; set; }
+CascadeControl.Trees.MenuCheckSet :: public property CascadeControl.Trees.MenuTree Tree { get; }
+CascadeControl.Trees.MenuCheckSet :: public property System.Collections.Generic.IEnumerable<CascadeControl.Trees.MenuNode> CheckedNodes { get; }
+CascadeControl.Trees.MenuCheckSet :: public property System.Int32 Count { get; }
+CascadeControl.Trees.MenuCheckSet :: type public sealed class
+CascadeControl.Trees.MenuHistory :: public const field System.Int32 DEFAULT_CAPACITY = 50
+CascadeControl.Trees.MenuHistory :: public ctor()
+CascadeControl.Trees.MenuHistory :: public method CascadeControl.Trees.MenuHistoryResult Redo()
+CascadeControl.Trees.MenuHistory :: public method CascadeControl.Trees.MenuHistoryResult Undo()
+CascadeControl.Trees.MenuHistory :: public method System.Void Clear()
+CascadeControl.Trees.MenuHistory :: public property System.Boolean CanRedo { get; }
+CascadeControl.Trees.MenuHistory :: public property System.Boolean CanUndo { get; }
+CascadeControl.Trees.MenuHistory :: public property System.Int32 Capacity { get; set; }
+CascadeControl.Trees.MenuHistory :: public property System.Int32 RedoCount { get; }
+CascadeControl.Trees.MenuHistory :: public property System.Int32 UndoCount { get; }
+CascadeControl.Trees.MenuHistory :: type public sealed class
+CascadeControl.Trees.MenuHistoryResult :: public property CascadeControl.Trees.MenuNode Focus { get; }
+CascadeControl.Trees.MenuHistoryResult :: public property System.Boolean TreeChanged { get; }
+CascadeControl.Trees.MenuHistoryResult :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Nodes { get; }
+CascadeControl.Trees.MenuHistoryResult :: type public sealed class
+CascadeControl.Trees.MenuNode :: public ctor(System.String name)
+CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode CopySubtree(System.String newName = null)
+CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode GetOrAddChild(System.String name)
+CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode InsertChildAt(System.Int32 position, CascadeControl.Trees.MenuNode source, System.String newName = null)
+CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode InsertSiblingAfter(CascadeControl.Trees.MenuNode source, System.String newName = null)
+CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode InsertSiblingBefore(CascadeControl.Trees.MenuNode source, System.String newName = null)
+CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode Rename(System.String newName)
+CascadeControl.Trees.MenuNode :: public method System.Boolean ContainsChild(System.String name)
+CascadeControl.Trees.MenuNode :: public method System.Boolean RemoveFromParent()
+CascadeControl.Trees.MenuNode :: public method System.Boolean TryGetChild(System.String name, out CascadeControl.Trees.MenuNode child)
+CascadeControl.Trees.MenuNode :: public method System.String GetUniqueChildName(System.String baseName)
+CascadeControl.Trees.MenuNode :: public method System.Void MergeSubtreeFrom(CascadeControl.Trees.MenuNode source)
+CascadeControl.Trees.MenuNode :: public override method System.String ToString()
+CascadeControl.Trees.MenuNode :: public property CascadeControl.Trees.MenuNode Parent { get; }
+CascadeControl.Trees.MenuNode :: public property System.Boolean IsLeaf { get; }
+CascadeControl.Trees.MenuNode :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Children { get; }
+CascadeControl.Trees.MenuNode :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> FullPath { get; }
+CascadeControl.Trees.MenuNode :: public property System.Int32 Depth { get; }
+CascadeControl.Trees.MenuNode :: public property System.Int32 SiblingNumber { get; }
+CascadeControl.Trees.MenuNode :: public property System.String DisplayText { get; }
+CascadeControl.Trees.MenuNode :: public property System.String FullPathText { get; }
+CascadeControl.Trees.MenuNode :: public property System.String Name { get; }
+CascadeControl.Trees.MenuNode :: type public sealed class : CascadeControl.Common.ICascadeNode
+CascadeControl.Trees.MenuRowStyle :: type public enum : System.Int32
+CascadeControl.Trees.MenuRowStyle :: value Compact = 1
+CascadeControl.Trees.MenuRowStyle :: value Expanded = 0
+CascadeControl.Trees.MenuRowStyle :: value Outline = 2
+CascadeControl.Trees.MenuTree :: public ctor()
+CascadeControl.Trees.MenuTree :: public method CascadeControl.Trees.MenuNode AddPath(System.Collections.Generic.IEnumerable<System.String> nodeNames)
+CascadeControl.Trees.MenuTree :: public method CascadeControl.Trees.MenuNode AddPath(params System.String[] nodeNames)
+CascadeControl.Trees.MenuTree :: public method System.Collections.Generic.IEnumerable<CascadeControl.Trees.MenuNode> GetLeaves()
+CascadeControl.Trees.MenuTree :: public method System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> ExpandAndAddPaths(System.Collections.Generic.IEnumerable<System.String> cells)
+CascadeControl.Trees.MenuTree :: public method System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> ExpandAndAddPaths(params System.String[] cells)
+CascadeControl.Trees.MenuTree :: public method System.String[][] ToRows()
+CascadeControl.Trees.MenuTree :: public method System.String[][] ToRows(CascadeControl.Trees.MenuRowStyle style)
+CascadeControl.Trees.MenuTree :: public property CascadeControl.Trees.MenuNode Root { get; }
+CascadeControl.Trees.MenuTree :: public property System.Boolean IsEmpty { get; }
+CascadeControl.Trees.MenuTree :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> TopLevelNodes { get; }
+CascadeControl.Trees.MenuTree :: public property System.Int32 Height { get; }
+CascadeControl.Trees.MenuTree :: public static method CascadeControl.Trees.MenuTree FromRows(System.Collections.Generic.IEnumerable<System.String[]> rows, System.Collections.Generic.IReadOnlyList<System.Int32> sourceLineNumbers, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Trees.MenuTree :: public static method CascadeControl.Trees.MenuTree FromRows(System.Collections.Generic.IEnumerable<System.String[]> rows, out System.Collections.Generic.IList<System.String> warnings)
+CascadeControl.Trees.MenuTree :: public static method CascadeControl.Trees.MenuTree FromSubtree(CascadeControl.Trees.MenuNode rootNode)
+CascadeControl.Trees.MenuTree :: type public sealed class
+CascadeControl.Views.CascadeNodeMouseEventArgs :: public ctor(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path, System.String pathSeparator, System.Windows.Forms.MouseButtons button, System.Drawing.Point location, System.Drawing.Rectangle bounds, System.Drawing.Point screenLocation)
+CascadeControl.Views.CascadeNodeMouseEventArgs :: public property System.Drawing.Point Location { get; }
+CascadeControl.Views.CascadeNodeMouseEventArgs :: public property System.Drawing.Point ScreenLocation { get; }
+CascadeControl.Views.CascadeNodeMouseEventArgs :: public property System.Drawing.Rectangle Bounds { get; }
+CascadeControl.Views.CascadeNodeMouseEventArgs :: public property System.Windows.Forms.MouseButtons Button { get; }
+CascadeControl.Views.CascadeNodeMouseEventArgs :: type public class : CascadeControl.State.CascadeNodeEventArgs
+CascadeControl.Views.Columns.CascadeColumnLayoutMode :: type public enum : System.Int32
+CascadeControl.Views.Columns.CascadeColumnLayoutMode :: value Fill = 1
+CascadeControl.Views.Columns.CascadeColumnLayoutMode :: value Fixed = 0
+CascadeControl.Views.Columns.CascadeColumnLayoutMode :: value Sliding = 2
+CascadeControl.Views.Columns.CascadeColumnsView :: protected method System.Void DrawDefaultNode(CascadeControl.Views.Columns.CascadeDrawNodeEventArgs e, System.Drawing.Rectangle textBounds)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected override method System.Boolean ProcessCmdKey(ref System.Windows.Forms.Message msg, System.Windows.Forms.Keys keyData)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected override method System.Void Dispose(System.Boolean disposing)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected override method System.Void OnFontChanged(System.EventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected override method System.Void OnGotFocus(System.EventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected override method System.Void OnResize(System.EventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected override method System.Windows.Forms.Control+ControlCollection CreateControlsInstance()
+CascadeControl.Views.Columns.CascadeColumnsView :: protected override property System.Windows.Forms.CreateParams CreateParams { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: protected property System.Boolean IsColumnFocused { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Boolean SelectsOnLeftClick(CascadeControl.Common.ICascadeNode node, System.Drawing.Rectangle bounds, System.Drawing.Point location)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void DrawDefaultNode(CascadeControl.Views.Columns.CascadeDrawNodeEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnCheckedChanged(CascadeControl.Trees.MenuCheckChangedEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnColumnBlankMouseClick(System.Int32 columnIndex, System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> nodes, System.Windows.Forms.MouseButtons button, System.Drawing.Point screenLocation)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnColumnWidthChanged(System.EventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnContextMenuOpening(System.Windows.Forms.ContextMenuStrip menu)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnDrawNode(CascadeControl.Views.Columns.CascadeDrawNodeEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnMultiSelectionChanged(System.EventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnNodeActivated(CascadeControl.State.CascadeNodeEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnNodeMouseClick(CascadeControl.Views.CascadeNodeMouseEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnSelectedPathChanged(CascadeControl.State.CascadeNodeEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual method System.Void OnTreeEdited(CascadeControl.Views.Columns.CascadeTreeEditedEventArgs e)
+CascadeControl.Views.Columns.CascadeColumnsView :: protected virtual property System.Int32 MinimumItemHeight { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public const field System.String CLIPBOARD_FORMAT = "CascadeControl.MenuNodes"
+CascadeControl.Views.Columns.CascadeColumnsView :: public ctor()
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler ColumnWidthChanged
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler MultiSelectionChanged
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> NodeActivated
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> SelectedPathChanged
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs> CheckedChanged
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseClick
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Views.Columns.CascadeDrawNodeEventArgs> DrawNode
+CascadeControl.Views.Columns.CascadeColumnsView :: public event System.EventHandler<CascadeControl.Views.Columns.CascadeTreeEditedEventArgs> TreeEdited
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean BeginCreateChild()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean BeginInsert(System.Boolean before)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean BeginRename()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean Copy()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean CopyPath()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean Cut()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean Delete()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean Paste(System.Boolean before)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean PasteAsChild()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean Redo()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean SelectAllInColumn(System.Int32 columnIndex)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean StepBack()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean StepForward()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean TrySelectNode(CascadeControl.Trees.MenuNode node)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean TrySelectPath(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Boolean Undo()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Drawing.Rectangle GetCheckBoxBounds(System.Drawing.Rectangle rowBounds)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void Clear()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void ClearMultiSelection()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void ClearTrail()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void EndEdit(System.Boolean commit)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void FocusActiveColumn()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void InvalidateNodes()
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void RefreshColumns(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> selectPath = null)
+CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void SetTopLevelNodes(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> topLevelNodes)
+CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.State.CascadeState State { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuCheckSet CheckSet { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuHistory History { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuNode ContextMenuNode { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuTree Tree { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Views.Columns.CascadeColumnLayoutMode ColumnLayoutMode { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Boolean CanRedo { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Boolean CanUndo { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Boolean CheckBoxes { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Boolean IsEditing { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Boolean IsLeafSelected { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Boolean ReadOnly { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Boolean ShowTrail { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> MultiSelectedNodes { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> ContextMenuNodes { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Drawing.Color InactiveSelectionBackColor { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Drawing.Color MultiSelectBackColor { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Drawing.Color SelectionBackColor { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Drawing.Color SelectionForeColor { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Drawing.Color TrailBackColor { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Int32 ActiveColumnIndex { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Int32 ColumnSpacing { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Int32 ColumnWidth { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Int32 ContextMenuColumnIndex { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Int32 DisplayColumnCount { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Int32 MultiSelectedColumnIndex { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.String PathSeparator { get; set; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.String SelectedPathText { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Windows.Forms.ContextMenuStrip ColumnContextMenu { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public property System.Windows.Forms.ContextMenuStrip NodeContextMenu { get; }
+CascadeControl.Views.Columns.CascadeColumnsView :: public virtual method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
+CascadeControl.Views.Columns.CascadeColumnsView :: type public class : System.Windows.Forms.Panel, CascadeControl.Views.ICascadeCheckableView, CascadeControl.Views.ICascadeView, System.ComponentModel.IComponent, System.ComponentModel.ISynchronizeInvoke, System.IDisposable, System.Windows.Forms.IBindableComponent, System.Windows.Forms.IDropTarget, System.Windows.Forms.IWin32Window
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public ctor(System.Drawing.Graphics graphics, System.Drawing.Font font, System.Drawing.Rectangle bounds, CascadeControl.Common.ICascadeNode node, System.Int32 columnIndex, System.Boolean isSelected, System.Boolean isFocusedColumn, System.Boolean isEnabled, System.Boolean isTrailNode = false, System.Boolean isMultiSelected = false)
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property CascadeControl.Common.ICascadeNode Node { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Boolean Handled { get; set; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Boolean IsEnabled { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Boolean IsFocusedColumn { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Boolean IsMultiSelected { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Boolean IsSelected { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Boolean IsTrailNode { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Drawing.Font Font { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Drawing.Graphics Graphics { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Drawing.Rectangle Bounds { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: public property System.Int32 ColumnIndex { get; }
+CascadeControl.Views.Columns.CascadeDrawNodeEventArgs :: type public class : System.EventArgs
+CascadeControl.Views.Columns.CascadeEditAction :: type public enum : System.Int32
+CascadeControl.Views.Columns.CascadeEditAction :: value CreateChild = 1
+CascadeControl.Views.Columns.CascadeEditAction :: value Cut = 4
+CascadeControl.Views.Columns.CascadeEditAction :: value Delete = 5
+CascadeControl.Views.Columns.CascadeEditAction :: value Insert = 0
+CascadeControl.Views.Columns.CascadeEditAction :: value Paste = 3
+CascadeControl.Views.Columns.CascadeEditAction :: value Redo = 7
+CascadeControl.Views.Columns.CascadeEditAction :: value Rename = 2
+CascadeControl.Views.Columns.CascadeEditAction :: value Undo = 6
+CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: public ctor(CascadeControl.Views.Columns.CascadeEditAction action, System.Collections.Generic.IEnumerable<CascadeControl.Trees.MenuNode> nodes)
+CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: public property CascadeControl.Views.Columns.CascadeEditAction Action { get; }
+CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Nodes { get; }
+CascadeControl.Views.Columns.CascadeTreeEditedEventArgs :: type public class : System.EventArgs
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Boolean IsInputKey(System.Windows.Forms.Keys keyData)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void Dispose(System.Boolean disposing)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnFontChanged(System.EventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyDown(System.Windows.Forms.KeyEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnMouseClick(System.Windows.Forms.MouseEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnMouseDoubleClick(System.Windows.Forms.MouseEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnMouseDown(System.Windows.Forms.MouseEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnMouseMove(System.Windows.Forms.MouseEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnPaint(System.Windows.Forms.PaintEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected virtual method System.Void OnDrawSettingsChanged(System.EventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected virtual method System.Void OnNodeActivated(CascadeControl.State.CascadeNodeEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected virtual method System.Void OnNodeMouseClick(CascadeControl.Views.CascadeNodeMouseEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected virtual method System.Void OnNodeMouseDoubleClick(CascadeControl.Views.CascadeNodeMouseEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected virtual method System.Void OnSelectedPathChanged(CascadeControl.State.CascadeNodeEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public ctor()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHandler DrawSettingsChanged
+CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> NodeActivated
+CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> SelectedPathChanged
+CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseClick
+CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseDoubleClick
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method CascadeControl.Trees.MenuNode GetExpanderAt(System.Drawing.Point clientLocation)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method CascadeControl.Trees.MenuNode GetNodeAt(System.Drawing.Point clientLocation)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean IsExpanded(CascadeControl.Trees.MenuNode node)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean StepBack()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean StepForward()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean TrySelectNode(CascadeControl.Trees.MenuNode node)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean TrySelectPath(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void Clear()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void Redraw()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void SetExpanded(CascadeControl.Trees.MenuNode node, System.Boolean expanded)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.State.CascadeState State { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Trees.MenuTree Tree { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.TreeDrawScope DrawScope { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.TreeImageSizeMode SizeMode { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.UncheckedNodeDisplay UncheckedDisplay { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean IsLeafSelected { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean ShowChecks { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Drawing.Image Image { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.String PathSeparator { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.String SelectedPathText { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Windows.Forms.ContextMenuStrip TreeContextMenu { get; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: type public class : System.Windows.Forms.ScrollableControl, CascadeControl.Views.ICascadeView, System.ComponentModel.IComponent, System.ComponentModel.ISynchronizeInvoke, System.IDisposable, System.Windows.Forms.IBindableComponent, System.Windows.Forms.IDropTarget, System.Windows.Forms.IWin32Window
+CascadeControl.Views.Diagram.TreeDrawScope :: type public enum : System.Int32
+CascadeControl.Views.Diagram.TreeDrawScope :: value SelectedSubtree = 1
+CascadeControl.Views.Diagram.TreeDrawScope :: value WholeTree = 0
+CascadeControl.Views.Diagram.TreeDrawer :: public static method CascadeControl.Views.Diagram.TreeImage RenderImage(CascadeControl.Trees.MenuTree tree, System.Drawing.Font font, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.TreeDrawScope scope = CascadeControl.Views.Diagram.TreeDrawScope.WholeTree, CascadeControl.Views.Diagram.UncheckedNodeDisplay uncheckedDisplay = CascadeControl.Views.Diagram.UncheckedNodeDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
+CascadeControl.Views.Diagram.TreeDrawer :: public static method System.Drawing.Bitmap Render(CascadeControl.Trees.MenuTree tree, System.Drawing.Font font, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.TreeDrawScope scope = CascadeControl.Views.Diagram.TreeDrawScope.WholeTree, CascadeControl.Views.Diagram.UncheckedNodeDisplay uncheckedDisplay = CascadeControl.Views.Diagram.UncheckedNodeDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
+CascadeControl.Views.Diagram.TreeDrawer :: public static method System.Void Draw(System.Windows.Forms.PictureBox pictureBox, CascadeControl.Trees.MenuTree tree, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isChecked = null, CascadeControl.Views.Diagram.TreeDrawScope scope = CascadeControl.Views.Diagram.TreeDrawScope.WholeTree, CascadeControl.Views.Diagram.UncheckedNodeDisplay uncheckedDisplay = CascadeControl.Views.Diagram.UncheckedNodeDisplay.Dimmed, CascadeControl.Trees.MenuNode selectedNode = null, System.Func<CascadeControl.Trees.MenuNode, System.Boolean> isExpanded = null)
+CascadeControl.Views.Diagram.TreeDrawer :: type public static class
+CascadeControl.Views.Diagram.TreeImage :: public method CascadeControl.Trees.MenuNode GetExpanderAt(System.Drawing.PointF location)
+CascadeControl.Views.Diagram.TreeImage :: public method CascadeControl.Trees.MenuNode GetNodeAt(System.Drawing.PointF location)
+CascadeControl.Views.Diagram.TreeImage :: public method System.Void Dispose()
+CascadeControl.Views.Diagram.TreeImage :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Views.Diagram.TreeImageNode> Nodes { get; }
+CascadeControl.Views.Diagram.TreeImage :: public property System.Drawing.Bitmap Image { get; }
+CascadeControl.Views.Diagram.TreeImage :: type public sealed class : System.IDisposable
+CascadeControl.Views.Diagram.TreeImageNode :: public property CascadeControl.Trees.MenuNode Node { get; }
+CascadeControl.Views.Diagram.TreeImageNode :: public property System.Boolean IsExpanded { get; }
+CascadeControl.Views.Diagram.TreeImageNode :: public property System.Drawing.RectangleF Bounds { get; }
+CascadeControl.Views.Diagram.TreeImageNode :: public property System.Drawing.RectangleF ExpanderBounds { get; }
+CascadeControl.Views.Diagram.TreeImageNode :: type public sealed class
+CascadeControl.Views.Diagram.TreeImageSizeMode :: type public enum : System.Int32
+CascadeControl.Views.Diagram.TreeImageSizeMode :: value ActualSize = 0
+CascadeControl.Views.Diagram.TreeImageSizeMode :: value Zoom = 1
+CascadeControl.Views.Diagram.UncheckedNodeDisplay :: type public enum : System.Int32
+CascadeControl.Views.Diagram.UncheckedNodeDisplay :: value Dimmed = 0
+CascadeControl.Views.Diagram.UncheckedNodeDisplay :: value Hidden = 1
+CascadeControl.Views.ICascadeCheckableView :: public event System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs> CheckedChanged
+CascadeControl.Views.ICascadeCheckableView :: public property CascadeControl.Trees.MenuCheckSet CheckSet { get; set; }
+CascadeControl.Views.ICascadeCheckableView :: type public interface : CascadeControl.Views.ICascadeView
+CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> NodeActivated
+CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> SelectedPathChanged
+CascadeControl.Views.ICascadeView :: public method System.Boolean StepBack()
+CascadeControl.Views.ICascadeView :: public method System.Boolean StepForward()
+CascadeControl.Views.ICascadeView :: public method System.Boolean TrySelectNode(CascadeControl.Trees.MenuNode node)
+CascadeControl.Views.ICascadeView :: public method System.Boolean TrySelectPath(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path)
+CascadeControl.Views.ICascadeView :: public method System.Void Clear()
+CascadeControl.Views.ICascadeView :: public method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
+CascadeControl.Views.ICascadeView :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
+CascadeControl.Views.ICascadeView :: public property CascadeControl.Trees.MenuTree Tree { get; }
+CascadeControl.Views.ICascadeView :: public property System.Boolean IsLeafSelected { get; }
+CascadeControl.Views.ICascadeView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }
+CascadeControl.Views.ICascadeView :: public property System.String PathSeparator { get; set; }
+CascadeControl.Views.ICascadeView :: public property System.String SelectedPathText { get; }
+CascadeControl.Views.ICascadeView :: type public interface

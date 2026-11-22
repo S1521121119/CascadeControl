@@ -184,13 +184,24 @@ A 段是重構，除了第 5 節列出的待決定行為變更，其他行為都
 
 標示「API 比對」的步驟，用 A0 建立的公開 API 傾印腳本比對前後輸出。只搬檔案的步驟必須沒有差異；有預期改名的步驟，差異只能是那些改名。
 
+```powershell
+# 建置 Debug 之後執行。必須用 Windows PowerShell 5.1（powershell.exe），不是 pwsh。
+powershell -NoProfile -File tools\dump-public-api.ps1 -OutFile $env:TEMP\public-api.txt
+git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
+```
+
+差異符合預期之後，用新的輸出覆蓋 `tools\public-api.txt`，和該步一起 commit。
+
 ### A 段：重構
 
-- [ ] **A0 釘住現有行為**
+- [x] **A0 釘住現有行為**
   - 新增 `CascadeControlTests/Views/Columns/CascadeColumnsViewEditingTests.cs`，透過 Columns 現有公開 API 釘住插入、建立子節點、改名（`EndEdit`）、貼上、剪下、復原、重做之後的樹形、選取，以及 `TreeEdited` 的 `Action` 與 `Nodes`。
   - 刪除會跳 MessageBox，這一步不釘，A3 搬到 State 之後在 State 層測。
   - 新增公開 API 傾印腳本（例如 `tools/dump-public-api.ps1`），用反射列出 `CascadeControl.dll` 的公開型別與成員，輸出排序過的文字，並存一份基準輸出。
   - 驗證：新測試全部通過；腳本連跑兩次輸出相同。
+  - 結果：新增 22 個測試，全套 471 個。`tools/dump-public-api.ps1` 與基準 `tools/public-api.txt`（452 行、38 個公開型別）連跑兩次相同，Debug 與 Release 相同。
+  - 剪貼簿測試在 STA 執行緒上跑（`RunOnSta`）。`Copy()`、`Cut()` 回傳 false 表示剪貼簿被其他程式佔用，記為 Inconclusive，不算失敗（`RequireClipboard`）。
+  - 已知問題：貼上偶爾貼進名稱全是 NUL 字元的節點，約每 20 輪失敗 1 次，見 issue #1，在 A4 處理。這種失敗不是該步的改動造成的，重跑即可；其他失敗都要查。
 
 - [ ] **A1 搬型別，並把已共有的成員加進 ICascadeView**
   - `CascadeEditAction` 與 `CascadeTreeEditedEventArgs` 移到 `State/`，各自一個檔，命名空間改為 `CascadeControl.State`。
@@ -265,7 +276,7 @@ A 段是重構，除了第 5 節列出的待決定行為變更，其他行為都
 
 ## 4. 下一步
 
-目前是 **A0 釘住現有行為**。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **A1 搬型別，並把已共有的成員加進 ICascadeView**。A0 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 
@@ -294,5 +305,6 @@ A 段是重構，除了第 5 節列出的待決定行為變更，其他行為都
 - **搬檔要保留歷史。** 搬檔用 `git mv`，拆檔與搬檔分成不同 commit，讓 `git log --follow` 追得到。
 - **公開型別的命名空間要跟資料夾一致。** 見 `docs/refactor-plan.md` 第二輪的 IDE0130 規則。
 - **刪除很難自動測試。** 刪除會跳 MessageBox，不能在 View 層自動測試。刪除的行為在 State 層（A3）測。
-- **剪貼簿相關測試要在 STA 執行緒執行。**
+- **剪貼簿相關測試要在 STA 執行緒執行。** 用 `CascadeColumnsViewEditingTests` 的 `RunOnSta`。這台機器開著 Windows 剪貼簿歷程，剪貼簿偶爾被佔用，所以寫入剪貼簿失敗記為 Inconclusive。
+- **腳本與文件的編碼。** `.ps1` 要存成 UTF-8 含 BOM，否則 Windows PowerShell 5.1 會用 ANSI 讀中文而解析失敗。Git Bash 的 `sed -i` 會把 CRLF 改成 LF，改檔請用 Edit 工具。
 - **跨 View 的就地編輯。** 一個 View 的編輯框開著時，另一個 View 編輯了樹，State 會 Refresh。Columns 已經會在 Refreshed 時中止編輯；B3 的 Diagram 編輯框也要做到。
