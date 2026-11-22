@@ -1,6 +1,7 @@
 using CascadeControl.Common;
 using CascadeControl.State;
 using CascadeControl.Trees;
+using CascadeControl.Views;
 using CascadeControl.Views.Columns;
 using CascadeControl.Views.Diagram;
 using CascadeControlTests.Views.Columns;
@@ -146,6 +147,40 @@ namespace CascadeControlTests.Views.Diagram
                 f.AssertLastEdit(CascadeEditAction.Redo, a);
             }
         });
+
+        [TestMethod]
+        public void EditCommandsThroughICascadeView_WorkOnEitherView_ShareOneHistory()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            using (var f = new Fixture(readOnly: null, state: host.View.State))
+            {
+                // 工具列只認得介面：哪個檢視有焦點就呼叫哪一個。
+                ICascadeView diagram = f.View;
+                ICascadeView columns = host.View;
+                diagram.ReadOnly = false;
+                columns.ReadOnly = false;
+                f.Select("B");
+
+                Assert.IsTrue(diagram.BeginInsert(before: false));
+                Assert.IsTrue(diagram.IsEditing);
+                f.EditBox().Text = "N";
+                diagram.EndEdit(commit: true);
+                Assert.IsFalse(diagram.IsEditing);
+                f.AssertShape("A", "A > A1", "A > A2", "B", "N", "C");
+                Assert.AreSame(f.Node("N"), columns.SelectedNode, "Columns 跟著選取新節點");
+
+                Assert.IsTrue(columns.CanUndo, "兩個檢視共用同一份歷史");
+                Assert.IsTrue(columns.Undo());
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                Assert.IsTrue(diagram.CanRedo);
+                Assert.IsTrue(diagram.Redo());
+                f.AssertShape("A", "A > A1", "A > A2", "B", "N", "C");
+
+                columns.ReadOnly = true;
+                Assert.IsFalse(columns.CanUndo, "唯讀只影響自己");
+                Assert.IsTrue(diagram.CanUndo);
+            }
+        }
 
         [TestMethod]
         public void CanUndo_ReadOnlyBlocksTreeStepsOnly() => RunOnSta(() =>

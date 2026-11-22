@@ -313,9 +313,12 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 右鍵功能表依 Columns 的順序：復原、重做｜插入 ▸ 之前／之後、建立子節點、重新命名｜複製…。「建立子節點」只對葉節點啟用。
   - 未勾選節點設成「隱藏」時，新節點建立後沒有勾選，會從圖上消失。這和在 Diagram 貼上的行為相同，這一步沒有改。
 
-- [ ] **B5 編輯指令寫進 `ICascadeView`**
+- [x] **B5 編輯指令寫進 `ICascadeView`**
   - 加入 D9 列出的編輯指令。此時兩個 View 都已實作。
   - 驗證：共用驗證。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 1 個測試 `EditCommandsThroughICascadeView_WorkOnEitherView_ShareOneHistory`，全套 553 個通過。這個測試只透過 `ICascadeView` 操作：在 Diagram 插入、在 Columns 復原、在 Diagram 重做，再把 Columns 切成唯讀，確認只有 Columns 不能復原。API 比對只有 `ICascadeView` 新增 D9 的 16 個成員（含 `ReadOnly`），`tools/public-api.txt` 已更新為 500 行。兩個 View 原本的簽章已經相同，實作端不用改。
+  - `ICascadeView` 的 remarks 改寫：原本寫「不包含編輯」，現在說明編輯指令為什麼在 View 上，以及 `History`、`TreeEdited` 為什麼留在 State。
+  - 這一步沒有改 Viewer 的行為，所以沒有在 Viewer 手動操作。
 
 - [ ] **B6（選做）改名**
   - Diagram 的三個 enum 改名為 `CascadeDiagramSizeMode`、`CascadeDiagramDrawScope`、`CascadeDiagramUncheckedDisplay`，同時更新 Selector 與 Viewer 的設計工具檔。
@@ -326,7 +329,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **B5 編輯指令寫進 `ICascadeView`**。A 段（A0 到 A6）、B1 到 B4 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **B6（選做）改名**。A 段（A0 到 A6）、B1 到 B5 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

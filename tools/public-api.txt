@@ -468,16 +468,32 @@ CascadeControl.Views.ICascadeCheckableView :: type public interface : CascadeCon
 CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> NodeActivated
 CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.State.CascadeNodeEventArgs> SelectedPathChanged
 CascadeControl.Views.ICascadeView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseClick
+CascadeControl.Views.ICascadeView :: public method System.Boolean BeginCreateChild()
+CascadeControl.Views.ICascadeView :: public method System.Boolean BeginInsert(System.Boolean before)
+CascadeControl.Views.ICascadeView :: public method System.Boolean BeginRename()
+CascadeControl.Views.ICascadeView :: public method System.Boolean Copy()
+CascadeControl.Views.ICascadeView :: public method System.Boolean CopyPath()
+CascadeControl.Views.ICascadeView :: public method System.Boolean Cut()
+CascadeControl.Views.ICascadeView :: public method System.Boolean Delete()
+CascadeControl.Views.ICascadeView :: public method System.Boolean Paste(System.Boolean before)
+CascadeControl.Views.ICascadeView :: public method System.Boolean PasteAsChild()
+CascadeControl.Views.ICascadeView :: public method System.Boolean Redo()
 CascadeControl.Views.ICascadeView :: public method System.Boolean StepBack()
 CascadeControl.Views.ICascadeView :: public method System.Boolean StepForward()
 CascadeControl.Views.ICascadeView :: public method System.Boolean TrySelectNode(CascadeControl.Trees.MenuNode node)
 CascadeControl.Views.ICascadeView :: public method System.Boolean TrySelectPath(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> path)
+CascadeControl.Views.ICascadeView :: public method System.Boolean Undo()
 CascadeControl.Views.ICascadeView :: public method System.Void Clear()
+CascadeControl.Views.ICascadeView :: public method System.Void EndEdit(System.Boolean commit)
 CascadeControl.Views.ICascadeView :: public method System.Void SetTree(CascadeControl.Trees.MenuTree tree)
 CascadeControl.Views.ICascadeView :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
 CascadeControl.Views.ICascadeView :: public property CascadeControl.State.CascadeState State { get; set; }
 CascadeControl.Views.ICascadeView :: public property CascadeControl.Trees.MenuTree Tree { get; }
+CascadeControl.Views.ICascadeView :: public property System.Boolean CanRedo { get; }
+CascadeControl.Views.ICascadeView :: public property System.Boolean CanUndo { get; }
+CascadeControl.Views.ICascadeView :: public property System.Boolean IsEditing { get; }
 CascadeControl.Views.ICascadeView :: public property System.Boolean IsLeafSelected { get; }
+CascadeControl.Views.ICascadeView :: public property System.Boolean ReadOnly { get; set; }
 CascadeControl.Views.ICascadeView :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }
 CascadeControl.Views.ICascadeView :: public property System.String PathSeparator { get; set; }
 CascadeControl.Views.ICascadeView :: public property System.String SelectedPathText { get; }
