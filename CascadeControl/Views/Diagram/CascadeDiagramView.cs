@@ -60,7 +60,7 @@ namespace CascadeControl.Views.Diagram
             BackColor = Color.White;
             AutoScroll = true;
 
-            _state = new CascadeState();
+            _state = new CascadeCheckableState();
             AttachState(_state);
 
             _contextMenu.Opening += ContextMenu_Opening;
@@ -74,6 +74,9 @@ namespace CascadeControl.Views.Diagram
         /// <summary>
         /// 目前綁定的共享狀態：樹、選取路徑、記憶軌跡、<see cref="PathSeparator"/> 與勾選狀態都取自這裡。不可設為 null。
         /// </summary>
+        /// <remarks>
+        /// 預設每個控制項各自持有一份 <see cref="CascadeCheckableState"/>，單獨使用時 <see cref="ShowChecks"/> 也有勾選狀態可以顯示。
+        /// </remarks>
         /// <exception cref="ArgumentNullException">設為 null。</exception>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -188,7 +191,7 @@ namespace CascadeControl.Views.Diagram
         /// 是否依 <see cref="State"/> 的勾選狀態畫圖：沒勾的節點依 <see cref="UncheckedDisplay"/> 呈現，有勾選子節點的節點預設展開。
         /// </summary>
         /// <remarks>
-        /// <see cref="Columns.CascadeColumnsView"/> 的 <see cref="Columns.CascadeColumnsView.State"/> 預設就是 <see cref="CascadeCheckableState"/>，
+        /// 這個控制項與 <see cref="Columns.CascadeColumnsView"/> 的 <see cref="State"/> 預設都是 <see cref="CascadeCheckableState"/>，
         /// 所以不能用 State 的型別判斷要不要畫勾選；和 <see cref="Columns.CascadeColumnsView.CheckBoxes"/> 一樣由這個屬性決定。
         /// <see cref="State"/> 不是 <see cref="CascadeCheckableState"/> 時沒有勾選資訊，設成 true 也沒有作用。
         /// </remarks>

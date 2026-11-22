@@ -271,8 +271,10 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ### B 段：新功能
 
-- [ ] **B1 Diagram 預設 State 改成 `CascadeCheckableState`**
+- [x] **B1 Diagram 預設 State 改成 `CascadeCheckableState`**
   - 驗證：單獨放一個 Diagram，設 `ShowChecks = true`，用程式勾選後畫面有變化。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 1 個測試 `Standalone_ShowChecks_DrawsChecksSetThroughDefaultState`（`TreeDrawerTests.cs`），全套 534 個通過。這個測試單獨建立 Diagram、設 `ShowChecks = true` 並呼叫 `SetTree`，確認 Motor 一開始是沒勾的白底而且收合；透過 `State.CheckSet` 勾選 Axis X 之後，Motor 改成層的底色而且展開。把預設改回 `CascadeState` 時這個測試失敗（Motor 一開始就是層的底色）。屬性型別沒變，API 比對沒有差異。
+  - `State` 加上 remarks 說明預設值；`ShowChecks` 的 remarks 改成兩個 View 預設都是 `CascadeCheckableState`。
 
 - [ ] **B2 Diagram 加上不需要輸入文字的編輯**
   - 加上 `ReadOnly`、`Copy`、`CopyPath`、`Cut`、`Paste`、`PasteAsChild`、`Delete`、`Undo`、`Redo`、`CanUndo`、`CanRedo`。
@@ -303,7 +305,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **B1 Diagram 預設 State 改成 `CascadeCheckableState`**。A 段（A0 到 A6）已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **B2 Diagram 加上不需要輸入文字的編輯**。A 段（A0 到 A6）與 B1 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

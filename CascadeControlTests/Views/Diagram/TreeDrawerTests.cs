@@ -224,6 +224,31 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
+        public void Standalone_ShowChecks_DrawsChecksSetThroughDefaultState()
+        {
+            var tree = TestTrees.Template();
+            using (var imageView = new CascadeDiagramView { ShowChecks = true })
+            {
+                imageView.SetTree(tree);
+                var motor = Find(tree, "Motor");
+                Color BackOfMotor()
+                {
+                    var bounds = LayoutNodeOf(imageView, tree, motor).Bounds;
+                    return ((Bitmap)imageView.Image).GetPixel((int)(bounds.Left + 4), (int)bounds.Top + (int)(bounds.Height / 2));
+                }
+
+                Assert.AreEqual(Color.White.ToArgb(), BackOfMotor().ToArgb(), "沒勾的節點是白底");
+                Assert.IsFalse(imageView.IsExpanded(motor));
+
+                var checkSet = ((CascadeCheckableState)imageView.State).CheckSet;
+                checkSet.Check(Find(tree, "Motor", "Axis X"));
+
+                Assert.AreNotEqual(Color.White.ToArgb(), BackOfMotor().ToArgb(), "勾選後畫成層的底色");
+                Assert.IsTrue(imageView.IsExpanded(motor), "勾了子節點，父節點展開");
+            }
+        }
+
+        [TestMethod]
         public void State_SwapNullGuardAndDispose_DetachesOldSubscriptionsAndRedraws()
         {
             var firstTree = TestTrees.Template();
