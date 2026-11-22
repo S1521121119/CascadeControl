@@ -29,6 +29,7 @@ namespace CascadeControl.Views.Diagram
             base.OnMouseMove(e);
             Cursor = GetNodeAt(e.Location) != null ? Cursors.Hand : Cursors.Default;
             if (_press != null && e.Button == MouseButtons.Left) DragMarkPress(e.Location);
+            if (_move != null && e.Button == MouseButtons.Left) DragMovePress(e.Location);
         }
 
         /// <inheritdoc />
@@ -49,6 +50,7 @@ namespace CascadeControl.Views.Diagram
 
             // 展開鈕交給點擊處理；其他左鍵按壓可能是框選或 Ctrl+點選（見 MultiSelectedNodes）。
             _press = null;
+            if (_move != null) EndMovePress(apply: false);
             if (e.Button == MouseButtons.Left && !_swallowClick && GetExpanderAt(e.Location) == null)
                 BeginMarkPress(e.Location, (ModifierKeys & Keys.Control) != 0);
 
@@ -59,7 +61,7 @@ namespace CascadeControl.Views.Diagram
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            if (_swallowClick || _press != null || TryToggleExpander(e)) return;
+            if (_swallowClick || _press != null || IsMoveDragging || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node == null) return;
@@ -74,7 +76,7 @@ namespace CascadeControl.Views.Diagram
             base.OnMouseDoubleClick(e);
 
             // 連點兩下時第二下只會送 DoubleClick，當成第二次點擊再切換一次。
-            if (_swallowClick || _press != null || TryToggleExpander(e)) return;
+            if (_swallowClick || _press != null || IsMoveDragging || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node != null) OnNodeMouseDoubleClick(CreateMouseEventArgs(node, e));
@@ -87,14 +89,18 @@ namespace CascadeControl.Views.Diagram
             base.OnMouseUp(e);
             _swallowClick = false;
             if (_press != null && e.Button == MouseButtons.Left) EndMarkPress();
+            if (_move != null && e.Button == MouseButtons.Left) EndMovePress(apply: true);
         }
 
         /// <inheritdoc />
-        /// <remarks>按著左鍵時失去滑鼠（例如切到別的程式）：框選停在目前的範圍。</remarks>
+        /// <remarks>按著左鍵時失去滑鼠（例如切到別的程式）：框選停在目前的範圍，拖曳移動取消。</remarks>
         protected override void OnMouseCaptureChanged(EventArgs e)
         {
             base.OnMouseCaptureChanged(e);
-            if (Capture || _press == null) return;
+            if (Capture) return;
+
+            if (_move != null) EndMovePress(apply: false);
+            if (_press == null) return;
 
             _press = null;
             Invalidate();
@@ -177,6 +183,14 @@ namespace CascadeControl.Views.Diagram
                 }
 
                 return base.ProcessCmdKey(ref msg, keyData);
+            }
+
+            // 拖曳移動中按 Esc：取消移動，放開滑鼠時也不算點選。
+            if (keyData == Keys.Escape && _move != null)
+            {
+                EndMovePress(apply: false);
+                _swallowClick = true;
+                return true;
             }
 
             if (keyData == Keys.Escape && _marks.Count > 0)

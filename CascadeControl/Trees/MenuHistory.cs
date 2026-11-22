@@ -5,7 +5,7 @@ using System.Linq;
 namespace CascadeControl.Trees
 {
     /// <summary>
-    /// 復原／重做的歷史：勾選（<see cref="MenuCheckSet"/>）與樹的編輯（插入、建立子節點、改名、貼上、剪下、刪除）照發生的順序排在同一條時間軸上。
+    /// 復原／重做的歷史：勾選（<see cref="MenuCheckSet"/>）與樹的編輯（插入、建立子節點、改名、貼上、剪下、刪除、移動）照發生的順序排在同一條時間軸上。
     /// </summary>
     /// <remarks>
     /// 每一步只記差異，不存整棵樹的快照：插入與移除記父節點、位置和節點本身，改名記新舊名稱，勾選記多勾與取消的節點。
@@ -150,6 +150,15 @@ namespace CascadeControl.Trees
         {
             var entries = removed.ToList();
             if (entries.Count > 0) Record(new StructureStep(tree, parent, entries, inserted: false));
+        }
+
+        /// <summary>
+        /// 記下一次移動；每一筆是節點移動前與移動後的父節點、位置（0-based）與名稱。呼叫時節點已經在新的位置。
+        /// </summary>
+        internal void RecordMove(MenuTree tree, IEnumerable<MoveStep.Entry> entries)
+        {
+            var list = entries.ToList();
+            if (list.Count > 0) Record(new MoveStep(tree, list));
         }
 
         /// <summary>
@@ -408,6 +417,91 @@ namespace CascadeControl.Trees
     }
 
     /// <summary>
+    /// 移動的一步：一個或多個節點（連同子孫）從原本的父節點移到新的父節點底下，可能為了避開同名而改名。
+    /// </summary>
+    /// <remarks>
+    /// 兩個方向做法一樣：先把節點全部拿下來，改成那一邊的名稱，再依位置由小到大接上去。
+    /// 全部拿下來之後，每個父節點底下剩的就是沒被移動的兄弟，照位置排序接回去，每個節點都會回到記錄的位置。
+    /// </remarks>
+    internal sealed class MoveStep : MenuHistoryStep
+    {
+        private readonly MenuTree _tree;
+        private readonly IReadOnlyList<Entry> _entries;
+
+        public MoveStep(MenuTree tree, IReadOnlyList<Entry> entries)
+        {
+            _tree = tree;
+            _entries = entries;
+        }
+
+        /// <summary>一個被移動的節點：移動前（From）與移動後（To）的父節點、位置與名稱。</summary>
+        internal sealed class Entry
+        {
+            public MenuNode Node { get; set; }
+            public MenuNode FromParent { get; set; }
+            public int FromIndex { get; set; }
+            public string FromName { get; set; }
+            public MenuNode ToParent { get; set; }
+            public int ToIndex { get; set; }
+            public string ToName { get; set; }
+
+            public MenuNode Parent(bool after) => after ? ToParent : FromParent;
+            public int Index(bool after) => after ? ToIndex : FromIndex;
+            public string Name(bool after) => after ? ToName : FromName;
+        }
+
+        public override bool ChangesTree => true;
+
+        // undo：從移動後回到移動前；redo 反過來。
+        public override bool CanApply(bool undo)
+        {
+            var current = undo;
+            var target = !undo;
+
+            if (!_entries.All(entry => ReferenceEquals(entry.Node.Parent, entry.Parent(current))
+                && string.Equals(entry.Node.Name, entry.Name(current), StringComparison.Ordinal))) return false;
+
+            // 要接上去的父節點還在樹裡，而且不在被移動的子樹裡（那樣節點拿下來之後它就不在樹裡了）。
+            var moved = new HashSet<MenuNode>(_entries.Select(entry => entry.Node));
+            foreach (var parent in _entries.Select(entry => entry.Parent(target)).Distinct())
+            {
+                if (!IsInTreeOrRoot(_tree, parent)) return false;
+                for (var node = parent; node != null; node = node.Parent)
+                {
+                    if (moved.Contains(node)) return false;
+                }
+            }
+
+            // 名稱不能和留在那裡的兄弟撞名，也不能彼此撞名。
+            var taken = new HashSet<Tuple<MenuNode, string>>();
+            foreach (var entry in _entries)
+            {
+                var parent = entry.Parent(target);
+                var name = entry.Name(target);
+                if (!taken.Add(Tuple.Create(parent, name))) return false;
+                if (parent.TryGetChild(name, out var existing) && !moved.Contains(existing)) return false;
+            }
+
+            return true;
+        }
+
+        public override MenuHistoryResult Apply(bool undo)
+        {
+            var after = !undo;
+            foreach (var entry in _entries) entry.Node.RemoveFromParent();
+
+            foreach (var entry in _entries.OrderBy(entry => entry.Index(after)))
+            {
+                entry.Node.RenameDetached(entry.Name(after));
+                entry.Parent(after).AttachChildAt(entry.Index(after), entry.Node);
+            }
+
+            var nodes = _entries.Select(entry => entry.Node).ToList();
+            return new MenuHistoryResult(nodes[0], nodes, treeChanged: true);
+        }
+    }
+
+    /// <summary>
     /// <see cref="MenuHistory.BeginGroup"/> 合成的一步：復原時由後往前退回，重做時由前往後。
     /// </summary>
     internal sealed class GroupStep : MenuHistoryStep
@@ -421,7 +515,8 @@ namespace CascadeControl.Trees
 
         public override bool ChangesTree => _steps.Any(step => step.ChangesTree);
 
-        // 先全部檢查再動手，才不會做到一半停下來。組裡最多只有一個結構步驟，其他是勾選，彼此不影響檢查結果。
+        // 先全部檢查再動手，才不會做到一半停下來。組裡的結構步驟彼此獨立（例如從不同父節點移除，沒有一個在另一個的子樹裡），
+        // 其他是勾選，所以各自檢查的結果和依序套用時相同。
         public override bool CanApply(bool undo) => _steps.All(step => step.CanApply(undo));
 
         public override MenuHistoryResult Apply(bool undo)
@@ -429,8 +524,11 @@ namespace CascadeControl.Trees
             var order = undo ? _steps.Reverse() : _steps;
             var results = order.Select(step => step.Apply(undo)).ToList();
 
-            // 有改到樹的那一步最能代表這個操作；都沒有時取第一個（復原時是最後記下的那一步）。
-            return results.FirstOrDefault(result => result.TreeChanged) ?? results[0];
+            // 改到樹的步驟合起來代表這個操作：選取跟著第一個，節點全部列出；都沒有時取第一個（復原時是最後記下的那一步）。
+            var changed = results.Where(result => result.TreeChanged).ToList();
+            if (changed.Count == 0) return results[0];
+
+            return changed.Count == 1 ? changed[0] : new MenuHistoryResult(changed[0].Focus, changed.SelectMany(result => result.Nodes).ToList(), treeChanged: true);
         }
     }
 }

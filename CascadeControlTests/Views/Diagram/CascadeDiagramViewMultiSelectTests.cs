@@ -130,8 +130,168 @@ namespace CascadeControlTests.Views.Diagram
             }
         });
 
+        [TestMethod]
+        public void Paste_WithMarks_GoesAfterLastMark_PastedNodesBecomeMarks() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("C");
+                f.CtrlClick("A > A1");
+                f.CtrlClick("B");
+                f.RequireClipboard(f.View.Copy());
+
+                Assert.IsTrue(f.Key(Keys.Control | Keys.V));
+                f.AssertShape("A", "A > A1", "A > A2", "B", "A1", "B - 2", "C");
+                f.AssertMarks("A1", "B - 2");
+                Assert.AreSame(f.Node("A1"), f.View.SelectedNode);
+            }
+        });
+
+        [TestMethod]
+        public void PasteBefore_WithMarks_GoesBeforeFirstMark_SinglePasteClearsMarks() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("B");
+                f.RequireClipboard(f.View.Copy());
+
+                f.Select("C");
+                f.CtrlClick("A > A2");
+                Assert.IsTrue(f.View.Paste(before: true));
+                f.AssertShape("A", "A > A1", "A > B", "A > A2", "B", "C");
+                f.AssertMarks();
+            }
+        });
+
+        [TestMethod]
+        public void PasteAsChild_WithMarks_OnlyIntoSingleMarkedLeaf() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("B");
+                f.RequireClipboard(f.View.Copy());
+
+                f.Select("C");
+                f.CtrlClick("A > A1");
+                f.CtrlClick("B");
+                Assert.IsFalse(f.View.PasteAsChild(), "多選兩個節點時不知道要貼進哪一個");
+
+                f.CtrlClick("B");
+                Assert.IsTrue(f.View.PasteAsChild());
+                f.AssertShape("A", "A > A1", "A > A1 > B", "A > A2", "B", "C");
+            }
+        });
+
+        [TestMethod]
+        public void DragMarkedNodesOntoNode_MovesThemUnderIt_StaysMarked()
+        {
+            using (var f = new Fixture())
+            {
+                f.CtrlClick("A > A1");
+                f.CtrlClick("B");
+                var a1 = f.Node("A > A1");
+                var c = f.Center("C");
+
+                f.View.Down(f.Center("A > A1"));
+                f.View.DragTo(c);
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+
+                f.View.Up(c);
+                f.AssertShape("A", "A > A2", "C", "C > A1", "C > B");
+                Assert.AreSame(a1, f.View.SelectedNode);
+                f.AssertMarks("C > A1", "C > B");
+                Assert.AreEqual(0, f.Clicks.Count, "拖曳不觸發 NodeMouseClick");
+            }
+        }
+
+        [TestMethod]
+        public void EscapeWhileDragging_CancelsMove_ReleaseIsNotAClick()
+        {
+            using (var f = new Fixture())
+            {
+                f.CtrlClick("A > A1");
+                f.CtrlClick("B");
+                var c = f.Center("C");
+
+                f.View.Down(f.Center("A > A1"));
+                f.View.DragTo(c);
+                Assert.IsTrue(f.Key(Keys.Escape));
+                f.View.Up(c);
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                f.AssertMarks("A > A1", "B");
+                Assert.AreEqual(0, f.Clicks.Count);
+            }
+        }
+
+        [TestMethod]
+        public void DropOnMovedNodeOrBlank_ChangesNothing()
+        {
+            using (var f = new Fixture())
+            {
+                f.CtrlClick("A");
+                f.CtrlClick("B");
+                var a1 = f.Center("A > A1");
+                var blank = f.BlankRightOf("A > A1", "A > A2");
+
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(a1);
+                f.View.Up(a1);
+
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(blank);
+                f.View.Up(blank);
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+            }
+        }
+
+        [TestMethod]
+        public void ReadOnly_PressOnMarkedNodeIsPlainClick()
+        {
+            using (var f = new Fixture())
+            {
+                f.View.ReadOnly = true;
+                f.CtrlClick("B");
+                var c = f.Center("C");
+
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(c);
+                f.View.Up(c);
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                f.AssertMarks();
+            }
+        }
+
+        [TestMethod]
+        public void Cut_WithMarksFromDifferentParents_RemovesAll() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                f.CtrlClick("A > A1");
+                f.CtrlClick("B");
+
+                if (!f.Key(Keys.Control | Keys.X) || f.Tree.Root.Children.Count == 3) Assert.Inconclusive("剪貼簿被其他程式佔用。");
+
+                f.AssertShape("A", "A > A2", "C");
+                CollectionAssert.AreEqual(new[] { "A1", "B" }, CascadeClipboard.ReadNodes().Select(node => node.Name).ToArray());
+            }
+        });
+
         private sealed class ProbeView : CascadeDiagramView
         {
+            public void Down(Point location) => BeginMarkPress(location, control: false);
+
+            public void DragTo(Point location) => OnMouseMove(new MouseEventArgs(MouseButtons.Left, 0, location.X, location.Y, 0));
+
+            public void Up(Point location)
+            {
+                var args = new MouseEventArgs(MouseButtons.Left, 1, location.X, location.Y, 0);
+                OnMouseClick(args);
+                OnMouseUp(args);
+            }
+
             public void MouseDownUp(Point location, bool control, Point? dragTo)
             {
                 BeginMarkPress(location, control);
@@ -152,6 +312,7 @@ namespace CascadeControlTests.Views.Diagram
                 Tree.AddPath(new[] { "B" });
                 Tree.AddPath(new[] { "C" });
 
+                View.ReadOnly = false;
                 View.Size = new Size(600, 400);
                 View.SetTree(Tree);
                 View.SetExpanded(Node("A"), true);
@@ -168,6 +329,14 @@ namespace CascadeControlTests.Views.Diagram
             public List<CascadeNodeMouseEventArgs> Clicks { get; } = new List<CascadeNodeMouseEventArgs>();
 
             public MenuNode Node(string fullPathText) => Walk(Tree.Root).Single(node => node.FullPathText == fullPathText);
+
+            public void AssertShape(params string[] expected) =>
+                Assert.AreEqual(string.Join(" / ", expected), string.Join(" / ", Walk(Tree.Root).Select(node => node.FullPathText)));
+
+            public void RequireClipboard(bool succeeded)
+            {
+                if (!succeeded) Assert.Inconclusive("剪貼簿被其他程式佔用。");
+            }
 
             public void Select(string fullPathText) => Assert.IsTrue(View.TrySelectNode(Node(fullPathText)));
 

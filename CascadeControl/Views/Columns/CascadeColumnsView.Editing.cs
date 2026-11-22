@@ -257,11 +257,12 @@ namespace CascadeControl.Views.Columns
             return result;
         }
 
-        // 任何一個綁同一份 State 的檢視編輯了樹：回到樹裡的節點不只一個時（貼上、復原刪除、重做貼上）全部多選。
+        // 任何一個綁同一份 State 的檢視編輯了樹：回到樹裡的節點不只一個、而且在同一欄時（貼上、復原刪除、重做貼上）全部多選。
+        // 多選只能在同一欄，所以從 Diagram 刪除或移動不同父節點的節點、再復原時不多選。
         private void State_TreeEdited(object sender, CascadeTreeEditedEventArgs e)
         {
             var nodes = e.Nodes;
-            if (nodes.Count > 1 && nodes.All(_state.IsInTree)) SetMarks(nodes[0].Depth - 1, nodes);
+            if (nodes.Count > 1 && nodes.All(_state.IsInTree) && nodes.All(node => ReferenceEquals(node.Parent, nodes[0].Parent))) SetMarks(nodes[0].Depth - 1, nodes);
         }
 
         #endregion 對象與樹

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Linq;
 using System.Windows.Forms;
@@ -97,6 +98,37 @@ namespace CascadeControl.Views.Diagram
             public MenuNode Node { get; } = new MenuNode(string.Empty);
         }
 
+        /// <summary>
+        /// 拖曳移動時的預覽：<see cref="Nodes"/>（連同子孫）從原本的位置拿掉，改接在 <see cref="Parent"/> 的子節點最後面，畫成半透明。
+        /// </summary>
+        internal sealed class MovePreview
+        {
+            private readonly HashSet<MenuNode> _moved;
+
+            public MovePreview(MenuNode parent, IReadOnlyList<MenuNode> nodes)
+            {
+                Parent = parent;
+                Nodes = nodes;
+                _moved = new HashSet<MenuNode>(nodes);
+            }
+
+            public MenuNode Parent { get; }
+
+            public IReadOnlyList<MenuNode> Nodes { get; }
+
+            public bool IsMoved(MenuNode node) => _moved.Contains(node);
+        }
+
+        // 建立要畫的節點時，每一層都一樣的設定。
+        private sealed class BuildOptions
+        {
+            public Func<MenuNode, bool> IsChecked { get; set; }
+            public bool HideUnchecked { get; set; }
+            public MenuNode SelectedNode { get; set; }
+            public Placeholder Placeholder { get; set; }
+            public MovePreview Preview { get; set; }
+        }
+
         private sealed class LayoutNode
         {
             public MenuNode Source { get; set; }
@@ -108,6 +140,12 @@ namespace CascadeControl.Views.Diagram
 
             // 插入或建立子節點時暫時佔位的空白方塊：Source 是不在樹裡的節點，不寫編號與名稱。
             public bool IsPlaceholder { get; set; }
+
+            // 拖曳移動的預覽：接到新位置的節點（連同子孫），畫成半透明。
+            public bool IsGhost { get; set; }
+
+            // 預覽移動時重新算的編號（1-based）；0 表示照原樹的 SiblingNumber。
+            public int Number { get; set; }
 
             // 在原樹的深度（Root 是 0），決定色系；佔位方塊是父節點的深度加 1。
             public int Depth { get; set; }
@@ -227,17 +265,28 @@ namespace CascadeControl.Views.Diagram
             CascadeDiagramUncheckedDisplay uncheckedDisplay,
             MenuNode selectedNode,
             Func<MenuNode, bool> isExpanded,
-            Placeholder placeholder)
+            Placeholder placeholder,
+            MovePreview preview = null)
         {
             font = font ?? SystemFonts.DefaultFont;
             if (tree == null || !BelongsTo(selectedNode, tree)) selectedNode = null;
 
-            // 沒有勾選資訊時每個節點都當成勾選，不會被隱藏。
-            var hideUnchecked = isChecked != null && uncheckedDisplay == CascadeDiagramUncheckedDisplay.Hidden;
+            var options = new BuildOptions
+            {
+                IsChecked = isChecked,
 
-            var root = tree == null || tree.IsEmpty ? null : BuildLayout(tree, isChecked, scope, hideUnchecked, selectedNode, placeholder);
+                // 沒有勾選資訊時每個節點都當成勾選，不會被隱藏。
+                HideUnchecked = isChecked != null && uncheckedDisplay == CascadeDiagramUncheckedDisplay.Hidden,
+                SelectedNode = selectedNode,
+                Placeholder = placeholder,
+                Preview = preview,
+            };
+
+            var root = tree == null || tree.IsEmpty ? null : BuildLayout(tree, scope, options);
             if (root == null) return new TreeImage(CreateBlank(), new TreeImageNode[0]);
-            if (isExpanded != null) Collapse(root, isExpanded);
+
+            // 預覽時新的父節點一定展開，才看得到接上去的節點。
+            if (isExpanded != null) Collapse(root, preview == null ? isExpanded : node => ReferenceEquals(node, preview.Parent) || isExpanded(node));
 
             var showChecks = isChecked != null;
 
@@ -265,8 +314,10 @@ namespace CascadeControl.Views.Diagram
                     g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                     if (scale < 1f) g.ScaleTransform(scale, scale);
 
-                    DrawLinks(g, nodes, showChecks);
-                    foreach (var node in nodes) DrawNode(g, font, format, node, showChecks);
+                    DrawLinks(g, nodes, showChecks, ghost: false);
+                    foreach (var node in nodes.Where(node => !node.IsGhost)) DrawNode(g, font, format, node, showChecks);
+
+                    if (nodes.Any(node => node.IsGhost)) DrawGhosts(g, bitmap.Size, scale, font, format, nodes, showChecks);
                 }
 
                 // 位置跟著縮小的比例換算成圖上的像素；Root 不對應任何節點，不放進去。
@@ -313,59 +364,96 @@ namespace CascadeControl.Views.Diagram
         /// <see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 有選取時從選取的節點開始，它就是圖的起點，不另外框起來。
         /// 其他情況畫整棵樹：第一層只有一個節點時直接從它開始；有多個時以沒有名稱的 Root 當起點，把它們接起來。
         /// </remarks>
-        private static LayoutNode BuildLayout(MenuTree tree, Func<MenuNode, bool> isChecked, CascadeDiagramDrawScope scope, bool hideUnchecked, MenuNode selectedNode, Placeholder placeholder)
+        private static LayoutNode BuildLayout(MenuTree tree, CascadeDiagramDrawScope scope, BuildOptions options)
         {
-            if (scope == CascadeDiagramDrawScope.SelectedSubtree && selectedNode != null) return BuildNode(selectedNode, 0, isChecked, hideUnchecked, null, placeholder);
+            var selectedNode = options.SelectedNode;
+            if (scope == CascadeDiagramDrawScope.SelectedSubtree && selectedNode != null)
+            {
+                // 起點就是選取的節點，不另外框起來。
+                options.SelectedNode = null;
+                return BuildNode(selectedNode, 0, selectedNode.Depth, false, options);
+            }
 
-            // 佔位方塊在第一層時，要有 Root 才接得上。
-            var placeholderAtTop = placeholder != null && ReferenceEquals(placeholder.Parent, tree.Root);
-            if (tree.TopLevelNodes.Count == 1 && !placeholderAtTop) return BuildNode(tree.TopLevelNodes[0], 0, isChecked, hideUnchecked, selectedNode, placeholder);
+            // 佔位方塊在第一層時、或預覽移動時（第一層可能多出或少掉節點），要有 Root 才接得上。
+            var placeholderAtTop = options.Placeholder != null && ReferenceEquals(options.Placeholder.Parent, tree.Root);
+            if (tree.TopLevelNodes.Count == 1 && !placeholderAtTop && options.Preview == null)
+            {
+                var top = tree.TopLevelNodes[0];
+                return BuildNode(top, 0, top.Depth, false, options);
+            }
 
             var root = new LayoutNode { Source = tree.Root, Level = 0, Depth = 0, IsVirtualRoot = true };
-            AddChildren(root, isChecked, hideUnchecked, selectedNode, placeholder);
+            AddChildren(root, options);
 
             // Root 不在勾選的範圍內：底下有勾選就當成勾選，全部都全勾才算全勾。
-            root.IsChecked = isChecked == null || tree.TopLevelNodes.Any(isChecked);
-            return root.IsChecked || !hideUnchecked ? root : null;
+            root.IsChecked = options.IsChecked == null || tree.TopLevelNodes.Any(options.IsChecked);
+            return root.IsChecked || !options.HideUnchecked ? root : null;
         }
 
         // 回傳 null 表示這個節點不畫（隱藏沒勾的節點時）。
-        private static LayoutNode BuildNode(MenuNode source, int level, Func<MenuNode, bool> isChecked, bool hideUnchecked, MenuNode selectedNode, Placeholder placeholder)
+        // depth 決定色系：一般就是原樹的深度；預覽移動時接到新位置的節點跟著新的父節點。
+        private static LayoutNode BuildNode(MenuNode source, int level, int depth, bool ghost, BuildOptions options)
         {
-            var isNodeChecked = isChecked == null || isChecked(source);
-            if (!isNodeChecked && hideUnchecked) return null;
+            var isNodeChecked = options.IsChecked == null || options.IsChecked(source);
+            if (!isNodeChecked && options.HideUnchecked) return null;
 
             var node = new LayoutNode
             {
                 Source = source,
                 Level = level,
-                Depth = source.Depth,
+                Depth = depth,
                 IsChecked = isNodeChecked,
-                IsSelected = ReferenceEquals(source, selectedNode),
+                IsSelected = ReferenceEquals(source, options.SelectedNode),
+                IsGhost = ghost,
             };
-            AddChildren(node, isChecked, hideUnchecked, selectedNode, placeholder);
+            AddChildren(node, options);
             node.IsFullyChecked &= isNodeChecked;
             return node;
         }
 
         // 加入子節點，並順便算出「子孫是否全勾」；被略過的子節點一定沒勾，所以父節點不算全勾。
         // 佔位方塊排在原樹第 Position 個子節點之前（隱藏沒勾的節點時照樣對得上），不算進全勾。
-        private static void AddChildren(LayoutNode parent, Func<MenuNode, bool> isChecked, bool hideUnchecked, MenuNode selectedNode, Placeholder placeholder)
+        // 預覽移動時：被移動的節點從原處拿掉，接到新的父節點最後面（半透明），編號照移動後的順序重算。
+        private static void AddChildren(LayoutNode parent, BuildOptions options)
         {
+            var placeholder = options.Placeholder;
             var placeholderHere = placeholder != null && ReferenceEquals(placeholder.Parent, parent.Source) ? placeholder : null;
+            var preview = options.Preview;
 
             var allFullyChecked = true;
+            var number = 0;
             var children = parent.Source.Children;
             for (var i = 0; i < children.Count; i++)
             {
                 if (placeholderHere != null && i == placeholderHere.Position) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
+                if (preview != null && preview.IsMoved(children[i])) continue;
 
-                var child = BuildNode(children[i], parent.Level + 1, isChecked, hideUnchecked, selectedNode, placeholder);
-                if (child != null) parent.Children.Add(child);
+                number++;
+                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, options);
+                if (child != null)
+                {
+                    if (preview != null) child.Number = number;
+                    parent.Children.Add(child);
+                }
+
                 allFullyChecked &= child != null && child.IsFullyChecked;
             }
 
             if (placeholderHere != null && placeholderHere.Position >= children.Count) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
+
+            if (preview != null && ReferenceEquals(preview.Parent, parent.Source))
+            {
+                foreach (var moved in preview.Nodes)
+                {
+                    number++;
+                    var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, true, options);
+                    if (ghost == null) continue;
+
+                    ghost.Number = number;
+                    parent.Children.Add(ghost);
+                    allFullyChecked &= ghost.IsFullyChecked;
+                }
+            }
 
             parent.IsFullyChecked = allFullyChecked;
         }
@@ -542,7 +630,8 @@ namespace CascadeControl.Views.Diagram
 
         private static string NameText(LayoutNode node) => node.IsVirtualRoot ? ROOT_LABEL : node.IsPlaceholder ? string.Empty : node.Source.Name;
 
-        private static string NumberText(LayoutNode node) => node.IsVirtualRoot || node.IsPlaceholder ? string.Empty : $"<{node.Source.SiblingNumber}>";
+        private static string NumberText(LayoutNode node) =>
+            node.IsVirtualRoot || node.IsPlaceholder ? string.Empty : $"<{(node.Number > 0 ? node.Number : node.Source.SiblingNumber)}>";
 
         #endregion 排版
 
@@ -555,7 +644,7 @@ namespace CascadeControl.Views.Diagram
         /// 曲線一律黑色；有勾選資訊時（<paramref name="showChecks"/>），通往沒勾子節點的曲線畫成淺灰，
         /// 通往勾選子節點的畫在最上層，才不會被淺灰的蓋住。
         /// </remarks>
-        private static void DrawLinks(Graphics g, List<LayoutNode> nodes, bool showChecks)
+        private static void DrawLinks(Graphics g, List<LayoutNode> nodes, bool showChecks, bool ghost)
         {
             using (var normalPen = new Pen(showChecks ? DIMMED_LINE : Color.Black, 1.2f))
             using (var checkedPen = new Pen(Color.Black, 1.8f))
@@ -570,7 +659,7 @@ namespace CascadeControl.Views.Diagram
 
                         foreach (var child in parent.Children)
                         {
-                            if (showChecks && child.IsChecked != drawChecked) continue;
+                            if (child.IsGhost != ghost || (showChecks && child.IsChecked != drawChecked)) continue;
 
                             var to = new PointF(child.Bounds.Left, child.CenterY);
                             var middle = (from.X + to.X) / 2f;
@@ -653,6 +742,37 @@ namespace CascadeControl.Views.Diagram
 
             if (HasExpander(node)) DrawExpander(g, node, border);
             if (node.IsSelected) DrawSelectionFrame(g, bounds, borderWidth);
+        }
+
+        // 預覽移動時接到新位置的節點與連線的不透明度。
+        private const float GHOST_OPACITY = 0.45f;
+
+        /// <summary>
+        /// 預覽移動的節點與通往它們的連線先畫在一張透明圖上，再以 <see cref="GHOST_OPACITY"/> 疊上去：整組一起變淡，重疊的地方不會更深。
+        /// </summary>
+        private static void DrawGhosts(Graphics g, Size size, float scale, Font font, StringFormat format, List<LayoutNode> nodes, bool showChecks)
+        {
+            using (var layer = new Bitmap(size.Width, size.Height))
+            {
+                using (var lg = Graphics.FromImage(layer))
+                {
+                    lg.SmoothingMode = g.SmoothingMode;
+                    lg.TextRenderingHint = g.TextRenderingHint;
+                    if (scale < 1f) lg.ScaleTransform(scale, scale);
+
+                    DrawLinks(lg, nodes, showChecks, ghost: true);
+                    foreach (var node in nodes.Where(node => node.IsGhost)) DrawNode(lg, font, format, node, showChecks);
+                }
+
+                using (var attributes = new ImageAttributes())
+                {
+                    attributes.SetColorMatrix(new ColorMatrix { Matrix33 = GHOST_OPACITY });
+                    var transform = g.Transform;
+                    g.ResetTransform();
+                    g.DrawImage(layer, new Rectangle(Point.Empty, size), 0, 0, size.Width, size.Height, GraphicsUnit.Pixel, attributes);
+                    g.Transform = transform;
+                }
+            }
         }
 
         /// <summary>

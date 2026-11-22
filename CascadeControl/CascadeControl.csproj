@@ -55,6 +55,9 @@
     <Compile Include="Views\Diagram\CascadeDiagramView.ContextMenu.cs">
       <DependentUpon>CascadeDiagramView.cs</DependentUpon>
     </Compile>
+    <Compile Include="Views\Diagram\CascadeDiagramView.DragMove.cs">
+      <DependentUpon>CascadeDiagramView.cs</DependentUpon>
+    </Compile>
     <Compile Include="Views\Diagram\CascadeDiagramView.Editing.cs">
       <DependentUpon>CascadeDiagramView.cs</DependentUpon>
     </Compile>

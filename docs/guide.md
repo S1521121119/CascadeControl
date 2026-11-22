@@ -559,7 +559,7 @@ standalone.SetTree(menu);
 | `DrawScope` / `UncheckedDisplay` | 畫整棵樹或選取的子樹；沒勾的節點變淡或隱藏（`State` 為 `CascadeCheckableState` 時有效） |
 | `SizeMode` | `ActualSize` 原始尺寸，放不下時出現捲軸；`Zoom` 維持長寬比例縮小到整張看得到（不放大） |
 | `StepIntoCollapsed` | 在收合 [+] 的節點上按 → 是否自動展開並進入下一層，預設 `true`；`false` 時要先按空白鍵展開 |
-| `MultiSelectedNodes` / `ClearMultiSelection()` / `MultiSelectionChanged` | 框選或 Ctrl+點選的多選節點（依圖上前序排列）、取消多選、多選改變後觸發；有多選時 `Copy()`／`CopyPath()` 的對象是多選的節點 |
+| `MultiSelectedNodes` / `ClearMultiSelection()` / `MultiSelectionChanged` | 框選或 Ctrl+點選的多選節點（依圖上前序排列）、取消多選、多選改變後觸發；有多選時 `Copy()`／`CopyPath()` 的對象是多選的節點，`Paste()`／`PasteAsChild()` 的位置跟著多選 |
 | `Redraw()` | 重畫；在外部直接修改節點而未呼叫 `RefreshColumns` 或 `State.Refresh` 時呼叫 |
 | `GetNodeAt(clientLocation)` | 控制項上某一點的節點，已考慮捲動與縮放 |
 | `GetExpanderAt(clientLocation)` | 控制項上某一點落在哪個節點的展開鈕（[+]／[-]）上 |
@@ -592,7 +592,17 @@ standalone.SetTree(menu);
 | Ctrl+點節點 | 加入或取消這個節點；取消父節點時，多選的子孫一起取消。不觸發 `NodeMouseClick` |
 | 點節點或空白處 | 取消多選 |
 
-多選的節點蓋一層半透明藍色並加上藍色外框。有多選時 Ctrl+C 複製多選的節點（祖先也被多選的子孫不重複複製），Ctrl+Shift+C 複製每個多選節點的路徑；右鍵點在多選的節點上時，功能表的「複製」、「複製(路徑)」也一樣。剪下、貼上、刪除仍然針對單一節點。被收合或隱藏而沒畫出來的節點自動移出多選。
+多選的節點蓋一層半透明藍色並加上藍色外框。有多選時 Ctrl+C 複製多選的節點（祖先也被多選的子孫不重複複製），Ctrl+Shift+C 複製每個多選節點的路徑；右鍵點在多選的節點上時，功能表的「複製」、「複製(路徑)」也一樣。有多選時貼上（Ctrl+V）貼在多選的最後一個節點後面，貼在前面時是第一個節點前面；貼成子節點只在多選剛好一個葉節點時有作用。貼上不只一個節點時，貼上的節點全部變成多選。剪下（Ctrl+X）、刪除（Delete）也作用在多選的節點上，可以屬於不同的父節點，一次復原全部回來。被收合或隱藏而沒畫出來的節點自動移出多選。
+
+不是唯讀時，可以拖曳移動多選的節點：
+
+| 滑鼠 | 動作 |
+|---|---|
+| 按住多選的節點拖到另一個節點上 | 畫出移動之後的樣子：移過去的節點（連同子孫）半透明接在目標的子節點最後面，目標加上藍框；整張圖位移，讓目標留在滑鼠底下 |
+| 放開 | 移動生效（`State.MoveNodes`），同名時自動加上後綴；Ctrl+Z 一次復原 |
+| 拖曳中按 Esc，或在空白處、被移動的節點上放開 | 取消，什麼都不改 |
+
+移過去的節點有勾選時，目標與它的祖先跟著補勾。第一層（Root）不能當目標。
 
 **`CascadeState` / `CascadeCheckableState`**（`CascadeControl.State`，不相依 WinForms）
 

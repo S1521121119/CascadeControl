@@ -28,7 +28,12 @@ namespace CascadeControl.Views.Diagram
         /// </para>
         /// <para>
         /// 有多選時，<see cref="Copy"/> 複製多選的節點（父節點也在多選裡的子孫不重複複製），<see cref="CopyPath"/> 複製每個多選節點的路徑；
-        /// 右鍵點在多選的節點上時，功能表的「複製」、「複製(路徑)」也是。剪下、刪除、貼上仍然針對單一節點。
+        /// <see cref="Cut"/>、<see cref="Delete"/> 剪下或刪除多選的節點（可以屬於不同的父節點，一次復原全部回來）；
+        /// 右鍵點在多選的節點上時，功能表的「複製」、「複製(路徑)」、「剪下」、「刪除」也是。貼上的位置跟著多選，見 <see cref="Paste"/>。
+        /// </para>
+        /// <para>
+        /// 不是唯讀時，按住多選的節點拖到另一個節點上放開，多選的節點（連同子孫）移到它的子節點最後面（<see cref="CascadeControl.State.CascadeState.MoveNodes"/>）。
+        /// 拖曳時畫出移動之後的樣子：移過去的節點半透明，目標加上藍框；按 Esc 取消。目標不能是被移動的節點或它們的子孫。
         /// </para>
         /// </remarks>
         [Browsable(false)]
@@ -95,13 +100,34 @@ namespace CascadeControl.Views.Diagram
         private IReadOnlyList<MenuNode> TopMostMarks() =>
             MultiSelectedNodes.Where(node => !_marks.Any(mark => !ReferenceEquals(mark, node) && IsSelfOrAncestor(mark, node))).ToList();
 
-        // 右鍵功能表的複製對象：點在多選的節點上就是整個多選，否則只有那個節點。
-        private IReadOnlyList<MenuNode> CopyTargets(MenuNode target) => _marks.Contains(target) ? TopMostMarks() : Single(target);
+        // 貼上的位置：有多選時是多選的最後一個（貼在後面）或第一個（貼在前面），否則是選取的節點。
+        private MenuNode PasteAnchor(bool before)
+        {
+            if (_marks.Count == 0) return SelectedMenuNode;
+
+            var tops = TopMostMarks();
+            return tops.Count == 0 ? SelectedMenuNode : before ? tops[0] : tops[tops.Count - 1];
+        }
+
+        // 任何綁同一份 State 的檢視改了樹：回到樹裡的節點不只一個時（貼上、復原刪除、重做貼上）全部多選，否則取消多選。
+        // State 先重新整理（重畫）才觸發 TreeEdited，所以這時節點已經畫在圖上。
+        private void State_TreeEdited(object sender, CascadeControl.State.CascadeTreeEditedEventArgs e)
+        {
+            var nodes = e.Nodes;
+            SetMarks(nodes.Count > 1 && nodes.All(_state.IsInTree) ? nodes : NoMenuNodes);
+        }
+
+        // 複製、剪下、刪除、拖曳移動的對象：有多選時是多選（祖先也被多選的子孫跟著祖先走），否則是選取的節點。
+        private IReadOnlyList<MenuNode> EditTargets() => _marks.Count > 0 ? TopMostMarks() : Single(SelectedMenuNode);
+
+        // 右鍵功能表的對象：點在多選的節點上就是整個多選，否則只有那個節點。
+        private IReadOnlyList<MenuNode> EditTargets(MenuNode target) => _marks.Contains(target) ? TopMostMarks() : Single(target);
 
         private IReadOnlyList<MenuNode> CopyPathTargets(MenuNode target) => _marks.Contains(target) ? MultiSelectedNodes : Single(target);
 
         /// <summary>
-        /// 左鍵按下：按住 Ctrl 時不論按在哪裡、沒按時按在空白處，開始一次多選手勢；按在節點上又沒按 Ctrl 時是一般點選，不在這裡處理。
+        /// 左鍵按下：按住 Ctrl 時不論按在哪裡、沒按時按在空白處，開始一次多選手勢；
+        /// 沒按 Ctrl 按在多選的節點上可能是拖曳移動（見 <see cref="TryBeginMovePress"/>），按在其他節點上是一般點選。
         /// </summary>
         /// <param name="location">控制項的用戶區座標。</param>
         /// <param name="control">是否按住 Ctrl。</param>
@@ -110,7 +136,9 @@ namespace CascadeControl.Views.Diagram
             var node = GetNodeAt(location);
             if (node != null && !control)
             {
+                // 按在多選的節點上可能是拖曳移動；其他是一般點選。
                 _press = null;
+                TryBeginMovePress(node, location);
                 return;
             }
 

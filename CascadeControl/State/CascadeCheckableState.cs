@@ -2,6 +2,7 @@ using CascadeControl.Common;
 using CascadeControl.Trees;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CascadeControl.State
 {
@@ -97,6 +98,20 @@ namespace CascadeControl.State
         {
             base.OnNodesRemoved(nodes);
             _checkSet?.UncheckRemoved(nodes);
+        }
+
+        /// <summary>
+        /// 移過去的節點有勾選時補勾新的祖先，維持「勾選的節點，祖先也勾選」；和移動在同一組歷史步驟裡。
+        /// </summary>
+        /// <param name="nodes">被移動的節點（不含子孫），已經在新的父節點底下。</param>
+        /// <remarks>勾選向上封閉，子孫有勾的話被移動的節點本身一定有勾，所以只看它們自己。</remarks>
+        protected override void OnNodesMoved(IReadOnlyList<MenuNode> nodes)
+        {
+            base.OnNodesMoved(nodes);
+            if (_checkSet == null) return;
+
+            var parent = nodes[0].Parent;
+            if (_checkSet.Contains(parent) && nodes.Any(_checkSet.IsChecked)) _checkSet.Check(parent);
         }
 
         private void OnInnerCheckSetChanged(object sender, MenuCheckChangedEventArgs e) => OnCheckedChanged(e);

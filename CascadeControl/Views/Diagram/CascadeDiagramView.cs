@@ -360,6 +360,7 @@ namespace CascadeControl.Views.Diagram
         {
             state.Invalidated += State_Invalidated;
             state.SelectedPathChanged += State_SelectedPathChanged;
+            state.TreeEdited += State_TreeEdited;
             if (state is CascadeCheckableState checkableState)
             {
                 checkableState.CheckedChanged += State_CheckedChanged;
@@ -374,6 +375,7 @@ namespace CascadeControl.Views.Diagram
             AbortEdit();
             state.Invalidated -= State_Invalidated;
             state.SelectedPathChanged -= State_SelectedPathChanged;
+            state.TreeEdited -= State_TreeEdited;
             if (state is CascadeCheckableState checkableState)
             {
                 checkableState.CheckedChanged -= State_CheckedChanged;

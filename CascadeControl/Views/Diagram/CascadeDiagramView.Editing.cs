@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace CascadeControl.Views.Diagram
@@ -78,7 +79,7 @@ namespace CascadeControl.Views.Diagram
         public bool Copy()
         {
             CommitPendingEdit();
-            return CascadeClipboard.CopyNodes(_marks.Count > 0 ? TopMostMarks() : Single(SelectedMenuNode));
+            return CascadeClipboard.CopyNodes(EditTargets());
         }
 
         /// <summary>
@@ -93,25 +94,26 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 把 <see cref="SelectedNode"/> 複製到 Windows 剪貼簿，然後從樹中移除。
+        /// 把 <see cref="SelectedNode"/> 複製到 Windows 剪貼簿，然後從樹中移除；有多選時改成多選的節點（祖先也被多選的子孫跟著祖先走）。
         /// </summary>
-        /// <returns>有剪下時為 true；唯讀、沒有選取或剪貼簿被佔用（這時不會移除）時為 false。</returns>
+        /// <returns>有剪下時為 true；唯讀、沒有對象或剪貼簿被佔用（這時不會移除）時為 false。</returns>
         public bool Cut()
         {
             CommitPendingEdit();
-            return CutNode(SelectedMenuNode);
+            return CutNodes(EditTargets());
         }
 
         /// <summary>
         /// 把 Windows 剪貼簿上的節點貼到 <see cref="SelectedNode"/> 的後面或前面，順序與複製時相同；沒有選取時加在第一層的最後。
+        /// 有多選時改成貼在多選的最後一個節點後面，或第一個節點前面（依圖上的前序，祖先也被多選的子孫不算）。
         /// </summary>
         /// <param name="before">true 貼在前面，false 貼在後面。</param>
         /// <returns>有貼上時為 true。</returns>
-        /// <remarks>同一層已有同名節點時，貼上的節點名稱自動加上後綴（例如 <c>Name - 2</c>）。貼完選取第一個貼上的節點。</remarks>
+        /// <remarks>同一層已有同名節點時，貼上的節點名稱自動加上後綴（例如 <c>Name - 2</c>）。貼完選取第一個貼上的節點，貼了多個時全部多選。</remarks>
         public bool Paste(bool before)
         {
             CommitPendingEdit();
-            var node = SelectedMenuNode;
+            var node = PasteAnchor(before);
             if (node != null) return PasteBeside(node, before);
 
             return Tree != null && PasteInto(Tree.Root, Tree.Root.Children.Count);
@@ -119,22 +121,27 @@ namespace CascadeControl.Views.Diagram
 
         /// <summary>
         /// 把 Windows 剪貼簿上的節點貼成 <see cref="SelectedNode"/> 的子節點，順序與複製時相同；只有 <see cref="SelectedNode"/> 是葉節點時才有作用。
+        /// 有多選時對象改成多選的節點，只有多選剛好一個葉節點時才有作用。
         /// </summary>
-        /// <returns>有貼上時為 true；唯讀、沒有選取、選取的節點已經有子節點，或剪貼簿上沒有節點時為 false。</returns>
+        /// <returns>有貼上時為 true；唯讀、沒有對象、對象已經有子節點，或剪貼簿上沒有節點時為 false。</returns>
+        /// <remarks>貼完選取第一個貼上的節點，貼了多個時全部多選。</remarks>
         public bool PasteAsChild()
         {
             CommitPendingEdit();
-            return PasteIntoLeaf(SelectedMenuNode);
+            if (_marks.Count == 0) return PasteIntoLeaf(SelectedMenuNode);
+
+            var marks = MultiSelectedNodes;
+            return marks.Count == 1 && PasteIntoLeaf(marks[0]);
         }
 
         /// <summary>
-        /// 刪除 <see cref="SelectedNode"/> 及其所有子孫；刪除前一律跳出確認。
+        /// 刪除 <see cref="SelectedNode"/> 及其所有子孫；有多選時改成多選的節點（可以屬於不同的父節點）。刪除前一律跳出確認，一次復原全部回來。
         /// </summary>
-        /// <returns>有刪除時為 true；唯讀、沒有選取或使用者取消時為 false。</returns>
+        /// <returns>有刪除時為 true；唯讀、沒有對象或使用者取消時為 false。</returns>
         public bool Delete()
         {
             CommitPendingEdit();
-            return DeleteNode(SelectedMenuNode);
+            return DeleteNodes(EditTargets());
         }
 
         /// <summary>
@@ -217,19 +224,21 @@ namespace CascadeControl.Views.Diagram
 
         private static IReadOnlyList<MenuNode> Single(MenuNode node) => node == null ? NoMenuNodes : new[] { node };
 
-        private bool CutNode(MenuNode node)
-        {
-            if (!CanEditNode(node) || !CascadeClipboard.CopyNodes(Single(node))) return false;
+        private bool CanEditNodes(IReadOnlyList<MenuNode> nodes) => CanEdit && nodes.Count > 0 && nodes.All(_state.IsInTree);
 
-            return _state.CutNodes(Single(node));
+        private bool CutNodes(IReadOnlyList<MenuNode> nodes)
+        {
+            if (!CanEditNodes(nodes) || !CascadeClipboard.CopyNodes(nodes)) return false;
+
+            return _state.CutNodes(nodes);
         }
 
-        private bool DeleteNode(MenuNode node)
+        private bool DeleteNodes(IReadOnlyList<MenuNode> nodes)
         {
-            if (!CanEditNode(node) || !CascadeEditPrompts.ConfirmDelete(this, Single(node))) return false;
+            if (!CanEditNodes(nodes) || !CascadeEditPrompts.ConfirmDelete(this, nodes)) return false;
 
             // 對話框開著的時候樹可能被換掉，再確認一次。
-            return CanEditNode(node) && _state.DeleteNodes(Single(node));
+            return CanEditNodes(nodes) && _state.DeleteNodes(nodes);
         }
 
         private bool PasteBeside(MenuNode target, bool before)

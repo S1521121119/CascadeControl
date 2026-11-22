@@ -22,6 +22,12 @@ namespace CascadeControl.Views.Diagram
         /// </remarks>
         public void Redraw()
         {
+            UpdateImage(RenderTreeImage(null));
+        }
+
+        // 依目前的樹、選取、勾選與展開畫圖；preview 不是 null 時畫成移動之後的樣子（拖曳移動時的預覽）。
+        private TreeImage RenderTreeImage(TreeDrawer.MovePreview preview)
+        {
             var tree = _state.Tree;
             SyncExpandTree();
 
@@ -31,7 +37,7 @@ namespace CascadeControl.Views.Diagram
             var checkSet = DisplayedCheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
 
-            UpdateImage(TreeDrawer.RenderImageWithPlaceholder(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded, _edit?.Placeholder));
+            return TreeDrawer.RenderImageWithPlaceholder(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded, _edit?.Placeholder, preview);
         }
 
         // ShowChecks 關閉時當成沒有勾選資訊。
@@ -81,7 +87,6 @@ namespace CascadeControl.Views.Diagram
             if (_image == null) return;
 
             GetTransform(out var scale, out var offset);
-            var size = _image.Image.Size;
 
             if (scale < 1f)
             {
@@ -89,6 +94,18 @@ namespace CascadeControl.Views.Diagram
                 e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
             }
 
+            // 拖曳移動時畫預覽圖（比例和原本的圖相同，位移讓放下的目標留在原處）；多選的節點這時畫在預覽裡，不另外蓋顏色。
+            var preview = _move?.Preview;
+            if (preview != null)
+            {
+                var previewSize = preview.Image.Size;
+                var origin = new PointF(offset.X + (_move.Offset.X * scale), offset.Y + (_move.Offset.Y * scale));
+                e.Graphics.DrawImage(preview.Image, new RectangleF(origin.X, origin.Y, previewSize.Width * scale, previewSize.Height * scale));
+                PaintDropTarget(e.Graphics);
+                return;
+            }
+
+            var size = _image.Image.Size;
             e.Graphics.DrawImage(_image.Image, new RectangleF(offset.X, offset.Y, size.Width * scale, size.Height * scale));
             PaintMarks(e.Graphics);
         }

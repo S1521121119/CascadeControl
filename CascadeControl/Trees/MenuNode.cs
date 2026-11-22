@@ -344,6 +344,18 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
+        /// 改掉已經從父節點拿下來的節點名稱，接到新的父節點之前用（移動時避開同名）。
+        /// </summary>
+        /// <exception cref="InvalidOperationException">節點還接在父節點底下。</exception>
+        internal void RenameDetached(string newName)
+        {
+            if (Parent != null) throw new InvalidOperationException("節點還接在父節點底下，請用 Rename。");
+
+            Name = ValidateNodeName(newName);
+            InvalidateDisplayText();
+        }
+
+        /// <summary>
         /// 修改本節點名稱。若同層尚無同名節點，則直接原地改名；
         /// 若同層已有同名節點，則將本節點的子樹往下疊合併至該既有節點，並移除本節點。
         /// </summary>

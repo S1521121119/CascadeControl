@@ -130,13 +130,120 @@ namespace CascadeControlTests.State
         }
 
         [TestMethod]
-        public void DeleteNodes_FromDifferentParents_ReturnsFalse()
+        public void DeleteNodes_FromDifferentParents_RemovesAll_OneUndoRestores()
+        {
+            var f = new Fixture();
+            var a1 = f.Node("A/A1");
+            var b = f.Node("B");
+
+            Assert.IsTrue(f.State.DeleteNodes(new[] { a1, b }));
+            CollectionAssert.AreEqual(new[] { "A", "A/A2", "C" }, f.Paths());
+            f.AssertSingleEdit(CascadeEditAction.Delete, a1, b);
+            Assert.AreSame(f.Node("A/A2"), f.State.SelectedNode, "選第一個節點原位置的下一個兄弟");
+            Assert.AreEqual(1, f.State.History.UndoCount, "算同一步");
+
+            Assert.IsNotNull(f.State.Undo());
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C" }, f.Paths());
+            CollectionAssert.AreEquivalent(new[] { a1, b }, f.Edits.Last().Nodes.ToArray(), "復原時兩個節點都列出來");
+
+            Assert.IsNotNull(f.State.Redo());
+            CollectionAssert.AreEqual(new[] { "A", "A/A2", "C" }, f.Paths());
+        }
+
+        [TestMethod]
+        public void DeleteNodes_WithAncestor_DescendantCountedOnce()
+        {
+            var f = new Fixture();
+            var a = f.Node("A");
+
+            Assert.IsTrue(f.State.DeleteNodes(new[] { f.Node("A/A1"), a }));
+            CollectionAssert.AreEqual(new[] { "B", "C" }, f.Paths());
+            f.AssertSingleEdit(CascadeEditAction.Delete, a);
+
+            Assert.IsNotNull(f.State.Undo());
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C" }, f.Paths());
+        }
+
+        [TestMethod]
+        public void MoveNodes_AppendsUnderNewParent_SelectsFirst_UndoRedoRestorePositions()
+        {
+            var f = new Fixture();
+            var a1 = f.Node("A/A1");
+            var b = f.Node("B");
+
+            CollectionAssert.AreEqual(new[] { a1, b }, f.State.MoveNodes(new[] { a1, b }, f.Node("C")).ToArray());
+            CollectionAssert.AreEqual(new[] { "A", "A/A2", "C", "C/A1", "C/B" }, f.Paths());
+            Assert.AreSame(a1, f.State.SelectedNode);
+            Assert.AreEqual(2, a1.Depth);
+            f.AssertSingleEdit(CascadeEditAction.Move, a1, b);
+
+            Assert.IsNotNull(f.State.Undo());
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C" }, f.Paths());
+            Assert.AreEqual(2, a1.Depth);
+            Assert.AreEqual(1, b.Depth);
+
+            Assert.IsNotNull(f.State.Redo());
+            CollectionAssert.AreEqual(new[] { "A", "A/A2", "C", "C/A1", "C/B" }, f.Paths());
+        }
+
+        [TestMethod]
+        public void MoveNodes_WithinSameParent_GoesToEnd_UndoRestoresOrder()
         {
             var f = new Fixture();
 
-            Assert.IsFalse(f.State.DeleteNodes(new[] { f.Node("A/A1"), f.Node("B") }));
+            Assert.AreEqual(1, f.State.MoveNodes(new[] { f.Node("A") }, f.Tree.Root).Count);
+            CollectionAssert.AreEqual(new[] { "B", "C", "A", "A/A1", "A/A2" }, f.Paths());
+
+            Assert.IsNotNull(f.State.Undo());
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C" }, f.Paths());
+        }
+
+        [TestMethod]
+        public void MoveNodes_NameClash_AddsSuffix_UndoRestoresName()
+        {
+            var f = new Fixture();
+            f.State.InsertNode(f.Node("C"), 0, "A1");
+            var a1 = f.Node("A/A1");
+
+            f.State.MoveNodes(new[] { a1 }, f.Node("C"));
+            Assert.AreEqual("A1 - 2", a1.Name);
+            CollectionAssert.AreEqual(new[] { "A", "A/A2", "B", "C", "C/A1", "C/A1 - 2" }, f.Paths());
+
+            Assert.IsNotNull(f.State.Undo());
+            Assert.AreEqual("A1", a1.Name);
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C", "C/A1" }, f.Paths());
+        }
+
+        [TestMethod]
+        public void MoveNodes_IntoItselfOrDescendant_Refused()
+        {
+            var f = new Fixture();
+            var a = f.Node("A");
+
+            Assert.AreEqual(0, f.State.MoveNodes(new[] { a }, a).Count);
+            Assert.AreEqual(0, f.State.MoveNodes(new[] { f.Node("B"), a }, f.Node("A/A1")).Count);
             CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C" }, f.Paths());
             Assert.AreEqual(0, f.Edits.Count);
+            Assert.AreEqual(0, f.State.History.UndoCount);
+        }
+
+        [TestMethod]
+        public void MoveNodes_CheckedNode_ChecksNewAncestors_UndoTogether()
+        {
+            var f = new Fixture(checkable: true);
+            var checkSet = ((CascadeCheckableState)f.State).CheckSet;
+            var a1 = f.Node("A/A1");
+            var c = f.Node("C");
+            checkSet.Check(a1);
+
+            f.State.MoveNodes(new[] { a1 }, c);
+            Assert.IsTrue(checkSet.IsChecked(a1));
+            Assert.IsTrue(checkSet.IsChecked(c), "勾選的節點，祖先也要勾");
+
+            Assert.IsNotNull(f.State.Undo());
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C" }, f.Paths());
+            Assert.IsFalse(checkSet.IsChecked(c), "補勾和移動同一步復原");
+            Assert.IsTrue(checkSet.IsChecked(a1));
         }
 
         [TestMethod]

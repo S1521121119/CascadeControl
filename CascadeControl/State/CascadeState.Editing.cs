@@ -120,13 +120,59 @@ namespace CascadeControl.State
         /// <summary>
         /// 刪除 <paramref name="nodes"/>（連同子孫）。呼叫端要先向使用者確認。
         /// </summary>
-        /// <param name="nodes">要移除的節點，都在 <see cref="Tree"/> 裡，而且是同一個父節點的子節點。</param>
-        /// <returns>有移除時為 true；沒有節點、有節點不在 <see cref="Tree"/> 裡，或父節點不只一個時為 false。</returns>
+        /// <param name="nodes">要移除的節點，都在 <see cref="Tree"/> 裡；可以屬於不同的父節點，祖先也在裡面的節點跟著祖先移除，不另外算。</param>
+        /// <returns>有移除時為 true；沒有節點，或有節點不在 <see cref="Tree"/> 裡時為 false。</returns>
         /// <remarks>
-        /// 移除後選取原位置的下一個兄弟（沒有就選前一個），一個都不剩時選父節點。
+        /// 移除後選取第一個節點原位置的下一個兄弟（沒有就選前一個），一個都不剩時選父節點。
         /// 移除與 <see cref="OnNodesRemoved"/> 的異動算同一步，復原時一起回來。
         /// </remarks>
         public bool DeleteNodes(IReadOnlyList<MenuNode> nodes) => RemoveNodes(CascadeEditAction.Delete, nodes);
+
+        /// <summary>
+        /// 把 <paramref name="nodes"/>（連同子孫）依序移到 <paramref name="newParent"/> 的子節點最後面，並選取第一個。
+        /// </summary>
+        /// <param name="nodes">要移動的節點，都在 <see cref="Tree"/> 裡；可以屬於不同的父節點，祖先也在裡面的節點跟著祖先移動，不另外算。</param>
+        /// <param name="newParent">新的父節點：<see cref="Tree"/> 的樹根或樹裡的節點，不可以是要移動的節點或它們的子孫。</param>
+        /// <returns>移動的節點，順序與 <paramref name="nodes"/> 相同；不能移動時為空集合。</returns>
+        /// <remarks>
+        /// 新的父節點底下已有同名節點時，移過去的節點名稱自動加上後綴（例如 <c>Name - 2</c>），不會合併。
+        /// 移動與 <see cref="OnNodesMoved"/> 的異動算同一步，復原時節點回到原本的父節點、位置與名稱。
+        /// </remarks>
+        public IReadOnlyList<MenuNode> MoveNodes(IReadOnlyList<MenuNode> nodes, MenuNode newParent)
+        {
+            if (nodes == null || nodes.Count == 0 || !nodes.All(IsInTree) || !IsInTreeOrRoot(newParent)) return NoMenuNodes;
+
+            var roots = TopMost(nodes);
+            if (roots.Any(root => IsSelfOrAncestor(root, newParent))) return NoMenuNodes;
+
+            using (History.BeginGroup())
+            {
+                var entries = roots.Select(node => new MoveStep.Entry
+                {
+                    Node = node,
+                    FromParent = node.Parent,
+                    FromIndex = node.SiblingNumber - 1,
+                    FromName = node.Name,
+                }).ToList();
+
+                foreach (var entry in entries) entry.Node.RemoveFromParent();
+
+                foreach (var entry in entries)
+                {
+                    entry.Node.RenameDetached(newParent.GetUniqueChildName(entry.FromName));
+                    newParent.AttachChildAt(newParent.Children.Count, entry.Node);
+                    entry.ToParent = newParent;
+                    entry.ToIndex = entry.Node.SiblingNumber - 1;
+                    entry.ToName = entry.Node.Name;
+                }
+
+                History.RecordMove(Tree, entries);
+                OnNodesMoved(roots);
+
+                FinishEdit(CascadeEditAction.Move, roots, roots[0]);
+                return roots;
+            }
+        }
 
         /// <summary>
         /// 復原 <see cref="History"/> 最近的一個步驟。
@@ -151,12 +197,35 @@ namespace CascadeControl.State
         protected virtual void OnTreeEdited(CascadeTreeEditedEventArgs e) => TreeEdited?.Invoke(this, e);
 
         /// <summary>
-        /// 剪下、刪除把節點移出樹之後、選取更新之前呼叫，和移除在同一組歷史步驟裡；預設不做任何事。
+        /// 剪下、刪除把節點移出樹之後、選取更新之前呼叫，和移除在同一組歷史步驟裡；預設不做任何事。<see cref="MoveNodes"/> 不呼叫這裡，見 <see cref="OnNodesMoved"/>。
         /// </summary>
         /// <param name="nodes">被移除的節點（不含子孫），已經不在樹裡。</param>
         protected virtual void OnNodesRemoved(IReadOnlyList<MenuNode> nodes)
         {
         }
+
+        /// <summary>
+        /// <see cref="MoveNodes"/> 把節點接到新的父節點之後、選取更新之前呼叫，和移動在同一組歷史步驟裡；預設不做任何事。
+        /// </summary>
+        /// <param name="nodes">被移動的節點（不含子孫），已經在新的父節點底下。</param>
+        protected virtual void OnNodesMoved(IReadOnlyList<MenuNode> nodes)
+        {
+        }
+
+        // 祖先也在 nodes 裡的節點跟著祖先走，拿掉；順序不變。
+        private static List<MenuNode> TopMost(IReadOnlyList<MenuNode> nodes)
+        {
+            var set = new HashSet<MenuNode>(nodes);
+            return nodes.Distinct().Where(node => !AncestorsOf(node).Any(set.Contains)).ToList();
+        }
+
+        private static IEnumerable<MenuNode> AncestorsOf(MenuNode node)
+        {
+            for (var current = node.Parent; current != null; current = current.Parent) yield return current;
+        }
+
+        private static bool IsSelfOrAncestor(MenuNode ancestor, MenuNode node) =>
+            ReferenceEquals(ancestor, node) || AncestorsOf(node).Contains(ancestor);
 
         // 節點是否屬於目前的樹；樹根不算。
         internal bool IsInTree(MenuNode node)
@@ -190,23 +259,31 @@ namespace CascadeControl.State
         {
             if (nodes == null || nodes.Count == 0 || !nodes.All(IsInTree)) return false;
 
-            var parent = nodes[0].Parent;
-            if (nodes.Any(node => !ReferenceEquals(node.Parent, parent))) return false;
+            // 每個父節點各記一步（位置是同一個父節點底下的），合成一組；不同父節點的步驟彼此獨立。
+            var roots = TopMost(nodes);
+            var groups = roots
+                .GroupBy(node => node.Parent)
+                .Select(group => new
+                {
+                    Parent = group.Key,
+                    Removed = group.Select(node => new KeyValuePair<int, MenuNode>(node.SiblingNumber - 1, node)).ToList(),
+                })
+                .ToList();
 
-            var removed = nodes.Select(node => new KeyValuePair<int, MenuNode>(node.SiblingNumber - 1, node)).ToList();
-            var firstIndex = removed.Min(entry => entry.Key);
+            var parent = groups[0].Parent;
+            var firstIndex = groups[0].Removed.Min(entry => entry.Key);
 
             using (History.BeginGroup())
             {
-                foreach (var node in nodes) node.RemoveFromParent();
-                History.RecordRemove(Tree, parent, removed);
-                OnNodesRemoved(nodes);
+                foreach (var node in roots) node.RemoveFromParent();
+                foreach (var group in groups) History.RecordRemove(Tree, group.Parent, group.Removed);
+                OnNodesRemoved(roots);
 
                 MenuNode next = null;
                 if (parent.Children.Count > 0) next = parent.Children[Math.Min(firstIndex, parent.Children.Count - 1)];
                 else if (!ReferenceEquals(parent, Tree.Root)) next = parent;
 
-                FinishEdit(action, nodes, next);
+                FinishEdit(action, roots, next);
                 return true;
             }
         }

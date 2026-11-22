@@ -28,5 +28,8 @@ namespace CascadeControl.State
 
         /// <summary>重做了一個改到樹的步驟（<see cref="CascadeState.Redo"/>）。只改勾選的步驟不觸發 <see cref="CascadeState.TreeEdited"/>。</summary>
         Redo,
+
+        /// <summary>把一個或多個節點（連同子孫）移到另一個父節點底下（<see cref="CascadeState.MoveNodes"/>）。</summary>
+        Move,
     }
 }

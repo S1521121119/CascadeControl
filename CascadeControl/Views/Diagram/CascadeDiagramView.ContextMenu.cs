@@ -72,12 +72,12 @@ namespace CascadeControl.Views.Diagram
                     items.Add(new ToolStripSeparator());
                 }
 
-                items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CascadeClipboard.CopyNodes(CopyTargets(target))));
+                items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CascadeClipboard.CopyNodes(EditTargets(target))));
                 items.Add(CreateCommand("複製(路徑)", CascadeEditCommand.CopyPath, true, () => CascadeClipboard.CopyNodePaths(CopyPathTargets(target))));
 
                 if (CanEdit)
                 {
-                    items.Add(CreateCommand("剪下", CascadeEditCommand.Cut, true, () => CutNode(target)));
+                    items.Add(CreateCommand("剪下", CascadeEditCommand.Cut, true, () => CutNodes(EditTargets(target))));
 
                     // 「作為子節點」只對葉節點有作用：已經有子節點時，請在子節點旁邊貼上。
                     var pasteMenu = new ToolStripMenuItem("貼上") { Enabled = CascadeClipboard.ContainsNodes() };
@@ -87,7 +87,7 @@ namespace CascadeControl.Views.Diagram
                     items.Add(pasteMenu);
                     items.Add(new ToolStripSeparator());
 
-                    items.Add(CreateCommand("刪除", CascadeEditCommand.Delete, true, () => DeleteNode(target)));
+                    items.Add(CreateCommand("刪除", CascadeEditCommand.Delete, true, () => DeleteNodes(EditTargets(target))));
                 }
 
                 items.Add(new ToolStripSeparator());
