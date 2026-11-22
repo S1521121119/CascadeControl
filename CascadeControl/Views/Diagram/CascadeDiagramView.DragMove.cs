@@ -7,23 +7,24 @@ using System.Windows.Forms;
 
 namespace CascadeControl.Views.Diagram
 {
-    // 拖曳移動：按住多選的節點拖到另一個節點上放開，多選的節點（連同子孫）接到它的子節點最後面。
+    // 拖曳移動：按住節點拖到另一個節點上放開，節點（連同子孫）接到它的子節點最後面；按住的是多選的節點時移動整個多選。
     public partial class CascadeDiagramView
     {
-        // 左鍵按在多選的節點上、放開前的拖曳移動；沒有時為 null。
+        // 左鍵按在節點上、放開前的拖曳移動；沒有時為 null。
         private MovePress _move;
 
         private bool IsMoveDragging => _move != null && _move.Dragged;
 
         /// <summary>
-        /// 左鍵按在多選的節點上（沒按 Ctrl、不是唯讀）：開始一次可能的拖曳移動。沒拖曳就放開時照一般點選處理。
+        /// 左鍵按在節點上（沒按 Ctrl、不是唯讀）：開始一次可能的拖曳移動，對象是整個多選（按在多選的節點上時）或只有這個節點。
+        /// 沒拖曳就放開時照一般點選處理。
         /// </summary>
         /// <returns>有開始時為 true。</returns>
         private bool TryBeginMovePress(MenuNode node, Point location)
         {
-            if (!CanEdit || !_marks.Contains(node)) return false;
+            if (!CanEdit) return false;
 
-            _move = new MovePress(location, TopMostMarks());
+            _move = new MovePress(location, _marks.Contains(node) ? TopMostMarks() : new[] { node });
             Capture = true;
             return true;
         }

@@ -23,7 +23,8 @@ namespace CascadeControl.Views.Diagram
         /// <remarks>
         /// <para>
         /// 從空白處拖曳、或按住 Ctrl 拖曳是框選：方塊碰到框的節點都選進來，按住 Ctrl 時加進原本的多選，否則取代。
-        /// Ctrl+點節點切換它是否多選；取消時它多選的子孫一起取消。Ctrl+點選不觸發 <see cref="NodeMouseClick"/>。
+        /// Ctrl+點節點切換它是否多選；取消時它多選的子孫一起取消。還沒有多選時，選取的節點也算進去（和 Columns 同一欄的 Ctrl+點選一樣），
+        /// 所以選了一個節點再 Ctrl+點另一個，兩個都會多選。Ctrl+點選不觸發 <see cref="NodeMouseClick"/>，也不改選取。
         /// 不按 Ctrl 點節點或空白處、按 Esc 取消多選；被收合、隱藏或不在範圍內而沒畫出來的節點自動移出多選。
         /// </para>
         /// <para>
@@ -32,7 +33,8 @@ namespace CascadeControl.Views.Diagram
         /// 右鍵點在多選的節點上時，功能表的「複製」、「複製(路徑)」、「剪下」、「刪除」也是。貼上的位置跟著多選，見 <see cref="Paste"/>。
         /// </para>
         /// <para>
-        /// 不是唯讀時，按住多選的節點拖到另一個節點上放開，多選的節點（連同子孫）移到它的子節點最後面（<see cref="CascadeControl.State.CascadeState.MoveNodes"/>）。
+        /// 不是唯讀時，按住節點拖到另一個節點上放開，節點（連同子孫）移到它的子節點最後面（<see cref="CascadeControl.State.CascadeState.MoveNodes"/>）；
+        /// 按住的是多選的節點時移動整個多選，否則只移動按住的那一個。
         /// 拖曳時畫出移動之後的樣子：移過去的節點半透明，目標加上藍框；按 Esc 取消。目標不能是被移動的節點或它們的子孫。
         /// </para>
         /// </remarks>
@@ -74,16 +76,20 @@ namespace CascadeControl.Views.Diagram
             if (_marks.Count > 0) SetMarks(MultiSelectedNodes);
         }
 
-        // Ctrl+點選：加入，或連同多選的子孫一起取消。
+        // Ctrl+點選：加入，或連同多選的子孫一起取消。以 SeedMarks 為起點。
         private void ToggleMark(MenuNode node)
         {
-            if (!_marks.Contains(node))
-            {
-                SetMarks(_marks.Concat(new[] { node }));
-                return;
-            }
+            var marks = SeedMarks();
+            SetMarks(marks.Contains(node) ? marks.Where(mark => !IsSelfOrAncestor(node, mark)) : marks.Concat(new[] { node }));
+        }
 
-            SetMarks(_marks.Where(mark => !IsSelfOrAncestor(node, mark)));
+        // Ctrl 手勢的起點：有多選就是多選；沒有時是畫在圖上的選取節點（它本來就畫成選取色），和 Columns 的 SeedMarks 一樣。
+        private List<MenuNode> SeedMarks()
+        {
+            if (_marks.Count > 0) return _marks.ToList();
+
+            var selected = SelectedMenuNode;
+            return FindImageNode(selected) != null ? new List<MenuNode> { selected } : new List<MenuNode>();
         }
 
         private static bool IsSelfOrAncestor(MenuNode ancestor, MenuNode node)
@@ -127,7 +133,7 @@ namespace CascadeControl.Views.Diagram
 
         /// <summary>
         /// 左鍵按下：按住 Ctrl 時不論按在哪裡、沒按時按在空白處，開始一次多選手勢；
-        /// 沒按 Ctrl 按在多選的節點上可能是拖曳移動（見 <see cref="TryBeginMovePress"/>），按在其他節點上是一般點選。
+        /// 沒按 Ctrl 按在節點上可能是拖曳移動（見 <see cref="TryBeginMovePress"/>），沒拖曳就放開是一般點選。
         /// </summary>
         /// <param name="location">控制項的用戶區座標。</param>
         /// <param name="control">是否按住 Ctrl。</param>
@@ -136,13 +142,13 @@ namespace CascadeControl.Views.Diagram
             var node = GetNodeAt(location);
             if (node != null && !control)
             {
-                // 按在多選的節點上可能是拖曳移動；其他是一般點選。
+                // 可能是拖曳移動；沒拖曳就放開是一般點選。
                 _press = null;
                 TryBeginMovePress(node, location);
                 return;
             }
 
-            _press = new MarkPress(ToImagePoint(location), location, node, control ? _marks.ToList() : new List<MenuNode>(), control);
+            _press = new MarkPress(ToImagePoint(location), location, node, control ? SeedMarks() : new List<MenuNode>(), control);
             Capture = true;
         }
 
@@ -261,7 +267,7 @@ namespace CascadeControl.Views.Diagram
             /// <summary>按下的節點；按在空白處時為 null。</summary>
             public MenuNode StartNode { get; }
 
-            /// <summary>按住 Ctrl 時是按下前的多選，框選範圍加在它上面；否則是空的。</summary>
+            /// <summary>按住 Ctrl 時是按下前的多選（見 SeedMarks），框選範圍加在它上面；否則是空的。</summary>
             public List<MenuNode> BaseMarks { get; }
 
             public bool Control { get; }

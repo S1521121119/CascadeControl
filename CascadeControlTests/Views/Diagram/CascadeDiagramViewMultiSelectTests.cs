@@ -70,6 +70,25 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
+        public void CtrlClick_WithoutMarks_StartsFromSelectedNode()
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("B");
+                f.CtrlClick("C");
+                f.AssertMarks("B", "C");
+                Assert.AreSame(f.Node("B"), f.View.SelectedNode, "Ctrl+點選不改選取");
+
+                f.View.ClearMultiSelection();
+                f.CtrlClick("B");
+                f.AssertMarks();
+
+                f.Drag(f.BlankRightOf("A > A1", "A > A2"), f.LeftEdgeBelow("A > A2"), control: true);
+                f.AssertMarks("A > A1", "A > A2", "B");
+            }
+        }
+
+        [TestMethod]
         public void PlainClickOnNodeOrBlank_ClearsMarks()
         {
             using (var f = new Fixture())
@@ -120,6 +139,7 @@ namespace CascadeControlTests.Views.Diagram
                 f.CtrlClick("B");
                 f.CtrlClick("A > A1");
                 f.CtrlClick("A");
+                f.CtrlClick("C");
 
                 Assert.IsTrue(f.Key(Keys.Control | Keys.C));
                 if (!f.View.Copy()) Assert.Inconclusive("剪貼簿被其他程式佔用。");
@@ -138,6 +158,7 @@ namespace CascadeControlTests.Views.Diagram
                 f.Select("C");
                 f.CtrlClick("A > A1");
                 f.CtrlClick("B");
+                f.CtrlClick("C");
                 f.RequireClipboard(f.View.Copy());
 
                 Assert.IsTrue(f.Key(Keys.Control | Keys.V));
@@ -157,6 +178,7 @@ namespace CascadeControlTests.Views.Diagram
 
                 f.Select("C");
                 f.CtrlClick("A > A2");
+                f.CtrlClick("C");
                 Assert.IsTrue(f.View.Paste(before: true));
                 f.AssertShape("A", "A > A1", "A > B", "A > A2", "B", "C");
                 f.AssertMarks();
@@ -174,6 +196,7 @@ namespace CascadeControlTests.Views.Diagram
                 f.Select("C");
                 f.CtrlClick("A > A1");
                 f.CtrlClick("B");
+                f.CtrlClick("C");
                 Assert.IsFalse(f.View.PasteAsChild(), "多選兩個節點時不知道要貼進哪一個");
 
                 f.CtrlClick("B");
@@ -201,6 +224,43 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreSame(a1, f.View.SelectedNode);
                 f.AssertMarks("C > A1", "C > B");
                 Assert.AreEqual(0, f.Clicks.Count, "拖曳不觸發 NodeMouseClick");
+            }
+        }
+
+        [TestMethod]
+        public void DragUnmarkedNode_MovesOnlyIt()
+        {
+            using (var f = new Fixture())
+            {
+                f.CtrlClick("A > A1");
+                var b = f.Node("B");
+                var c = f.Center("C");
+
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(c);
+                f.View.Up(c);
+
+                f.AssertShape("A", "A > A1", "A > A2", "C", "C > B");
+                Assert.AreSame(b, f.View.SelectedNode);
+                f.AssertMarks();
+                Assert.AreEqual(0, f.Clicks.Count, "拖曳不觸發 NodeMouseClick");
+            }
+        }
+
+        [TestMethod]
+        public void PressOnUnmarkedNodeWithoutDragging_IsPlainClick()
+        {
+            using (var f = new Fixture())
+            {
+                f.CtrlClick("A > A1");
+                var b = f.Center("B");
+
+                f.View.Down(b);
+                f.View.Up(b);
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                f.AssertMarks();
+                Assert.AreEqual(1, f.Clicks.Count);
             }
         }
 
