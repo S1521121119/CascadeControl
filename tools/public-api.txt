@@ -399,6 +399,8 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHand
 CascadeControl.Views.Diagram.CascadeDiagramView :: public event System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs> NodeMouseDoubleClick
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method CascadeControl.Trees.MenuNode GetExpanderAt(System.Drawing.Point clientLocation)
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method CascadeControl.Trees.MenuNode GetNodeAt(System.Drawing.Point clientLocation)
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean BeginCreateChild()
+CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean BeginInsert(System.Boolean before)
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean BeginRename()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean Copy()
 CascadeControl.Views.Diagram.CascadeDiagramView :: public method System.Boolean CopyPath()

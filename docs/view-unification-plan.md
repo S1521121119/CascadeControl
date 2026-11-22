@@ -299,11 +299,19 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 右鍵功能表在可編輯時多一組「重新命名(F2)」，放在復原、重做之後、複製之前，順序同 Columns；對象沒有畫在圖上時停用。
   - 單行 TextBox 本來就不支援 Ctrl+A 全選，Columns 的編輯框也一樣，這一步沒改。
 
-- [ ] **B4 Diagram 插入與建立子節點**
+- [x] **B4 Diagram 插入與建立子節點**
   - 這個操作方式在專案裡沒有前例。先各做一個原型比較，再決定：
     - 在圖上留一個暫時的空白方塊（要改 `TreeDrawer`），確認後才建立節點。
     - 先用預設名稱建立節點再開改名框，按 Esc 時復原。
   - 驗證：Ctrl+I、Ctrl+Shift+I、Ctrl+N 可以建立節點；按 Esc 取消後，樹與歷史都沒有變化。
+  - 決定：採用空白方塊。第二個方案按 Esc 後達不到「歷史沒有變化」：`MenuHistory.Push` 記下插入時就清掉重做的步驟，Esc 用復原取消又會多一筆重做；歷史滿了時還會丟掉最舊的一步。要避免就得改 `MenuHistory` 內部，第 5 節列為刻意不改。另外一次插入會觸發兩次 `TreeEdited`（Insert 與 Undo），確認時也會變成兩步（插入與改名）。這些從程式碼就能確定，所以沒有另外做原型。空白方塊和 Columns 的 `OpenPlaceholderEditor` 是同一種做法，確認前樹、歷史與其他 View 都不受影響。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 5 個測試、改 2 個（Ctrl+I、Ctrl+Shift+I、Ctrl+N 改成會攔；右鍵功能表多了「插入」與「建立子節點」），全套 552 個通過。拿掉「取消時重畫」那一行，`CancelInsertOrCreateChild_TreeHistoryAndPlaceholderUnchanged` 會失敗（C 停在被空白方塊往下推的位置）。API 比對只有 Diagram 新增 `BeginInsert`、`BeginCreateChild`，`tools/public-api.txt` 已更新為 484 行。
+  - 用腳本開啟 Viewer 表單載入 Motor／Diagnostics／Settings，以 SendKeys 操作 Diagram：選 Diagnostics 按 Ctrl+I，Diagnostics 與 Settings 之間出現白底虛線框的空白方塊，編輯框蓋在上面，樹與歷史不變；輸入 Spindle 按 Enter，樹、Columns 第一欄都多了 Spindle 並選取它，記錄一行 Insert，Undo 1。Ctrl+Shift+I 插在前面（Before），Ctrl+N 在葉節點下一欄畫空白方塊並建立 Child。先復原一步留下 Redo 1，再分別以 Ctrl+I、Ctrl+Shift+I、Ctrl+N 開啟編輯框、輸入 X、按 Esc：每次按 Esc 前編輯框都開著，按完樹、Undo 2、Redo 1、TreeEdited 都沒有變化；之後 Ctrl+Y 照樣重做。切成唯讀後 Ctrl+I 不攔。
+  - `TreeDrawer` 新增 internal 的 `RenderImageWithPlaceholder` 與 `TreeDrawer.Placeholder`（父節點、位置、代表方塊的節點，該節點不在樹裡）。公開的 `RenderImage` 不變，只是轉呼叫。取名不沿用 `RenderImage` 多載，是因為多載會讓既有的 `cref="TreeDrawer.RenderImage"` 出現 CS0419 模稜兩可警告。空白方塊沒有編號與名稱，排在原樹第 Position 個子節點之前（隱藏沒勾的節點時照樣對得上），不算進父節點的全勾。勾選上當成沒勾，所以有勾選資訊時連線變淡，和建立後的新節點一致。第一層只有一個節點、要插在它旁邊時，改從 Root 開始畫。色系改依 `LayoutNode.Depth` 決定，空白方塊取父節點的深度加 1。
+  - Diagram 的 `EditSession` 多了 `Action` 與 `Placeholder`，改名、插入、建立子節點共用同一個編輯框流程。結束規則同 B3。取消、中止，或建立失敗時重畫，把空白方塊拿掉。建立成功時選取跳到新節點，靠那次重畫拿掉。`GetNodeAt` 點到空白方塊時回傳 null。
+  - 只畫選取的子樹時不能插入：插入前會選取對象，對象就成了圖的起點，旁邊沒有位置。快捷鍵照樣會攔但不做事，右鍵功能表的「插入」停用；建立子節點可以用。
+  - 右鍵功能表依 Columns 的順序：復原、重做｜插入 ▸ 之前／之後、建立子節點、重新命名｜複製…。「建立子節點」只對葉節點啟用。
+  - 未勾選節點設成「隱藏」時，新節點建立後沒有勾選，會從圖上消失。這和在 Diagram 貼上的行為相同，這一步沒有改。
 
 - [ ] **B5 編輯指令寫進 `ICascadeView`**
   - 加入 D9 列出的編輯指令。此時兩個 View 都已實作。
@@ -318,7 +326,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **B4 Diagram 插入與建立子節點**。A 段（A0 到 A6）、B1 到 B3 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **B5 編輯指令寫進 `ICascadeView`**。A 段（A0 到 A6）、B1 到 B4 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

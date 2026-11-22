@@ -46,7 +46,7 @@ namespace CascadeControl.Views.Diagram
 
         private void ContextMenu_Closed(object sender, ToolStripDropDownClosedEventArgs e) => _contextMenuNode = null;
 
-        // 復原、重做 ｜ 重新命名 ｜ 複製、複製(路徑)、剪下、貼上 ｜ 刪除 ｜（顯示設定）。每一組以分隔線結尾，沒有編輯項目時不加。
+        // 復原、重做 ｜ 插入、建立子節點、重新命名 ｜ 複製、複製(路徑)、剪下、貼上 ｜ 刪除 ｜（顯示設定）。每一組以分隔線結尾，沒有編輯項目時不加。
         private void AddEditItems(ToolStripItemCollection items, MenuNode target)
         {
             // 有樹而且能改樹或顯示勾選時一律顯示復原、重做，沒有步驟時停用，項目才不會忽隱忽現。
@@ -61,7 +61,14 @@ namespace CascadeControl.Views.Diagram
             {
                 if (CanEdit)
                 {
-                    items.Add(CreateCommand("重新命名", CascadeEditCommand.Rename, FindImageNode(target) != null, () => BeginRename(target)));
+                    // 插入前會選取 target；只畫選取的子樹時它就成了圖的起點，旁邊沒有位置。建立子節點只對葉節點。
+                    var drawn = FindImageNode(target) != null;
+                    var insertMenu = new ToolStripMenuItem("插入") { Enabled = drawn && _drawScope != TreeDrawScope.SelectedSubtree };
+                    insertMenu.DropDownItems.Add(CreateCommand("之前", CascadeEditCommand.InsertBefore, true, () => BeginInsert(target, before: true)));
+                    insertMenu.DropDownItems.Add(CreateCommand("之後", CascadeEditCommand.Insert, true, () => BeginInsert(target, before: false)));
+                    items.Add(insertMenu);
+                    items.Add(CreateCommand("建立子節點", CascadeEditCommand.CreateChild, drawn && target.IsLeaf, () => BeginCreateChild(target)));
+                    items.Add(CreateCommand("重新命名", CascadeEditCommand.Rename, drawn, () => BeginRename(target)));
                     items.Add(new ToolStripSeparator());
                 }
 

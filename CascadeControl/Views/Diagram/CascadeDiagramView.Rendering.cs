@@ -18,6 +18,7 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         /// <remarks>
         /// <see cref="TreeDrawScope.SelectedSubtree"/> 沒有選取時畫成空白；<see cref="State"/> 的 <see cref="CascadeState.Tree"/> 為 null 時也畫成空白。
+        /// 插入或建立子節點的編輯框開著時，新節點的位置另外畫一個空白方塊。
         /// </remarks>
         public void Redraw()
         {
@@ -30,7 +31,7 @@ namespace CascadeControl.Views.Diagram
             var checkSet = DisplayedCheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
 
-            UpdateImage(TreeDrawer.RenderImage(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded));
+            UpdateImage(TreeDrawer.RenderImageWithPlaceholder(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded, _edit?.Placeholder));
         }
 
         // ShowChecks 關閉時當成沒有勾選資訊。
@@ -113,12 +114,13 @@ namespace CascadeControl.Views.Diagram
         /// 控制項上的某一點落在哪個節點方塊裡，已考慮捲動位置與縮放。
         /// </summary>
         /// <param name="clientLocation">控制項的用戶區座標。</param>
-        /// <returns>點到的節點；沒點到時為 null。</returns>
+        /// <returns>點到的節點；沒點到，或點到插入時佔位的空白方塊時為 null。</returns>
         public MenuNode GetNodeAt(Point clientLocation)
         {
             if (_image == null) return null;
 
-            return _image.GetNodeAt(ToImagePoint(clientLocation));
+            var node = _image.GetNodeAt(ToImagePoint(clientLocation));
+            return ReferenceEquals(node, _edit?.Placeholder?.Node) ? null : node;
         }
 
         /// <summary>

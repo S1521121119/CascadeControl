@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace CascadeControl.Views.Diagram
 {
-    // 編輯：唯讀切換、就地改名，以及複製／剪下／貼上／刪除／復原／重做。改樹由 State 執行，這裡只決定對象與確認。
+    // 編輯：唯讀切換、就地改名與插入、建立子節點，以及複製／剪下／貼上／刪除／復原／重做。改樹由 State 執行，這裡只決定對象與確認。
     public partial class CascadeDiagramView
     {
         private static readonly IReadOnlyList<MenuNode> NoMenuNodes = new MenuNode[0];
@@ -46,7 +46,7 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 是否正在就地編輯節點名稱（<see cref="BeginRename()"/> 開啟的編輯框）。
+        /// 是否正在就地編輯節點名稱（<see cref="BeginRename()"/>、<see cref="BeginInsert(bool)"/>、<see cref="BeginCreateChild()"/> 開啟的編輯框）。
         /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -134,6 +134,32 @@ namespace CascadeControl.Views.Diagram
         {
             CommitPendingEdit();
             return DeleteNode(SelectedMenuNode);
+        }
+
+        /// <summary>
+        /// 在 <see cref="SelectedNode"/> 的後面或前面畫一個空白方塊並在上面開啟編輯框，按 Enter 以輸入的名稱建立新節點，按 Esc 取消。
+        /// </summary>
+        /// <param name="before">true 插在前面，false 插在後面。</param>
+        /// <returns>
+        /// 有開啟編輯框時為 true；唯讀、沒有選取，或 <see cref="DrawScope"/> 是 <see cref="TreeDrawScope.SelectedSubtree"/>
+        /// （選取的節點是圖的起點，旁邊沒有位置）時為 false。
+        /// </returns>
+        /// <remarks>按 Enter 之前樹與 <see cref="CascadeState.History"/> 都不變，空白方塊只畫在這個檢視上；取消時什麼都沒有發生。結束編輯的規則同 <see cref="BeginRename()"/>。</remarks>
+        public bool BeginInsert(bool before)
+        {
+            CommitPendingEdit();
+            return BeginInsert(SelectedMenuNode, before);
+        }
+
+        /// <summary>
+        /// 在葉節點 <see cref="SelectedNode"/> 底下畫一個空白方塊並在上面開啟編輯框，按 Enter 建立它的第一個子節點，按 Esc 取消。
+        /// </summary>
+        /// <returns>有開啟編輯框時為 true；唯讀、沒有選取、選取的節點已經有子節點（請在子節點旁邊用 <see cref="BeginInsert(bool)"/>），或它沒有畫在圖上時為 false。</returns>
+        /// <remarks>規則同 <see cref="BeginInsert(bool)"/>。</remarks>
+        public bool BeginCreateChild()
+        {
+            CommitPendingEdit();
+            return BeginCreateChild(SelectedMenuNode);
         }
 
         /// <summary>
@@ -238,25 +264,68 @@ namespace CascadeControl.Views.Diagram
         // 編輯框最窄的寬度：方塊縮得很小（自動縮放）時還打得下字。
         private const int MIN_EDIT_BOX_WIDTH = 80;
 
+        // 編輯的對象要是選取的節點（插入時是插在它旁邊的那個）：選取改了會重畫，之後才算得出方塊的位置。
+
+        private bool BeginInsert(MenuNode anchor, bool before)
+        {
+            if (!CanEditNode(anchor) || _drawScope == TreeDrawScope.SelectedSubtree) return false;
+
+            _state.TrySelectNode(anchor);
+            var position = anchor.SiblingNumber - 1 + (before ? 0 : 1);
+            return OpenPlaceholderEditor(CascadeEditAction.Insert, new TreeDrawer.Placeholder(anchor.Parent, position));
+        }
+
+        // 只對葉節點，和 State.CreateChild 的規則一致。
+        private bool BeginCreateChild(MenuNode node)
+        {
+            if (!CanEditNode(node) || !node.IsLeaf) return false;
+
+            _state.TrySelectNode(node);
+            return OpenPlaceholderEditor(CascadeEditAction.CreateChild, new TreeDrawer.Placeholder(node, 0));
+        }
+
         private bool BeginRename(MenuNode node)
         {
             if (!CanEditNode(node)) return false;
 
-            // 改名的對象要是選取的節點：選取改了會重畫，之後才算得出方塊的位置。
             _state.TrySelectNode(node);
-            if (FindImageNode(node) == null) return false;
+            return OpenEditBox(new EditSession(CascadeEditAction.Rename, node, null, CreateEditBox(node.Name)));
+        }
 
-            EnsureVisible(node);
+        // 先把空白方塊畫出來，編輯框才有位置可以蓋；位置不在圖上時 PositionEditBox 會中止編輯並把方塊拿掉。
+        private bool OpenPlaceholderEditor(CascadeEditAction action, TreeDrawer.Placeholder placeholder)
+        {
+            var session = new EditSession(action, placeholder.Node, placeholder, CreateEditBox(string.Empty));
+            _edit = session;
+            Redraw();
 
-            var box = new TextBox
+            return _edit == session && OpenEditBox(session);
+        }
+
+        private TextBox CreateEditBox(string text)
+        {
+            return new TextBox
             {
                 Name = "txtEdit",
                 Font = Font,
-                Text = node.Name,
+                Text = text,
                 ImeMode = ImeMode.NoControl,
             };
+        }
 
-            _edit = new EditSession(node, box);
+        // 對象沒有畫在圖上時不開，回傳 false。
+        private bool OpenEditBox(EditSession session)
+        {
+            _edit = session;
+            if (FindImageNode(session.Node) == null)
+            {
+                AbortEdit();
+                return false;
+            }
+
+            EnsureVisible(session.Node);
+
+            var box = session.Box;
             Controls.Add(box);
             PositionEditBox();
 
@@ -324,7 +393,7 @@ namespace CascadeControl.Views.Diagram
                     session.Prompting = true;
                     try
                     {
-                        CascadeEditPrompts.WarnReservedCharacter(this, CascadeEditAction.Rename);
+                        CascadeEditPrompts.WarnReservedCharacter(this, session.Action);
                     }
                     finally
                     {
@@ -344,8 +413,22 @@ namespace CascadeControl.Views.Diagram
             }
 
             // 先關編輯框再改樹：State 改完會重新整理，那時已經沒有編輯要中止。
+            // 有建立節點時選取跳到新節點，重畫時已經沒有空白方塊；沒有建立時自己重畫把它拿掉。
             CloseEditBox(session);
-            if (commit && name.Length > 0) _state.RenameNode(session.Node, name);
+            var applied = commit && name.Length > 0 && ApplyEdit(session, name) != null;
+            if (!applied && session.Placeholder != null) Redraw();
+        }
+
+        // 交給 State 套用輸入的名稱；對象已經不在樹裡，或改名成原本的名稱時回傳 null。
+        private MenuNode ApplyEdit(EditSession session, string name)
+        {
+            switch (session.Action)
+            {
+                case CascadeEditAction.Insert: return _state.InsertNode(session.Placeholder.Parent, session.Placeholder.Position, name);
+                case CascadeEditAction.CreateChild: return _state.CreateChild(session.Placeholder.Parent, name);
+                case CascadeEditAction.Rename: return _state.RenameNode(session.Node, name);
+                default: return null;
+            }
         }
 
         /// <summary>
@@ -353,7 +436,11 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         private void AbortEdit()
         {
-            if (_edit != null) CloseEditBox(_edit);
+            var session = _edit;
+            if (session == null) return;
+
+            CloseEditBox(session);
+            if (session.Placeholder != null) Redraw();
         }
 
         // 拿掉編輯框。編輯框原本有焦點時把焦點交回控制項，焦點才不會因為編輯框消失而掉出去。
@@ -371,17 +458,26 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 就地編輯的狀態：改哪個節點、用哪個編輯框。
+        /// 就地編輯的狀態：做哪一種編輯、編輯框蓋在哪個方塊上、用哪個編輯框。
         /// </summary>
         private sealed class EditSession
         {
-            public EditSession(MenuNode node, TextBox box)
+            public EditSession(CascadeEditAction action, MenuNode node, TreeDrawer.Placeholder placeholder, TextBox box)
             {
+                Action = action;
                 Node = node;
+                Placeholder = placeholder;
                 Box = box;
             }
 
+            /// <summary><see cref="CascadeEditAction.Rename"/>、<see cref="CascadeEditAction.Insert"/> 或 <see cref="CascadeEditAction.CreateChild"/>。</summary>
+            public CascadeEditAction Action { get; }
+
+            /// <summary>編輯框蓋住的方塊：改名的節點，或 <see cref="Placeholder"/> 的節點。</summary>
             public MenuNode Node { get; }
+
+            /// <summary>插入、建立子節點時新節點的位置；改名時為 null。</summary>
+            public TreeDrawer.Placeholder Placeholder { get; }
 
             /// <summary>輸入名稱的 TextBox，控制項的子控制項。</summary>
             public TextBox Box { get; }

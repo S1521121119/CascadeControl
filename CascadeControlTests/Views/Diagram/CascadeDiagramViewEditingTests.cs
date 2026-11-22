@@ -45,14 +45,14 @@ namespace CascadeControlTests.Views.Diagram
         });
 
         [TestMethod]
-        public void InsertAndColumnsOnlyKeys_AreNotHandled()
+        public void ColumnsOnlyKeys_AreNotHandled()
         {
             using (var f = new Fixture())
             {
                 f.Select("B");
 
-                // 插入、建立子節點還沒做；Esc、Ctrl+A、Ctrl+Space 是 Columns 的多選與勾選。
-                foreach (var keys in new[] { Keys.Control | Keys.I, Keys.Control | Keys.Shift | Keys.I, Keys.Control | Keys.N, Keys.Escape, Keys.Control | Keys.A, Keys.Control | Keys.Space })
+                // Esc、Ctrl+A、Ctrl+Space 是 Columns 的多選與勾選。
+                foreach (var keys in new[] { Keys.Escape, Keys.Control | Keys.A, Keys.Control | Keys.Space })
                 {
                     Assert.IsFalse(f.Key(keys), keys.ToString());
                 }
@@ -299,6 +299,177 @@ namespace CascadeControlTests.Views.Diagram
         });
 
         [TestMethod]
+        public void InsertKeys_OpenBoxOverPlaceholder_CommitInsertsThroughState_ColumnsFollow()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            using (var f = new Fixture(state: host.View.State))
+            {
+                var b = f.Node("B");
+                var c = f.Node("C");
+                f.Select("B");
+
+                Assert.IsTrue(f.Key(Keys.Control | Keys.I));
+                Assert.IsTrue(f.View.IsEditing);
+                var box = f.EditBox();
+                Assert.AreEqual(string.Empty, box.Text, "新節點的編輯框一開始是空的");
+                var x = box.Left + 2;
+                Assert.IsTrue(f.Bounds(b).Bottom <= box.Top && box.Bottom <= f.Bounds(c).Top, "空白方塊畫在 B 與 C 之間");
+                Assert.IsNull(f.View.GetNodeAt(new System.Drawing.Point(x, box.Top + (box.Height / 2))), "點到空白方塊不算點到節點");
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                Assert.AreEqual(0, f.Edits.Count, "確認之前不改樹");
+                Assert.AreEqual(0, f.View.State.History.UndoCount);
+
+                box.Text = "N";
+                f.View.EndEdit(commit: true);
+
+                Assert.IsFalse(f.View.IsEditing);
+                f.AssertShape("A", "A > A1", "A > A2", "B", "N", "C");
+                var n = f.Node("N");
+                Assert.AreSame(n, f.View.SelectedNode);
+                f.AssertEdits(CascadeEditAction.Insert, n);
+                Assert.AreEqual(1, f.View.State.History.UndoCount);
+                CollectionAssert.AreEqual(new[] { "A", "B", "N", "C" }, host.Columns[0].Items.Cast<ICascadeNode>().Select(node => node.Name).ToArray(), "Columns 第一欄跟著更新");
+
+                // Ctrl+Shift+I 插在前面。
+                Assert.IsTrue(f.Key(Keys.Control | Keys.Shift | Keys.I));
+                f.EditBox().Text = "M";
+                f.View.EndEdit(commit: true);
+                f.AssertShape("A", "A > A1", "A > A2", "B", "M", "N", "C");
+                f.AssertLastEdit(CascadeEditAction.Insert, f.Node("M"));
+            }
+        }
+
+        [TestMethod]
+        public void CreateChildKey_OnlyForLeaf_PlaceholderUnderLeaf_CommitCreatesFirstChild()
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("A");
+                Assert.IsTrue(f.Key(Keys.Control | Keys.N), "會攔，但 A 已經有子節點");
+                Assert.IsFalse(f.View.IsEditing);
+
+                var b = f.Node("B");
+                f.Select("B");
+                Assert.IsTrue(f.Key(Keys.Control | Keys.N));
+                Assert.IsTrue(f.View.IsEditing);
+                var box = f.EditBox();
+                Assert.IsTrue(box.Left > f.Bounds(b).Right, "空白方塊在 B 的下一欄");
+
+                box.Text = "B1";
+                f.View.EndEdit(commit: true);
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "B > B1", "C");
+                var b1 = f.Node("B > B1");
+                Assert.AreSame(b1, f.View.SelectedNode);
+                f.AssertEdits(CascadeEditAction.CreateChild, b1);
+            }
+        }
+
+        [TestMethod]
+        public void CancelInsertOrCreateChild_TreeHistoryAndPlaceholderUnchanged()
+        {
+            using (var f = new Fixture())
+            {
+                // 先留一步可以重做的歷史：取消插入之後它還要在。
+                f.Select("B");
+                Assert.IsTrue(f.View.BeginRename());
+                f.EditBox().Text = "X";
+                f.View.EndEdit(commit: true);
+                Assert.IsTrue(f.View.Undo());
+                var before = f.Shape();
+                var edits = f.Edits.Count;
+
+                var c = f.Node("C");
+                var cBounds = f.Bounds(c);
+                foreach (var begin in new Func<bool>[] { () => f.View.BeginInsert(before: false), () => f.View.BeginInsert(before: true), f.View.BeginCreateChild })
+                {
+                    foreach (var text in new[] { "N", "   ", "N|M" })
+                    {
+                        f.Select("B");
+                        Assert.IsTrue(begin(), text);
+                        var box = f.EditBox();
+                        box.Text = text;
+                        f.View.EndEdit(commit: text != "N");
+
+                        Assert.IsFalse(f.View.IsEditing, text);
+                        Assert.AreEqual(0, f.View.Controls.OfType<TextBox>().Count(), text);
+                        f.AssertShape(before);
+                        Assert.AreEqual(edits, f.Edits.Count, text);
+                        Assert.AreEqual(0, f.View.State.History.UndoCount, text);
+                        Assert.AreEqual(1, f.View.State.History.RedoCount, "取消不會清掉重做");
+                        Assert.AreEqual(cBounds, f.Bounds(c), "空白方塊已拿掉，C 在原位");
+                    }
+                }
+
+                Assert.IsTrue(f.View.Redo(), "原本的重做照樣能用");
+                f.AssertShape("A", "A > A1", "A > A2", "X", "C");
+            }
+        }
+
+        [TestMethod]
+        public void Insert_RefusedWhenReadOnlyOrSelectedSubtree_TopLevelOfSingleRootTree()
+        {
+            using (var f = new Fixture(readOnly: true))
+            {
+                f.Select("B");
+                foreach (var keys in new[] { Keys.Control | Keys.I, Keys.Control | Keys.Shift | Keys.I, Keys.Control | Keys.N })
+                {
+                    Assert.IsFalse(f.Key(keys), "唯讀時不攔 " + keys);
+                }
+
+                f.View.ReadOnly = false;
+                f.View.DrawScope = TreeDrawScope.SelectedSubtree;
+                Assert.IsFalse(f.View.BeginInsert(before: false), "只畫選取的子樹時，起點旁邊沒有位置");
+                Assert.IsFalse(f.View.IsEditing);
+                Assert.IsTrue(f.View.BeginCreateChild(), "子節點畫得出來");
+                f.View.EndEdit(commit: false);
+            }
+
+            // 第一層只有一個節點時圖從它開始畫；插在它旁邊要先接上 Root。
+            using (var view = new CascadeDiagramView { ReadOnly = false })
+            {
+                var tree = new MenuTree();
+                tree.ExpandAndAddPaths("A", "A1");
+                view.SetTree(tree);
+                Assert.IsTrue(view.TrySelectNode(tree.TopLevelNodes[0]));
+
+                Assert.IsTrue(view.BeginInsert(before: false));
+                view.Controls.OfType<TextBox>().Single().Text = "B";
+                view.EndEdit(commit: true);
+
+                CollectionAssert.AreEqual(new[] { "A", "B" }, tree.TopLevelNodes.Select(node => node.Name).ToArray());
+            }
+        }
+
+        [TestMethod]
+        public void TreeEditedWhileInserting_ClosesBoxAndRemovesPlaceholder_WithoutApplying()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            using (var f = new Fixture(state: host.View.State))
+            {
+                host.View.ReadOnly = false;
+                var c = f.Node("C");
+                var cBounds = f.Bounds(c);
+
+                f.Select("B");
+                Assert.IsTrue(f.View.BeginInsert(before: false));
+                f.EditBox().Text = "N";
+                Assert.AreNotEqual(cBounds, f.Bounds(c), "空白方塊把 C 往下推");
+
+                // 另一個檢視改了樹：Diagram 的編輯框關掉、不套用，空白方塊拿掉。
+                Assert.IsTrue(host.View.BeginRename());
+                Assert.IsNotNull(host.View.State.RenameNode(f.Node("A"), "Z"));
+                Assert.IsFalse(host.View.IsEditing, "Columns 自己的編輯框也關掉");
+
+                Assert.IsFalse(f.View.IsEditing);
+                Assert.AreEqual(0, f.View.Controls.OfType<TextBox>().Count());
+                Assert.IsFalse(f.Edits.Any(e => e.Action == CascadeEditAction.Insert));
+                f.AssertShape("Z", "Z > A1", "Z > A2", "B", "C");
+                Assert.AreEqual(cBounds.Top, f.Bounds(c).Top, "C 回到原位（改名後欄寬可能不同，只比高度）");
+            }
+        }
+
+        [TestMethod]
         public void ContextMenu_EditItemsFollowReadOnly_ShortcutTextFromTable()
         {
             using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new System.Drawing.Point(-2000, -2000), ClientSize = new System.Drawing.Size(300, 200), ShowInTaskbar = false })
@@ -321,7 +492,7 @@ namespace CascadeControlTests.Views.Diagram
                 }
 
                 CollectionAssert.AreEqual(
-                    new[] { "復原(Ctrl+Z)", "重做(Ctrl+Y)", "-", "重新命名(F2)", "-", "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "剪下(Ctrl+X)", "貼上", "-", "刪除(Del)", "-", "範圍", "顯示" },
+                    new[] { "復原(Ctrl+Z)", "重做(Ctrl+Y)", "-", "插入", "建立子節點(Ctrl+N)", "重新命名(F2)", "-", "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "剪下(Ctrl+X)", "貼上", "-", "刪除(Del)", "-", "範圍", "顯示" },
                     OpenMenu());
 
                 f.View.ReadOnly = true;
@@ -344,6 +515,8 @@ namespace CascadeControlTests.Views.Diagram
                 Tree.ExpandAndAddPaths("A", "A1|A2");
                 Tree.ExpandAndAddPaths("B|C");
 
+                // 夠大，不用捲動：Bounds 只在控制項範圍內找。
+                View.Size = new System.Drawing.Size(600, 600);
                 if (state != null) View.State = state;
                 if (readOnly.HasValue) View.ReadOnly = readOnly.Value;
                 View.SetTree(Tree);
@@ -359,6 +532,25 @@ namespace CascadeControlTests.Views.Diagram
             public bool Key(Keys keys) => ViewHost.SendCmdKey(View, keys);
 
             public TextBox EditBox() => View.Controls.OfType<TextBox>().Single();
+
+            /// <summary>節點方塊在控制項上的範圍：逐點用 <see cref="CascadeDiagramView.GetNodeAt"/> 找出來；沒有畫在圖上時為空。</summary>
+            public System.Drawing.Rectangle Bounds(MenuNode node)
+            {
+                int left = int.MaxValue, top = int.MaxValue, right = int.MinValue, bottom = int.MinValue;
+                for (var y = 0; y < 600; y++)
+                {
+                    for (var x = 0; x < 600; x++)
+                    {
+                        if (!ReferenceEquals(View.GetNodeAt(new System.Drawing.Point(x, y)), node)) continue;
+                        left = Math.Min(left, x);
+                        top = Math.Min(top, y);
+                        right = Math.Max(right, x + 1);
+                        bottom = Math.Max(bottom, y + 1);
+                    }
+                }
+
+                return left > right ? System.Drawing.Rectangle.Empty : System.Drawing.Rectangle.FromLTRB(left, top, right, bottom);
+            }
 
             public string[] Shape() => Walk(Tree.Root).Select(node => node.FullPathText).ToArray();
 

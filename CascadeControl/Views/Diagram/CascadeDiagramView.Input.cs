@@ -135,7 +135,7 @@ namespace CascadeControl.Views.Diagram
         /// 其他時候編輯快捷鍵查 <see cref="CascadeEditShortcuts"/>，對象是 <see cref="SelectedNode"/>；唯讀時不攔會改樹的指令。
         /// </summary>
         /// <remarks>
-        /// 插入與建立子節點還沒做，按鍵不攔；多選與勾選只屬於 <see cref="Columns.CascadeColumnsView"/>，也不攔。
+        /// 多選與勾選只屬於 <see cref="Columns.CascadeColumnsView"/>，按鍵不攔。
         /// 不攔的按鍵照常交給表單（例如選單快捷鍵、Esc 的 CancelButton）。
         /// </remarks>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -181,6 +181,9 @@ namespace CascadeControl.Views.Diagram
                 case CascadeEditCommand.PasteAsChild: PasteAsChild(); return true;
                 case CascadeEditCommand.Delete: Delete(); return true;
                 case CascadeEditCommand.Rename: BeginRename(); return true;
+                case CascadeEditCommand.Insert: BeginInsert(before: false); return true;
+                case CascadeEditCommand.InsertBefore: BeginInsert(before: true); return true;
+                case CascadeEditCommand.CreateChild: BeginCreateChild(); return true;
                 default: return false;
             }
         }
