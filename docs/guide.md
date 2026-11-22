@@ -603,7 +603,7 @@ standalone.SetTree(menu);
 | 拖曳中按 Esc，或在空白處、被移動的節點上放開 | 取消，什麼都不改 |
 | 按住節點沒拖曳就放開 | 一般點選 |
 
-移過去的節點有勾選時，目標與它的祖先跟著補勾。第一層（Root）不能當目標。
+移過去的節點有勾選時，目標與它的祖先跟著補勾。不能把節點移到第一層。
 
 **`CascadeState` / `CascadeCheckableState`**（`CascadeControl.State`，不相依 WinForms）
 

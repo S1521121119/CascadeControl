@@ -460,7 +460,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.EndEdit(commit: false);
             }
 
-            // 第一層只有一個節點時圖從它開始畫；插在它旁邊要先接上 Root。
             using (var view = new CascadeDiagramView { ReadOnly = false })
             {
                 var tree = new MenuTree();

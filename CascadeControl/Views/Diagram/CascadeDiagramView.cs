@@ -302,7 +302,7 @@ namespace CascadeControl.Views.Diagram
         public event EventHandler<CascadeNodeEventArgs> SelectedPathChanged;
 
         /// <summary>
-        /// 用滑鼠點了圖上的某個節點之後觸發（左鍵、右鍵都會）；點在空白處或 Root 上、Ctrl+點選（多選）與框選不會觸發。
+        /// 用滑鼠點了圖上的某個節點之後觸發（左鍵、右鍵都會）；點在空白處、Ctrl+點選（多選）與框選不會觸發。
         /// </summary>
         [Category("Cascade")]
         public event EventHandler<CascadeNodeMouseEventArgs> NodeMouseClick;

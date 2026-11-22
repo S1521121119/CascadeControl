@@ -16,7 +16,7 @@ namespace CascadeControl.Views.Diagram
     /// </summary>
     /// <remarks>
     /// 有子節點的畫圓角長方形，方塊內的最右邊畫一個正方形的展開鈕（該層因此加寬）：收合時是 [+]、子節點不畫，展開時是 [-]；
-    /// 葉節點畫直角長方形。第一層有多個節點時畫出的 Root 永遠展開，不畫展開鈕。同一層的方塊等寬，寬度依字型量出該層最長的編號與名稱決定，且不小於高度；
+    /// 葉節點畫直角長方形。畫整棵樹時第一層的節點各自從最左欄開始，不另外畫 Root 把它們接起來。同一層的方塊等寬，寬度依字型量出該層最長的編號與名稱決定，且不小於高度；
     /// 同一層的名稱從同一個位置開始，編號位數不同也對得齊。
     /// 圖照實際大小畫，不會為了塞進控制項而縮小；放不下時由外層的捲動容器處理。
     /// <para>
@@ -43,8 +43,6 @@ namespace CascadeControl.Views.Diagram
 
         // GDI+ 的 Bitmap 單邊太大會配置失敗；超過時整張等比例縮小。
         private const float MAX_BITMAP_SIDE = 16000f;
-
-        private const string ROOT_LABEL = "Root";
 
         private static readonly Color DIMMED = Color.FromArgb(170, 170, 170);
         private static readonly Color DIMMED_LINE = Color.FromArgb(214, 214, 214);
@@ -136,9 +134,6 @@ namespace CascadeControl.Views.Diagram
             public int Level { get; set; }
             public List<LayoutNode> Children { get; } = new List<LayoutNode>();
 
-            // 沒有名稱的 Root：只在第一層有多個節點時畫出來，不寫編號。
-            public bool IsVirtualRoot { get; set; }
-
             // 插入或建立子節點時暫時佔位的空白方塊：Source 是不在樹裡的節點，不寫編號與名稱。
             public bool IsPlaceholder { get; set; }
 
@@ -212,7 +207,7 @@ namespace CascadeControl.Views.Diagram
         /// 把選單樹畫成 <see cref="Bitmap"/>，大小依內容決定。
         /// </summary>
         /// <param name="tree">
-        /// 要畫的樹；null、空樹，或 <see cref="CascadeDiagramUncheckedDisplay.Hidden"/> 下起點沒有勾選時，回傳 1×1 的空白圖。
+        /// 要畫的樹；null、空樹，或 <see cref="CascadeDiagramUncheckedDisplay.Hidden"/> 下沒有節點可畫時，回傳 1×1 的空白圖。
         /// </param>
         /// <param name="font">文字的字型；null 時使用系統預設字型。</param>
         /// <param name="isChecked">判斷節點是否勾選；null 時不畫勾選狀態，<paramref name="uncheckedDisplay"/> 也不使用。</param>
@@ -286,15 +281,18 @@ namespace CascadeControl.Views.Diagram
                 Preview = preview,
             };
 
-            var root = tree == null || tree.IsEmpty ? null : BuildLayout(tree, scope, options);
-            if (root == null) return new TreeImage(CreateBlank(), new TreeImageNode[0]);
+            var roots = tree == null || tree.IsEmpty ? new List<LayoutNode>() : BuildLayout(tree, scope, options);
+            if (roots.Count == 0) return new TreeImage(CreateBlank(), new TreeImageNode[0]);
 
             // 預覽時新的父節點一定展開，才看得到接上去的節點。
-            if (isExpanded != null) Collapse(root, preview == null ? isExpanded : node => ReferenceEquals(node, preview.Parent) || isExpanded(node));
+            if (isExpanded != null)
+            {
+                foreach (var root in roots) Collapse(root, preview == null ? isExpanded : node => ReferenceEquals(node, preview.Parent) || isExpanded(node));
+            }
 
             var showChecks = isChecked != null;
 
-            var nodes = Flatten(root);
+            var nodes = Flatten(roots);
             AssignColorGroups(nodes);
 
             using (var format = CreateTextFormat())
@@ -303,7 +301,7 @@ namespace CascadeControl.Views.Diagram
                 using (var scratch = new Bitmap(1, 1))
                 using (var g = Graphics.FromImage(scratch))
                 {
-                    size = Arrange(g, font, format, root, nodes);
+                    size = Arrange(g, font, format, roots, nodes);
                 }
 
                 var scale = Math.Min(1f, Math.Min(MAX_BITMAP_SIDE / size.Width, MAX_BITMAP_SIDE / size.Height));
@@ -324,9 +322,7 @@ namespace CascadeControl.Views.Diagram
                     if (nodes.Any(node => node.IsGhost)) DrawGhosts(g, bitmap.Size, scale, font, format, nodes, showChecks);
                 }
 
-                // 位置跟著縮小的比例換算成圖上的像素；Root 不對應任何節點，不放進去。
                 var hitNodes = nodes
-                    .Where(node => !node.IsVirtualRoot)
                     .Select(node => new TreeImageNode(
                         node.Source,
                         Scale(node.Bounds, scale),
@@ -362,36 +358,26 @@ namespace CascadeControl.Views.Diagram
         #region 建立要畫的節點
 
         /// <summary>
-        /// 決定起點並建立要畫的節點；沒有東西可畫時回傳 null。
+        /// 決定起點並建立要畫的節點，回傳最左欄的節點；沒有東西可畫時回傳空的清單。
         /// </summary>
         /// <remarks>
         /// <see cref="CascadeDiagramDrawScope.SelectedSubtree"/> 有選取時從選取的節點開始，它就是圖的起點，不另外框起來。
-        /// 其他情況畫整棵樹：第一層只有一個節點時直接從它開始；有多個時以沒有名稱的 Root 當起點，把它們接起來。
         /// </remarks>
-        private static LayoutNode BuildLayout(MenuTree tree, CascadeDiagramDrawScope scope, BuildOptions options)
+        private static List<LayoutNode> BuildLayout(MenuTree tree, CascadeDiagramDrawScope scope, BuildOptions options)
         {
             var selectedNode = options.SelectedNode;
             if (scope == CascadeDiagramDrawScope.SelectedSubtree && selectedNode != null)
             {
                 // 起點就是選取的節點，不另外框起來。
                 options.SelectedNode = null;
-                return BuildNode(selectedNode, 0, selectedNode.Depth, false, false, options);
+                var start = BuildNode(selectedNode, 0, selectedNode.Depth, false, false, options);
+                return start == null ? new List<LayoutNode>() : new List<LayoutNode> { start };
             }
 
-            // 佔位方塊在第一層時要有 Root 才接得上。預覽移動不改第一層：移走的節點留在原處，目標也不會是 Root。
-            var placeholderAtTop = options.Placeholder != null && ReferenceEquals(options.Placeholder.Parent, tree.Root);
-            if (tree.TopLevelNodes.Count == 1 && !placeholderAtTop)
-            {
-                var top = tree.TopLevelNodes[0];
-                return BuildNode(top, 0, top.Depth, false, false, options);
-            }
-
-            var root = new LayoutNode { Source = tree.Root, Level = 0, Depth = 0, IsVirtualRoot = true };
-            AddChildren(root, options);
-
-            // Root 不在勾選的範圍內：底下有勾選就當成勾選，全部都全勾才算全勾。
-            root.IsChecked = options.IsChecked == null || tree.TopLevelNodes.Any(options.IsChecked);
-            return root.IsChecked || !options.HideUnchecked ? root : null;
+            // 只用來收集第一層節點（連同第一層的佔位方塊與預覽），本身不畫。
+            var top = new LayoutNode { Source = tree.Root, Level = -1, Depth = 0 };
+            AddChildren(top, options);
+            return top.Children;
         }
 
         // 回傳 null 表示這個節點不畫（隱藏沒勾的節點時）。
@@ -510,11 +496,11 @@ namespace CascadeControl.Views.Diagram
         }
 
         // 前序走訪，父節點在子節點之前。
-        private static List<LayoutNode> Flatten(LayoutNode root)
+        private static List<LayoutNode> Flatten(List<LayoutNode> roots)
         {
             var nodes = new List<LayoutNode>();
             var stack = new Stack<LayoutNode>();
-            stack.Push(root);
+            for (var i = roots.Count - 1; i >= 0; i--) stack.Push(roots[i]);
 
             while (stack.Count > 0)
             {
@@ -531,7 +517,7 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         /// <remarks>
         /// <paramref name="nodes"/> 是前序走訪，同一欄的父節點由上往下出現，所以它們的子節點組在下一欄也是由上往下。
-        /// 起點自成一組，用 A 色。分組看的是畫出來的節點，隱藏沒勾的節點後，相鄰兩組照樣分得出來。
+        /// 最左欄的節點算一組，用 A 色。分組看的是畫出來的節點，隱藏沒勾的節點後，相鄰兩組照樣分得出來。
         /// </remarks>
         private static void AssignColorGroups(List<LayoutNode> nodes)
         {
@@ -558,7 +544,7 @@ namespace CascadeControl.Views.Diagram
         /// 垂直方向：每個沒有子節點可畫的方塊各佔一列，父節點置中對齊第一個與最後一個子節點，所以不會重疊。
         /// 水平方向：一層一欄，欄寬是該層最寬的編號加上最寬的名稱再加內距，且不小於方塊高度。
         /// </remarks>
-        private static SizeF Arrange(Graphics g, Font font, StringFormat format, LayoutNode root, List<LayoutNode> nodes)
+        private static SizeF Arrange(Graphics g, Font font, StringFormat format, List<LayoutNode> roots, List<LayoutNode> nodes)
         {
             var lineHeight = (float)Math.Ceiling(font.GetHeight(g));
             var boxHeight = lineHeight + PADDING_Y * 2f;
@@ -590,7 +576,6 @@ namespace CascadeControl.Views.Diagram
             var x = MARGIN;
             for (var level = 0; level < levelCount; level++)
             {
-                // 沒有編號的那一層（Root）不留編號的位置。
                 nameOffsets[level] = PADDING_X + (numberWidths[level] > 0f ? numberWidths[level] + NUMBER_GAP : 0f);
                 var right = hasExpanders[level] ? EXPANDER_GAP + EXPANDER_SIZE + EXPANDER_RIGHT : PADDING_X;
                 levelWidths[level] = Math.Max(boxHeight, nameOffsets[level] + nameWidths[level] + right);
@@ -599,7 +584,7 @@ namespace CascadeControl.Views.Diagram
             }
 
             var rows = 0;
-            AssignRows(root, ref rows);
+            foreach (var root in roots) AssignRows(root, ref rows);
 
             var rowPitch = boxHeight + ROW_GAP;
             foreach (var node in nodes)
@@ -633,10 +618,10 @@ namespace CascadeControl.Views.Diagram
             return string.IsNullOrEmpty(text) ? 0f : g.MeasureString(text, font, int.MaxValue, format).Width;
         }
 
-        private static string NameText(LayoutNode node) => node.IsVirtualRoot ? ROOT_LABEL : node.IsPlaceholder ? string.Empty : node.Source.Name;
+        private static string NameText(LayoutNode node) => node.IsPlaceholder ? string.Empty : node.Source.Name;
 
         private static string NumberText(LayoutNode node) =>
-            node.IsVirtualRoot || node.IsPlaceholder ? string.Empty : $"<{(node.Number > 0 ? node.Number : node.Source.SiblingNumber)}>";
+            node.IsPlaceholder ? string.Empty : $"<{(node.Number > 0 ? node.Number : node.Source.SiblingNumber)}>";
 
         #endregion 排版
 
@@ -743,12 +728,8 @@ namespace CascadeControl.Views.Diagram
                     g.DrawRectangle(borderPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
                 }
 
-                // 編號和名稱在同一行，垂直置中；Root 沒有編號，只畫名稱。
                 var numberLeft = bounds.Left + PADDING_X;
-                if (!node.IsVirtualRoot)
-                {
-                    g.DrawString(NumberText(node), font, foreBrush, new RectangleF(numberLeft, bounds.Top, node.NameLeft - numberLeft, bounds.Height), format);
-                }
+                g.DrawString(NumberText(node), font, foreBrush, new RectangleF(numberLeft, bounds.Top, node.NameLeft - numberLeft, bounds.Height), format);
 
                 var nameRight = HasExpander(node) ? ExpanderBounds(node).Left - EXPANDER_GAP : bounds.Right - PADDING_X;
                 g.DrawString(NameText(node), font, foreBrush, new RectangleF(node.NameLeft, bounds.Top, nameRight - node.NameLeft, bounds.Height), format);
@@ -841,8 +822,7 @@ namespace CascadeControl.Views.Diagram
         }
 
         // 和圓角一樣依原樹決定：隱藏沒勾的節點時，子節點全被濾掉的節點仍然有展開鈕。
-        // Root 不對應真正的節點，永遠展開，不畫展開鈕。
-        private static bool HasExpander(LayoutNode node) => !node.IsVirtualRoot && node.Source.Children.Count > 0;
+        private static bool HasExpander(LayoutNode node) => node.Source.Children.Count > 0;
 
         // [+] 的位置：方塊內、離右緣 EXPANDER_RIGHT，垂直置中。
         private static RectangleF ExpanderBounds(LayoutNode node)

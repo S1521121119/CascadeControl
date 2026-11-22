@@ -10,7 +10,6 @@ namespace CascadeControl.Views.Diagram
     /// </summary>
     /// <remarks>
     /// 位置以 <see cref="Image"/> 的像素為單位；圖太大被等比例縮小時，位置也跟著縮小。
-    /// 整棵樹第一層有多個節點時畫出的 Root 不屬於任何 <see cref="MenuNode"/>，不在 <see cref="Nodes"/> 裡。
     /// </remarks>
     public sealed class TreeImage : IDisposable
     {
