@@ -35,7 +35,8 @@ namespace CascadeControl.Views.Diagram
     /// <see cref="TreeDrawScope.SelectedSubtree"/> 下起點是它那一層唯一畫出來的節點，所以 ↑↓ 不會移動。
     /// </para>
     /// <para>
-    /// 編輯快捷鍵與 <see cref="Columns.CascadeColumnsView"/> 相同（複製、剪下、貼上、刪除、復原、重做），對象是選取的節點；右鍵功能表的對象是被點的節點。
+    /// 編輯快捷鍵與 <see cref="Columns.CascadeColumnsView"/> 相同（改名、複製、剪下、貼上、刪除、復原、重做），對象是選取的節點；右鍵功能表的對象是被點的節點。
+    /// 改名（F2）在節點方塊上開編輯框，Enter 套用、Esc 取消；樹被任何檢視改過時編輯框直接關掉。
     /// <see cref="ReadOnly"/> 預設為 true，只能複製。改樹由 <see cref="State"/> 執行，綁同一份 State 的檢視一起更新，也共用同一份復原歷史。
     /// </para>
     /// </remarks>
@@ -247,6 +248,7 @@ namespace CascadeControl.Views.Diagram
                 if (_sizeMode == value) return;
                 _sizeMode = value;
                 UpdateScrollSize();
+                PositionEditBox();
                 Invalidate();
                 OnDrawSettingsChanged(EventArgs.Empty);
             }
@@ -345,6 +347,7 @@ namespace CascadeControl.Views.Diagram
 
         private void AttachState(CascadeState state)
         {
+            state.Invalidated += State_Invalidated;
             state.SelectedPathChanged += State_SelectedPathChanged;
             if (state is CascadeCheckableState checkableState)
             {
@@ -357,12 +360,21 @@ namespace CascadeControl.Views.Diagram
         {
             if (state == null) return;
 
+            AbortEdit();
+            state.Invalidated -= State_Invalidated;
             state.SelectedPathChanged -= State_SelectedPathChanged;
             if (state is CascadeCheckableState checkableState)
             {
                 checkableState.CheckedChanged -= State_CheckedChanged;
                 checkableState.CheckSetChanged -= State_CheckSetChanged;
             }
+        }
+
+        // 換樹或樹被改過（任何綁同一份 State 的檢視編輯、復原、重做）：編輯框的對象可能已經不在或改了名，直接關掉、不套用。
+        // 只是選取改變時保留編輯框，重畫後再對齊（見 PositionEditBox）。
+        private void State_Invalidated(CascadeStateInvalidation kind)
+        {
+            if (kind == CascadeStateInvalidation.Reset || kind == CascadeStateInvalidation.Refreshed) AbortEdit();
         }
 
         private void State_SelectedPathChanged(object sender, CascadeNodeEventArgs e)

@@ -287,10 +287,17 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - Viewer 的 `diagramView1.ReadOnly` 跟著 `cascadeView1.ReadOnly` 設定。測試共用 `CascadeColumnsViewEditingTests.RunOnSta`，改成 internal。
   - 右鍵功能表沒有 Columns 那種被點節點的虛線框，Diagram 原本就沒有；需要時另外做。
 
-- [ ] **B3 Diagram 就地改名**
+- [x] **B3 Diagram 就地改名**
   - TextBox 疊在節點方塊上，位置用現有的 `GetClientBoundsOf` 計算。
   - State 發出 `TreeEdited` 或 Refresh 時，中止進行中的編輯。
   - 驗證：在 Diagram 按 F2 改名，Columns 同步；Columns 的編輯框開著時在 Diagram 刪除節點，編輯框正確關掉。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 5 個測試、改 2 個（F2 改成會攔；右鍵功能表多了「重新命名」一組），全套 547 個通過。拿掉「State Refresh 時中止」那一行，`TreeEditedByAnyView_ClosesBothBoxes_WithoutApplying` 會失敗。API 比對只有 Diagram 新增 `BeginRename`、`EndEdit`、`IsEditing` 與 `OnClientSizeChanged`、`OnMouseUp` 覆寫，`tools/public-api.txt` 已更新為 482 行。
+  - 用腳本開啟 Viewer 表單載入 Motor／Diagnostics／Settings，以 SendKeys 操作 Diagram：F2 後編輯框蓋在 Axis X 上、文字是原名；輸入 Spindle 按 Enter，樹、Columns 第二欄與 Diagram 影像都更新，記錄一行 Rename，Undo 1。編輯框裡按 Delete、Ctrl+C、Ctrl+V 是編輯框自己的，樹不變、不跳刪除確認框；Esc 取消。輸入 `a|b` 按 Enter 跳出「重新命名」提示，關掉後編輯框還開著。編輯中點圖上的 Diagnostics，只套用名稱，不改選取、不展開。Columns 改選取時編輯框留著，跟著節點往下移；切成「選取的子樹」使節點不在圖上時關掉。Diagram 編輯框開著時 Columns 復原，編輯框關掉、不套用。Diagram 切成唯讀後 F2 不攔。
+  - Columns 編輯框開著時呼叫 `Diagram.Delete()`：確認框搶走焦點，Columns 依原本的規則在失去焦點時套用名稱（Rename:Q），再刪除同一個節點（Delete:Q），所以確認框上寫的是舊名稱 Settings。Columns 的編輯框有關掉，沒有殘留。直接改樹、焦點沒有離開編輯框的情況（例如 Diagram 的 Ctrl+X），由單元測試確認 Columns 編輯框是中止、不套用。
+  - 編輯框結束的規則照 Columns：Enter 套用（含保留字元時提示並繼續編輯）、Esc 取消、失去焦點或在圖上按滑鼠時套用、公開指令（複製、剪下、貼上、刪除、復原、重做）執行前先套用。只是選取改變時不中止，重畫後重新對齊；節點不再畫在圖上時中止。捲動不用處理，ScrollableControl 捲動時會一起移動子控制項。
+  - 保留字元的判斷與提示從 Columns 移到 `CascadeEditPrompts`（`HasReservedCharacter`、`WarnReservedCharacter`），兩個 View 共用。
+  - 右鍵功能表在可編輯時多一組「重新命名(F2)」，放在復原、重做之後、複製之前，順序同 Columns；對象沒有畫在圖上時停用。
+  - 單行 TextBox 本來就不支援 Ctrl+A 全選，Columns 的編輯框也一樣，這一步沒改。
 
 - [ ] **B4 Diagram 插入與建立子節點**
   - 這個操作方式在專案裡沒有前例。先各做一個原型比較，再決定：
@@ -311,7 +318,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **B3 Diagram 就地改名**。A 段（A0 到 A6）、B1 與 B2 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **B4 Diagram 插入與建立子節點**。A 段（A0 到 A6）、B1 到 B3 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

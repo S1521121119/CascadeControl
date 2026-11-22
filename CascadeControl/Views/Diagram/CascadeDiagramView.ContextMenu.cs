@@ -46,7 +46,7 @@ namespace CascadeControl.Views.Diagram
 
         private void ContextMenu_Closed(object sender, ToolStripDropDownClosedEventArgs e) => _contextMenuNode = null;
 
-        // 復原、重做 ｜ 複製、複製(路徑)、剪下、貼上 ｜ 刪除 ｜（顯示設定）。每一組以分隔線結尾，沒有編輯項目時不加。
+        // 復原、重做 ｜ 重新命名 ｜ 複製、複製(路徑)、剪下、貼上 ｜ 刪除 ｜（顯示設定）。每一組以分隔線結尾，沒有編輯項目時不加。
         private void AddEditItems(ToolStripItemCollection items, MenuNode target)
         {
             // 有樹而且能改樹或顯示勾選時一律顯示復原、重做，沒有步驟時停用，項目才不會忽隱忽現。
@@ -59,6 +59,12 @@ namespace CascadeControl.Views.Diagram
 
             if (_state.IsInTree(target))
             {
+                if (CanEdit)
+                {
+                    items.Add(CreateCommand("重新命名", CascadeEditCommand.Rename, FindImageNode(target) != null, () => BeginRename(target)));
+                    items.Add(new ToolStripSeparator());
+                }
+
                 items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CascadeClipboard.CopyNodes(Single(target))));
                 items.Add(CreateCommand("複製(路徑)", CascadeEditCommand.CopyPath, true, () => CascadeClipboard.CopyNodePaths(Single(target))));
 

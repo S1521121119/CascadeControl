@@ -43,6 +43,7 @@ namespace CascadeControl.Views.Diagram
             old?.Dispose();
 
             UpdateScrollSize();
+            PositionEditBox();
             Invalidate();
         }
 
@@ -87,6 +88,14 @@ namespace CascadeControl.Views.Diagram
             }
 
             e.Graphics.DrawImage(_image.Image, new RectangleF(offset.X, offset.Y, size.Width * scale, size.Height * scale));
+        }
+
+        /// <inheritdoc />
+        /// <remarks>自動縮放時比例跟著大小變，就地編輯框要重新對齊節點方塊。</remarks>
+        protected override void OnClientSizeChanged(EventArgs e)
+        {
+            base.OnClientSizeChanged(e);
+            PositionEditBox();
         }
 
         /// <inheritdoc />

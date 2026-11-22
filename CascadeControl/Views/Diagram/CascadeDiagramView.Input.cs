@@ -32,6 +32,13 @@ namespace CascadeControl.Views.Diagram
         /// <inheritdoc />
         protected override void OnMouseDown(MouseEventArgs e)
         {
+            // 編輯中按在圖上：這一下只用來套用輸入的名稱，不選取、不切換展開。
+            if (_edit != null)
+            {
+                _swallowClick = true;
+                EndEdit(commit: true, interactive: false);
+            }
+
             // 要有焦點，滾輪才捲得動。
             Focus();
 
@@ -44,7 +51,7 @@ namespace CascadeControl.Views.Diagram
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            if (TryToggleExpander(e)) return;
+            if (_swallowClick || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node != null) OnNodeMouseClick(CreateMouseEventArgs(node, e));
@@ -56,10 +63,18 @@ namespace CascadeControl.Views.Diagram
             base.OnMouseDoubleClick(e);
 
             // 連點兩下時第二下只會送 DoubleClick，當成第二次點擊再切換一次。
-            if (TryToggleExpander(e)) return;
+            if (_swallowClick || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node != null) OnNodeMouseDoubleClick(CreateMouseEventArgs(node, e));
+        }
+
+        /// <inheritdoc />
+        /// <remarks>Click 與 DoubleClick 在 MouseUp 之前觸發，所以在這裡結束略過。</remarks>
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            _swallowClick = false;
         }
 
         private CascadeNodeMouseEventArgs CreateMouseEventArgs(MenuNode node, MouseEventArgs e)
@@ -116,14 +131,31 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 編輯快捷鍵查 <see cref="CascadeEditShortcuts"/>，對象是 <see cref="SelectedNode"/>；唯讀時不攔會改樹的指令。
+        /// 編輯框有焦點時：Enter 套用、Esc 取消，其他按鍵交給編輯框（Ctrl+C、Ctrl+V、Delete 是編輯框自己的）。
+        /// 其他時候編輯快捷鍵查 <see cref="CascadeEditShortcuts"/>，對象是 <see cref="SelectedNode"/>；唯讀時不攔會改樹的指令。
         /// </summary>
         /// <remarks>
-        /// 還沒有就地編輯框，所以改名、插入、建立子節點的按鍵不攔；多選與勾選只屬於 <see cref="Columns.CascadeColumnsView"/>，也不攔。
+        /// 插入與建立子節點還沒做，按鍵不攔；多選與勾選只屬於 <see cref="Columns.CascadeColumnsView"/>，也不攔。
         /// 不攔的按鍵照常交給表單（例如選單快捷鍵、Esc 的 CancelButton）。
         /// </remarks>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            if (_edit != null && _edit.Box.ContainsFocus)
+            {
+                switch (keyData)
+                {
+                    case Keys.Enter:
+                        EndEdit(commit: true, interactive: true);
+                        return true;
+
+                    case Keys.Escape:
+                        EndEdit(commit: false, interactive: false);
+                        return true;
+                }
+
+                return base.ProcessCmdKey(ref msg, keyData);
+            }
+
             if (CascadeEditShortcuts.TryGetCommand(keyData, out var command)
                 && (CanEdit || !CascadeEditShortcuts.ChangesTree(command))
                 && TryExecute(command))
@@ -148,6 +180,7 @@ namespace CascadeControl.Views.Diagram
                 case CascadeEditCommand.PasteBefore: Paste(before: true); return true;
                 case CascadeEditCommand.PasteAsChild: PasteAsChild(); return true;
                 case CascadeEditCommand.Delete: Delete(); return true;
+                case CascadeEditCommand.Rename: BeginRename(); return true;
                 default: return false;
             }
         }

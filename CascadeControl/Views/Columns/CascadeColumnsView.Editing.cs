@@ -571,15 +571,14 @@ namespace CascadeControl.Views.Columns
 
             var name = session.Box.Text.Trim();
 
-            if (commit && name.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0)
+            if (commit && CascadeEditPrompts.HasReservedCharacter(name))
             {
                 if (interactive)
                 {
                     session.Prompting = true;
                     try
                     {
-                        MessageBox.Show(this, $"節點名稱不可含有 '{MultiNameCellSyntax.NAME_SEPARATOR}' 字元。", CaptionOf(session.Action),
-                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        CascadeEditPrompts.WarnReservedCharacter(this, session.Action);
                     }
                     finally
                     {
@@ -623,17 +622,6 @@ namespace CascadeControl.Views.Columns
                 case CascadeEditAction.CreateChild: return State.CreateChild(session.Parent, name);
                 case CascadeEditAction.Rename: return State.RenameNode((MenuNode)session.RowNode, name);
                 default: return null;
-            }
-        }
-
-        private static string CaptionOf(CascadeEditAction action)
-        {
-            switch (action)
-            {
-                case CascadeEditAction.Insert: return "插入";
-                case CascadeEditAction.CreateChild: return "建立子節點";
-                case CascadeEditAction.Rename: return "重新命名";
-                default: return action.ToString();
             }
         }
 
