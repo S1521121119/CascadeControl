@@ -213,13 +213,18 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
   - 拆出 enum 後，新檔與舊檔相似度低於 git 預設的 50%，同一個 commit 裡 git 不會把它認成改名。要讓 `git log --follow` 追得到，分兩個 commit：先 `git mv` 加改命名空間，再拆出 `CascadeEditAction.cs`。
   - issue #1 的貼上失敗比 A0 記錄的頻繁：同一台機器上 `HEAD` 與 A1 各跑 4 輪全套，都有 2 輪失敗，失敗的都是剪貼簿貼上測試（`InsertAndPasteKeys_BeforeAndAsChild`、`UndoRedo_Paste_RemovesAndReturnsSameNodes`、`PasteAsChild_MultipleNodes_KeepsOrder_MultiSelectsThem`）。
 
-- [ ] **A2 History 改由 State 持有**
+- [x] **A2 History 改由 State 持有**
   - `CascadeState` 持有 `History`，`SetTree`、`SetTopLevelNodes`、`Clear` 時清空。
   - `CascadeCheckableState` 換 `CheckSet` 時，讓 `CheckSet.History` 指向 State 的 `History`。
   - 刪除 `CascadeColumnsView.History` 與 `SyncCheckSetWithHistory` 裡換指標的邏輯。Columns 的 `State` setter 不再清空歷史。
   - Viewer 改讀 `State.History`。
   - `CascadeColumnsViewCheckBoxesTests.cs` 第 244、650、761 行的斷言照新規則改寫。
   - 驗證：共用驗證；在 Viewer 勾選後按 Ctrl+Z 會復原；兩個 View 綁同一份 State 時，`UndoCount` 只有一份。
+  - 結果：Debug 與 Release 建置成功，只有原本的 2 個 CS1573 警告。新增 3 個測試，全套 474 個通過。API 比對只有 `History` 從 `CascadeColumnsView` 移到 `CascadeState`，`tools/public-api.txt` 已更新。在 Viewer 對欄位送 Space 勾選後 `UndoCount` 為 1，Ctrl+Z 取消勾選後變成 Undo 0、Redo 1，Diagram 的 `State.History` 是同一個物件。
+  - `History` 暫放在 `CascadeState.cs`，A3 新增 `CascadeState.Editing.cs` 時搬過去。
+  - 連帶變更：切換 Columns 的 `CheckBoxes` 不再清空歷史，`SyncCheckSetWithHistory` 整個刪除，只剩重畫。換 `CheckSet` 時清空 State 的歷史，換下來的那一份改回自己的一份新歷史，之後對它的勾選不會混進 State 的時間軸。
+  - 刪除時取消勾選仍然只在 `CheckBoxes = true` 時發生，A3 改成只要有 `CheckSet` 就取消。在那之前，`CheckBoxes = false` 時刪掉已勾選的節點，勾選會留在已經不在樹裡的節點上。
+  - issue #1 第一輪全套出現一次，這次是 `Cut_SelectsNextSibling_AndCanBePastedBack`（貼回的節點名稱是 NUL）；重跑全部通過。
 
 - [ ] **A3 編輯邏輯移到 State**
   - 新增 `State/CascadeState.Editing.cs`（D4 的 API）與 `OnNodesRemoved` 掛鉤；`CascadeCheckableState` 覆寫它來取消勾選。
@@ -280,7 +285,7 @@ git diff --no-index tools\public-api.txt $env:TEMP\public-api.txt
 
 ## 4. 下一步
 
-目前是 **A2 History 改由 State 持有**。A0、A1 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
+目前是 **A3 編輯邏輯移到 State**。A0、A1、A2 已完成。第 5 節「待決定的行為變更」分別在 A2、A3 用到，使用者已決定。
 
 ## 5. 注意事項
 

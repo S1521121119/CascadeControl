@@ -198,5 +198,55 @@ namespace CascadeControlTests.State
             Assert.IsNull(state.CheckSet);
             Assert.AreEqual(3, checkSetChanges);
         }
+
+        [TestMethod]
+        public void History_ClearedBySetTreeSetTopLevelNodesAndClear()
+        {
+            var state = new CascadeState();
+            var tree = TestTrees.Template();
+            var set = new MenuCheckSet(tree) { History = state.History };
+
+            state.SetTree(tree);
+            set.Check(tree.TopLevelNodes[0]);
+            state.SetTree(tree);
+            Assert.IsFalse(state.History.CanUndo, "SetTree 清空");
+
+            set.Check(tree.TopLevelNodes[1]);
+            state.SetTopLevelNodes(tree.TopLevelNodes);
+            Assert.IsFalse(state.History.CanUndo, "SetTopLevelNodes 清空");
+
+            set.Check(tree.TopLevelNodes[2]);
+            state.Clear();
+            Assert.IsFalse(state.History.CanUndo, "Clear 清空");
+
+            set.Uncheck(tree.TopLevelNodes[2]);
+            state.Refresh();
+            Assert.IsTrue(state.History.CanUndo, "Refresh 是編輯之後的重整，不清空");
+        }
+
+        [TestMethod]
+        public void CheckableState_CheckSetRecordsIntoStateHistory_AndReleasesTheReplacedOne()
+        {
+            var state = new CascadeCheckableState();
+            var tree = TestTrees.Template();
+            state.SetTree(tree);
+            var firstSet = state.CheckSet;
+            Assert.AreSame(state.History, firstSet.History);
+
+            firstSet.Check(tree.TopLevelNodes[0]);
+            Assert.AreEqual(1, state.History.UndoCount);
+
+            var replacement = new MenuCheckSet(tree);
+            state.CheckSet = replacement;
+            Assert.AreSame(state.History, replacement.History);
+            Assert.AreNotSame(state.History, firstSet.History, "換下來的那一份改回自己的歷史");
+            Assert.IsFalse(state.History.CanUndo, "舊步驟作用在換下來的那一份，換的時候清空");
+
+            firstSet.Check(tree.TopLevelNodes[1]);
+            Assert.IsFalse(state.History.CanUndo, "換下來的那一份不再記進 State 的歷史");
+
+            state.CheckSet = null;
+            Assert.AreNotSame(state.History, replacement.History);
+        }
     }
 }

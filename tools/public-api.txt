@@ -133,6 +133,7 @@ CascadeControl.State.CascadeState :: public method System.Void Clear()
 CascadeControl.State.CascadeState :: public method System.Void ClearTrail()
 CascadeControl.State.CascadeState :: public method System.Void Refresh(System.Collections.Generic.IEnumerable<CascadeControl.Common.ICascadeNode> selectPath = null)
 CascadeControl.State.CascadeState :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
+CascadeControl.State.CascadeState :: public property CascadeControl.Trees.MenuHistory History { get; }
 CascadeControl.State.CascadeState :: public property CascadeControl.Trees.MenuTree Tree { get; }
 CascadeControl.State.CascadeState :: public property System.Boolean IsLeafSelected { get; }
 CascadeControl.State.CascadeState :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> SelectedPath { get; }
@@ -319,7 +320,6 @@ CascadeControl.Views.Columns.CascadeColumnsView :: public method System.Void Set
 CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Common.ICascadeNode SelectedNode { get; }
 CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.State.CascadeState State { get; set; }
 CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuCheckSet CheckSet { get; set; }
-CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuHistory History { get; }
 CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuNode ContextMenuNode { get; }
 CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Trees.MenuTree Tree { get; }
 CascadeControl.Views.Columns.CascadeColumnsView :: public property CascadeControl.Views.Columns.CascadeColumnLayoutMode ColumnLayoutMode { get; set; }

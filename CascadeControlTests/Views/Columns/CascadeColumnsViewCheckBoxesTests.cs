@@ -154,6 +154,36 @@ namespace CascadeControlTests.Views.Columns
         }
 
         [TestMethod]
+        public void SharedState_TwoViewsShareOneHistory_AndRebindingKeepsIt()
+        {
+            var tree = TestTrees.Template();
+            var shared = new CascadeCheckableState();
+            shared.SetTree(tree);
+
+            using (var first = new CascadeColumnsView { CheckBoxes = true, State = shared })
+            using (var second = new CascadeColumnsView { State = shared })
+            {
+                shared.CheckSet.Check(tree.TopLevelNodes[0]);
+                shared.CheckSet.Check(tree.TopLevelNodes[1]);
+                Assert.AreEqual(2, shared.History.UndoCount, "兩個 View 只有一條時間軸");
+
+                Assert.IsTrue(second.Undo(), "沒開勾選框的 View 也復原得了同一份歷史");
+                Assert.IsFalse(shared.CheckSet.IsChecked(tree.TopLevelNodes[1]));
+                Assert.IsTrue(first.CanRedo, "另一個 View 看得到同一個重做步驟");
+                Assert.IsTrue(first.Redo());
+                Assert.IsTrue(shared.CheckSet.IsChecked(tree.TopLevelNodes[1]));
+
+                using (var third = new CascadeColumnsView())
+                {
+                    third.State = shared;
+                    Assert.AreEqual(2, shared.History.UndoCount, "綁上 State 不清空歷史");
+                    first.State = new CascadeCheckableState();
+                    Assert.AreEqual(2, shared.History.UndoCount, "換掉 State 也不清空原本那份的歷史");
+                }
+            }
+        }
+
+        [TestMethod]
         public void State_RejectsNull_AndPlainStateRejectsCheckSetAssignment()
         {
             using (var view = new CascadeColumnsView { CheckBoxes = true })
@@ -229,7 +259,7 @@ namespace CascadeControlTests.Views.Columns
         }
 
         [TestMethod]
-        public void TurningCheckBoxesOff_ClearsHistory_AndLaterChecksStayOutOfIt()
+        public void TurningCheckBoxesOff_KeepsHistory_AndLaterChecksStillGoIntoIt()
         {
             using (var host = new ViewHost<CheckBoxColumnsView>())
             {
@@ -240,11 +270,11 @@ namespace CascadeControlTests.Views.Columns
                 Assert.IsTrue(host.View.CanUndo);
 
                 host.View.CheckBoxes = false;
-                Assert.IsFalse(host.View.CanUndo, "切換時清空歷史");
-                Assert.AreNotSame(host.View.History, set.History, "勾選不再記進控制項的歷史");
+                Assert.AreEqual(1, host.View.State.History.UndoCount, "歷史跟著 State，切換勾選框不清空");
+                Assert.AreSame(host.View.State.History, set.History, "勾選一律記進 State 的歷史");
 
                 set.Check(tree.TopLevelNodes[1]);
-                Assert.IsFalse(host.View.CanUndo);
+                Assert.AreEqual(2, host.View.State.History.UndoCount);
             }
         }
 
@@ -647,8 +677,8 @@ namespace CascadeControlTests.Views.Columns
                 set.Check(motor);                                       // 3. 勾選
 
                 Assert.AreEqual("Restart", reboot.Name);
-                Assert.AreSame(host.View.History, set.History, "勾選和樹的編輯記在同一份歷史");
-                Assert.AreEqual(3, host.View.History.UndoCount);
+                Assert.AreSame(host.View.State.History, set.History, "勾選和樹的編輯記在同一份歷史");
+                Assert.AreEqual(3, host.View.State.History.UndoCount);
 
                 Assert.IsTrue(host.View.Undo());
                 Assert.IsFalse(set.IsChecked(motor));
@@ -753,12 +783,14 @@ namespace CascadeControlTests.Views.Columns
                 Assert.IsTrue(host.View.CanUndo);
 
                 host.View.SetTree(TestTrees.Template());
-                Assert.IsFalse(host.View.History.CanUndo, "換樹之後舊步驟沒有意義");
+                Assert.IsFalse(host.View.State.History.CanUndo, "換樹之後舊步驟沒有意義");
 
-                host.View.CheckSet.Check(host.View.Tree.TopLevelNodes[0]);
+                var oldSet = host.View.CheckSet;
+                oldSet.Check(host.View.Tree.TopLevelNodes[0]);
                 host.View.CheckSet = new MenuCheckSet(host.View.Tree);
-                Assert.IsFalse(host.View.History.CanUndo);
-                Assert.AreSame(host.View.History, host.View.CheckSet.History);
+                Assert.IsFalse(host.View.State.History.CanUndo);
+                Assert.AreSame(host.View.State.History, host.View.CheckSet.History);
+                Assert.AreNotSame(host.View.State.History, oldSet.History, "換下來的那一份不再記進 State 的歷史");
             }
         }
 

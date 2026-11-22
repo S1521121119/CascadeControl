@@ -48,6 +48,17 @@ namespace CascadeControl.State
         public MenuTree Tree { get; private set; }
 
         /// <summary>
+        /// 復原／重做的歷史：綁定這份狀態的所有檢視控制項共用同一條時間軸，樹的編輯與勾選（<see cref="CascadeCheckableState.CheckSet"/>）照發生的順序記在這裡；
+        /// 預設最多 <see cref="MenuHistory.DEFAULT_CAPACITY"/> 步。
+        /// </summary>
+        /// <remarks>
+        /// 複製不改樹，不進歷史。<see cref="SetTree"/>、<see cref="SetTopLevelNodes"/>、<see cref="Clear"/> 會清空歷史；換掉檢視控制項的 State 不會。
+        /// 在程式裡直接改 <see cref="MenuNode"/> 之後請呼叫 <see cref="MenuHistory.Clear"/>（或 <see cref="MenuCheckSet.Reconcile"/>，它也會清空）。
+        /// 要調整保留的步驟數，設定 <see cref="MenuHistory.Capacity"/>。
+        /// </remarks>
+        public MenuHistory History { get; } = new MenuHistory();
+
+        /// <summary>
         /// 第一層的頂層節點清單；沒有資料時為空集合。
         /// </summary>
         public IReadOnlyList<ICascadeNode> TopLevelNodes => _topLevelNodes;
@@ -92,7 +103,7 @@ namespace CascadeControl.State
         public event EventHandler<CascadeNodeEventArgs> SelectedPathChanged;
 
         /// <summary>
-        /// 設定要顯示的選單樹，以 <see cref="MenuTree.TopLevelNodes"/> 作為第一層內容，並清除選取與記憶軌跡。
+        /// 設定要顯示的選單樹，以 <see cref="MenuTree.TopLevelNodes"/> 作為第一層內容，並清除選取、記憶軌跡與 <see cref="History"/>。
         /// </summary>
         /// <param name="tree">要顯示的選單樹；傳 null 表示清空。</param>
         public virtual void SetTree(MenuTree tree)
@@ -101,7 +112,7 @@ namespace CascadeControl.State
         }
 
         /// <summary>
-        /// 重新設定第一層的頂層節點集合，並清除選取與記憶軌跡；<see cref="Tree"/> 會變成 null。
+        /// 重新設定第一層的頂層節點集合，並清除選取、記憶軌跡與 <see cref="History"/>；<see cref="Tree"/> 會變成 null。
         /// </summary>
         /// <param name="topLevelNodes">第一層節點；傳 null 或空集合表示清空。</param>
         public virtual void SetTopLevelNodes(IEnumerable<ICascadeNode> topLevelNodes)
@@ -133,7 +144,7 @@ namespace CascadeControl.State
         }
 
         /// <summary>
-        /// 清除資料、選取與記憶軌跡。
+        /// 清除資料、選取、記憶軌跡與 <see cref="History"/>。
         /// </summary>
         public void Clear() => SetTopLevelNodes(null);
 
@@ -244,6 +255,9 @@ namespace CascadeControl.State
             _topLevelNodes = topLevelNodes?.ToList() ?? NoNodes;
             _topLevelKey = new object();
             _navigator.Clear();
+
+            // 舊的步驟指向舊的樹，換了內容就沒有意義。
+            History.Clear();
 
             OnInvalidated(CascadeStateInvalidation.Reset);
             OnSelectedPathChanged(CreateNodeEventArgs());

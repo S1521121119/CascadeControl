@@ -22,7 +22,7 @@ namespace CascadeControl.Views.Columns
     /// 鍵盤焦點固定在目前操作的那一欄，所以按鍵一律以選取深度為準，不看是哪一欄收到按鍵。
     /// 同一欄內可以比照檔案總管多選（Ctrl / Shift / Ctrl+Shift 點選與方向鍵、Ctrl+Space、框選、Ctrl+A，規則見 <see cref="MultiSelectedNodes"/>），用來一次複製、剪下、刪除。
     /// 右鍵開啟內建的快顯功能表；<see cref="ReadOnly"/> 為 false 時可以就地插入、建立子節點、改名，並透過 Windows 剪貼簿剪下與貼上，
-    /// 改樹的每一個操作都記進 <see cref="History"/>，可以復原與重做；
+    /// 改樹的每一個操作都記進 <see cref="CascadeState.History"/>，可以復原與重做；
     /// 快捷鍵為 Ctrl+C / Ctrl+X / Ctrl+V、Ctrl+Shift+V（貼在前面）、Ctrl+Alt+V（貼成子節點）、Ctrl+Shift+C（複製路徑）、Delete、F2、Ctrl+I（在後面插入）、Ctrl+Shift+I（在前面插入）、Ctrl+N（建立子節點）、Ctrl+A、Ctrl+Z（復原）、Ctrl+Y 或 Ctrl+Shift+Z（重做）。
     /// 欄位 ListBox 一律由控制項自己建立和移除，不接受從外部加入子控制項：
     /// 設計階段由 <see cref="CascadeColumnsViewDesigner"/> 取消容器行為，執行階段由 <see cref="CreateControlsInstance"/> 擋下。
@@ -69,7 +69,7 @@ namespace CascadeControl.Views.Columns
         }
 
         /// <summary>
-        /// 目前綁定的共享狀態：樹、頂層節點、選取路徑、記憶軌跡與 <see cref="PathSeparator"/> 都存在這裡。
+        /// 目前綁定的共享狀態：樹、頂層節點、選取路徑、記憶軌跡、復原歷史與 <see cref="PathSeparator"/> 都存在這裡。
         /// </summary>
         /// <remarks>
         /// 預設每個控制項各自持有一份 <see cref="CascadeCheckableState"/>，<see cref="CheckBoxes"/> 才有勾選狀態可以顯示；把同一份 <see cref="CascadeState"/> 指派給多個控制項即可自動同步。不可設為 null。
@@ -92,10 +92,8 @@ namespace CascadeControl.Views.Columns
 
                 ClearMultiSelection();
                 _anchorNode = _state.SelectedNode;
-                History.Clear();
                 foreach (var list in _lists) list.Tag = null;
                 SyncColumns();
-                if (_checkBoxes) SyncCheckSetWithHistory();
             }
         }
 
@@ -122,9 +120,6 @@ namespace CascadeControl.Views.Columns
                 case CascadeStateInvalidation.Reset:
                     ClearMultiSelection();
                     _anchorNode = null;
-
-                    // 舊的步驟指向舊的樹，換了內容就沒有意義。
-                    History.Clear();
                     SyncColumns();
                     break;
 

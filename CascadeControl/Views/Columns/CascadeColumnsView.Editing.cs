@@ -94,31 +94,18 @@ namespace CascadeControl.Views.Columns
         }
 
         /// <summary>
-        /// 復原／重做的歷史：使用者在這個控制項上對樹做的編輯（插入、建立子節點、改名、貼上、剪下、刪除）照順序記在這裡，
-        /// <see cref="CheckBoxes"/> 為 true 時，勾選也記在同一條時間軸上；預設最多 <see cref="MenuHistory.DEFAULT_CAPACITY"/> 步。
+        /// 現在能不能復原：<see cref="State"/> 的 <see cref="CascadeState.History"/> 有步驟，而且那一步改到樹時控制項不是唯讀（<see cref="ReadOnly"/> 為 false）。
         /// </summary>
-        /// <remarks>
-        /// 複製不改樹，不進歷史。<see cref="SetTree"/>、<see cref="SetTopLevelNodes"/>、<see cref="Clear"/> 會清空歷史。
-        /// 在程式裡直接改 <see cref="MenuNode"/> 之後請呼叫 <see cref="MenuHistory.Clear"/>（或 <see cref="MenuCheckSet.Reconcile"/>，它也會清空）。
-        /// 要調整保留的步驟數，設定 <see cref="MenuHistory.Capacity"/>。
-        /// </remarks>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public MenuHistory History { get; } = new MenuHistory();
+        public bool CanUndo => State.History.CanUndo && (CanEdit || !State.History.UndoChangesTree);
 
         /// <summary>
-        /// 現在能不能復原：<see cref="History"/> 有步驟，而且那一步改到樹時控制項不是唯讀（<see cref="ReadOnly"/> 為 false）。
+        /// 現在能不能重做：<see cref="State"/> 的 <see cref="CascadeState.History"/> 有被復原的步驟，而且那一步改到樹時控制項不是唯讀。
         /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public bool CanUndo => History.CanUndo && (CanEdit || !History.UndoChangesTree);
-
-        /// <summary>
-        /// 現在能不能重做：<see cref="History"/> 有被復原的步驟，而且那一步改到樹時控制項不是唯讀。
-        /// </summary>
-        [Browsable(false)]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public bool CanRedo => History.CanRedo && (CanEdit || !History.RedoChangesTree);
+        public bool CanRedo => State.History.CanRedo && (CanEdit || !State.History.RedoChangesTree);
 
         /// <summary>
         /// 右鍵點節點時開啟的快顯功能表；可以加上自己的項目。
@@ -537,7 +524,7 @@ namespace CascadeControl.Views.Columns
         }
 
         /// <summary>
-        /// 復原 <see cref="History"/> 最近的一個步驟；進行中的就地編輯會先套用。
+        /// 復原 <see cref="CascadeState.History"/> 最近的一個步驟；進行中的就地編輯會先套用。
         /// </summary>
         /// <returns>有復原時為 true；<see cref="CanUndo"/> 為 false，或樹已經和記錄時對不上（這時整份歷史會被清除）時為 false。</returns>
         /// <remarks>
@@ -563,7 +550,7 @@ namespace CascadeControl.Views.Columns
             if (!(undo ? CanUndo : CanRedo)) return false;
 
             var hadFocus = ContainsFocus;
-            var result = undo ? History.Undo() : History.Redo();
+            var result = undo ? State.History.Undo() : State.History.Redo();
             if (result == null) return false;
 
             if (result.TreeChanged)
@@ -793,10 +780,10 @@ namespace CascadeControl.Views.Columns
             var removed = nodes.Select(node => new KeyValuePair<int, MenuNode>(node.SiblingNumber - 1, node)).ToList();
             var firstIndex = removed.Min(entry => entry.Key);
 
-            using (History.BeginGroup())
+            using (State.History.BeginGroup())
             {
                 foreach (var node in nodes) node.RemoveFromParent();
-                History.RecordRemove(Tree, parent, removed);
+                State.History.RecordRemove(Tree, parent, removed);
 
                 MenuNode next = null;
                 if (parent.Children.Count > 0) next = parent.Children[Math.Min(firstIndex, parent.Children.Count - 1)];
@@ -836,7 +823,7 @@ namespace CascadeControl.Views.Columns
             var sources = ReadClipboardNodes();
             if (sources.Count == 0) return false;
 
-            using (History.BeginGroup())
+            using (State.History.BeginGroup())
             {
                 // 名稱一律取不重複的，所以每一個都是新節點，不會合併進既有的節點。
                 var pasted = new List<MenuNode>(sources.Count);
@@ -846,7 +833,7 @@ namespace CascadeControl.Views.Columns
                     position++;
                 }
 
-                History.RecordInsert(Tree, parent, pasted);
+                State.History.RecordInsert(Tree, parent, pasted);
                 FinishEdit(CascadeEditAction.Paste, pasted, pasted[0], markNodes: true);
             }
 
@@ -1132,7 +1119,7 @@ namespace CascadeControl.Views.Columns
             var hadFocus = session.Box.ContainsFocus;
             CloseEditBox(session, hadFocus);
 
-            using (History.BeginGroup())
+            using (State.History.BeginGroup())
             {
                 var result = commit && name.Length > 0 ? ApplyEdit(session, name) : null;
                 _pendingChildParent = null;
@@ -1152,7 +1139,7 @@ namespace CascadeControl.Views.Columns
             return true;
         }
 
-        // 套用輸入的名稱並記進 History；同一層已有同名節點時自動加上後綴，所以不會合併。對象已經不在樹裡，或改名成原本的名稱時回傳 null。
+        // 套用輸入的名稱並記進 State.History；同一層已有同名節點時自動加上後綴，所以不會合併。對象已經不在樹裡，或改名成原本的名稱時回傳 null。
         private MenuNode ApplyEdit(EditSession session, string name)
         {
             switch (session.Action)
@@ -1161,7 +1148,7 @@ namespace CascadeControl.Views.Columns
                 case CascadeEditAction.CreateChild:
                     if (!IsInTreeOrRoot(session.Parent)) return null;
                     var inserted = session.Parent.InsertChildAt(session.Position, new MenuNode(name), session.Parent.GetUniqueChildName(name));
-                    History.RecordInsert(Tree, session.Parent, new[] { inserted });
+                    State.History.RecordInsert(Tree, session.Parent, new[] { inserted });
                     return inserted;
 
                 case CascadeEditAction.Rename:
@@ -1169,7 +1156,7 @@ namespace CascadeControl.Views.Columns
                     if (!IsInTree(target) || string.Equals(target.Name, name, StringComparison.Ordinal)) return null;
                     var oldName = target.Name;
                     var renamed = target.Rename(target.Parent.GetUniqueChildName(name));
-                    History.RecordRename(Tree, renamed, oldName);
+                    State.History.RecordRename(Tree, renamed, oldName);
                     return renamed;
 
                 default:

@@ -34,7 +34,7 @@ namespace CascadeControlTests.Views.Columns
                 Assert.AreSame(f.Node("A > X"), f.View.SelectedNode);
                 Assert.IsFalse(f.View.IsEditing);
                 f.AssertEdits(CascadeEditAction.Insert, f.Node("A > X"));
-                Assert.AreEqual(1, f.View.History.UndoCount);
+                Assert.AreEqual(1, f.View.State.History.UndoCount);
             }
         }
 
@@ -90,7 +90,7 @@ namespace CascadeControlTests.Views.Columns
                 Assert.IsFalse(f.View.IsEditing);
                 Assert.AreSame(f.Node("A > A1"), f.View.SelectedNode);
                 Assert.AreEqual(0, f.Edits.Count);
-                Assert.AreEqual(0, f.View.History.UndoCount);
+                Assert.AreEqual(0, f.View.State.History.UndoCount);
             }
         }
 
@@ -166,7 +166,7 @@ namespace CascadeControlTests.Views.Columns
 
                 Assert.AreSame(f.Node("A > A1"), f.View.SelectedNode);
                 Assert.AreEqual(0, f.Edits.Count);
-                Assert.AreEqual(0, f.View.History.UndoCount);
+                Assert.AreEqual(0, f.View.State.History.UndoCount);
             }
         }
 
@@ -191,7 +191,7 @@ namespace CascadeControlTests.Views.Columns
                 Assert.AreSame(pasted, f.View.SelectedNode);
                 Assert.AreEqual(0, f.View.MultiSelectedNodes.Count, "只貼一個不多選");
                 f.AssertEdits(CascadeEditAction.Paste, pasted);
-                Assert.AreEqual(1, f.View.History.UndoCount);
+                Assert.AreEqual(1, f.View.State.History.UndoCount);
             }
         });
 
@@ -395,7 +395,7 @@ namespace CascadeControlTests.Views.Columns
                 CollectionAssert.AreEqual(
                     new[] { CascadeEditAction.Insert, CascadeEditAction.Rename, CascadeEditAction.Paste, CascadeEditAction.Cut },
                     f.Edits.Select(e => e.Action).ToArray());
-                Assert.AreEqual(4, f.View.History.UndoCount);
+                Assert.AreEqual(4, f.View.State.History.UndoCount);
 
                 for (var i = 0; i < 4; i++) Assert.IsTrue(f.View.Undo());
                 Assert.IsFalse(f.View.CanUndo);

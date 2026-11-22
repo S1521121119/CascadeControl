@@ -19,6 +19,8 @@ namespace CascadeControl.State
         /// 目前的勾選狀態；null 表示沒有勾選狀態。
         /// </summary>
         /// <remarks>
+        /// 設定時把它的 <see cref="MenuCheckSet.History"/> 換成這份狀態的 <see cref="CascadeState.History"/>，勾選與樹的編輯才會排在同一條時間軸上；
+        /// 換下來的那一份改回自己的一份新歷史。舊步驟會作用到換下來的那一份，所以 <see cref="CascadeState.History"/> 會清空。
         /// 更換這個屬性會觸發 <see cref="CheckSetChanged"/>，不會觸發 <see cref="CheckedChanged"/>。
         /// </remarks>
         public MenuCheckSet CheckSet
@@ -28,10 +30,20 @@ namespace CascadeControl.State
             {
                 if (ReferenceEquals(_checkSet, value)) return;
 
-                if (_checkSet != null) _checkSet.Changed -= OnInnerCheckSetChanged;
-                _checkSet = value;
-                if (_checkSet != null) _checkSet.Changed += OnInnerCheckSetChanged;
+                if (_checkSet != null)
+                {
+                    _checkSet.Changed -= OnInnerCheckSetChanged;
+                    if (ReferenceEquals(_checkSet.History, History)) _checkSet.History = new MenuHistory();
+                }
 
+                _checkSet = value;
+                if (_checkSet != null)
+                {
+                    _checkSet.History = History;
+                    _checkSet.Changed += OnInnerCheckSetChanged;
+                }
+
+                History.Clear();
                 OnCheckSetChanged(EventArgs.Empty);
             }
         }

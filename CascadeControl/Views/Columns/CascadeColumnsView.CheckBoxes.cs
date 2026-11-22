@@ -63,13 +63,12 @@ namespace CascadeControl.Views.Columns
         /// 這個檔案只負責把它畫出來，以及把滑鼠與鍵盤操作轉成對它的呼叫。
         /// 操作方式：點勾選框只切換勾選、不改選取（<see cref="CascadeColumnLayoutMode.Sliding"/> 時畫面也不會滑動），
         /// 按住 Shift 點勾選框是連同所有子節點一起勾選；點文字只選取；Space 切換目前選取的節點，Shift+Space 連同所有子節點；
-        /// 勾選與樹的編輯記在同一份 <see cref="History"/>，Ctrl+Z 依發生的順序復原，Ctrl+Y 或 Ctrl+Shift+Z 重做，之後選取會跳到那一步針對的節點。
+        /// 勾選與樹的編輯記在同一份 <see cref="CascadeState.History"/>，Ctrl+Z 依發生的順序復原，Ctrl+Y 或 Ctrl+Shift+Z 重做，之後選取會跳到那一步針對的節點。
         /// 右鍵不改選取：勾選項目放在 <see cref="NodeContextMenu"/> 與 <see cref="ColumnContextMenu"/> 的最前面，後面接復原、重做與編輯項目。
         /// 勾了但子孫沒有全勾的節點畫成「部分勾選」，那只是提示，狀態仍然是已勾選。
         /// 只有屬於 <see cref="CheckSet"/> 那棵樹的 <see cref="MenuNode"/> 才有勾選框；其他節點的外觀與行為和沒有勾選框時相同。
         /// 剪下、刪除節點時，被移除節點的勾選會一起取消，和移除算同一步，所以復原時勾選也會回來。
-        /// 切換時會清空 <see cref="History"/>：true 時勾選記進這個控制項的歷史，false 時不記，舊步驟不能跨過這個切換。
-        /// false 時 <see cref="CheckSet"/> 與 <see cref="CheckedChanged"/> 照常可用，只是不畫也不操作勾選框。
+        /// false 時 <see cref="CheckSet"/> 與 <see cref="CheckedChanged"/> 照常可用，勾選也照常記進歷史，只是不畫也不操作勾選框；切換不會清空歷史。
         /// </remarks>
         [Category("Cascade")]
         [Description("true：每一列前面顯示勾選框，可以勾選多個節點；false：只有選取。")]
@@ -82,7 +81,7 @@ namespace CascadeControl.Views.Columns
                 if (_checkBoxes == value) return;
 
                 _checkBoxes = value;
-                SyncCheckSetWithHistory();
+                InvalidateNodes();
 
                 var itemHeight = ItemHeight;
                 foreach (var list in _lists)
@@ -101,8 +100,7 @@ namespace CascadeControl.Views.Columns
         /// <remarks>
         /// <see cref="SetTree"/> 會自動換上一份新的；想保留先前的勾選，或讓好幾個控制項共用同一份時，才需要自己設定。
         /// 它的 <see cref="MenuCheckSet.Tree"/> 應該就是目前顯示的樹，否則所有節點都不會有勾選框。
-        /// <see cref="CheckBoxes"/> 為 true 時，設定會把它的 <see cref="MenuCheckSet.History"/> 換成這個控制項的 <see cref="History"/>，並清空歷史：
-        /// 勾選與樹的編輯才會排在同一條時間軸上，舊步驟也不會作用到換下來的那一份。
+        /// 設定會把它的 <see cref="MenuCheckSet.History"/> 換成 <see cref="State"/> 的 <see cref="CascadeState.History"/>，並清空歷史（見 <see cref="CascadeCheckableState.CheckSet"/>）。
         /// </remarks>
         /// <exception cref="InvalidOperationException"><see cref="State"/> 不是 <see cref="CascadeCheckableState"/> 時指派非 null 的勾選狀態。</exception>
         [Browsable(false)]
@@ -153,21 +151,6 @@ namespace CascadeControl.Views.Columns
             checkable.CheckSetChanged -= OnStateCheckSetChanged;
         }
 
-        // 勾選要不要記進這個控制項的 History，跟著 CheckBoxes 走；
-        // false 時只收回自己掛上去的（換回勾選自己的一份新歷史），別的控制項（共用同一份 State）掛上去的不動。
-        private void SyncCheckSetWithHistory()
-        {
-            var checkSet = CheckSet;
-            if (checkSet != null)
-            {
-                if (_checkBoxes) checkSet.History = History;
-                else if (ReferenceEquals(checkSet.History, History)) checkSet.History = new MenuHistory();
-            }
-
-            History.Clear();
-            InvalidateNodes();
-        }
-
         private void OnStateCheckedChanged(object sender, MenuCheckChangedEventArgs e)
         {
             if (_checkBoxes) InvalidateNodes();
@@ -176,7 +159,7 @@ namespace CascadeControl.Views.Columns
 
         private void OnStateCheckSetChanged(object sender, EventArgs e)
         {
-            if (_checkBoxes) SyncCheckSetWithHistory();
+            if (_checkBoxes) InvalidateNodes();
         }
 
         // 剪下、刪除節點之後先取消被移除節點（連同子孫）的勾選，再觸發 TreeEdited。

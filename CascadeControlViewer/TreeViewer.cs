@@ -224,7 +224,7 @@ namespace CascadeControlViewer
                 + $"｜Target={e.Target?.FullPathText ?? "(整棵樹)"}"
                 + $"｜+{e.Added.Count} / -{e.Removed.Count}"
                 + $"｜共勾選 {cascadeView1.CheckSet.Count} 個"
-                + $"｜Undo={cascadeView1.History.UndoCount} Redo={cascadeView1.History.RedoCount}");
+                + $"｜Undo={cascadeView1.State.History.UndoCount} Redo={cascadeView1.State.History.RedoCount}");
         }
 
         #endregion 事件處理
