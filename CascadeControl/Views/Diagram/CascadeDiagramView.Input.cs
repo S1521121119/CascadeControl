@@ -159,6 +159,27 @@ namespace CascadeControl.Views.Diagram
             EnsureVisible(SelectedMenuNode);
         }
 
+        private const int WM_KEYDOWN = 0x0100;
+        private const int VK_PROCESSKEY = 0xE5;
+        private const int SPACE_SCAN_CODE = 0x39;
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// 中文輸入法開著的時候，Space 會先被輸入法收走，送到這裡的 WM_KEYDOWN 是 ProcessKey 而不是 Space，展開／收合就沒反應。
+        /// ProcessKey 的 lParam 仍帶著原本的掃描碼，認得出是 Space 就改回 Space，讓 <see cref="OnKeyDown"/> 照常處理。
+        /// 就地編輯框是另一個視窗，它的按鍵不會經過這裡。
+        /// </remarks>
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_KEYDOWN && m.WParam.ToInt64() == VK_PROCESSKEY && ScanCodeOf(m.LParam) == SPACE_SCAN_CODE)
+                m.WParam = (IntPtr)Keys.Space;
+
+            base.WndProc(ref m);
+        }
+
+        // 按鍵訊息的 lParam：第 16～23 位元是掃描碼，第 24 位元是延伸鍵旗標（Space 不是延伸鍵）。
+        private static int ScanCodeOf(IntPtr lParam) => (int)((lParam.ToInt64() >> 16) & 0x1FF);
+
         /// <summary>
         /// 編輯框有焦點時：Enter 套用、Esc 取消，其他按鍵交給編輯框（Ctrl+C、Ctrl+V、Delete 是編輯框自己的）。
         /// 其他時候編輯快捷鍵查 <see cref="CascadeEditShortcuts"/>，對象是 <see cref="SelectedNode"/>；唯讀時不攔會改樹的指令。
