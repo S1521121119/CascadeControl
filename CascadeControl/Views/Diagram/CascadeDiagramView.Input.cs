@@ -1,6 +1,7 @@
 ﻿using CascadeControl.State;
 using CascadeControl.Trees;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -135,28 +136,61 @@ namespace CascadeControl.Views.Diagram
 
         /// <summary>
         /// ↑↓ 在圖上看得到的同一層節點之間移動（可以跨父節點）；← 退回上一層、→ 進入下一層（記憶與 <see cref="State"/> 共用）；
-        /// 空白鍵展開或收合選取的節點；Enter 在選取的節點上觸發 <see cref="NodeActivated"/>。改的是 <see cref="State"/> 的選取，所以共享狀態的檢視一起動。
+        /// 空白鍵展開或收合選取的節點；* 展開選取節點與其全部子孫；數字鍵在同層兄弟之間依編號跳轉；
+        /// Enter 在選取的節點上觸發 <see cref="NodeActivated"/>。改的是 <see cref="State"/> 的選取，所以共享狀態的檢視一起動。
         /// </summary>
-        /// <param name="e">按鍵資料；有 Ctrl、Alt 或 Shift 時不處理。</param>
+        /// <param name="e">按鍵資料。</param>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            if (e.Handled || e.Modifiers != Keys.None) return;
+            if (e.Handled) return;
+
+            if ((e.KeyCode == Keys.Multiply && e.Modifiers == Keys.None)
+                || (e.KeyCode == Keys.D8 && e.Modifiers == Keys.Shift))
+            {
+                ResetDigitJump();
+                ExpandAllSelected();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            if (e.Modifiers != Keys.None) return;
+
+            if (TryGetDigit(e, out var digit))
+            {
+                JumpByDigit(digit);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
 
             switch (e.KeyCode)
             {
-                case Keys.Up: MoveVertical(-1); break;
-                case Keys.Down: MoveVertical(1); break;
-                case Keys.Left: _state.StepBack(); break;
-                case Keys.Right: StepIn(); break;
-                case Keys.Space: ToggleSelected(); break;
-                case Keys.Enter: ActivateSelected(); break;
+                case Keys.Up: ResetDigitJump(); MoveVertical(-1); break;
+                case Keys.Down: ResetDigitJump(); MoveVertical(1); break;
+                case Keys.Left: ResetDigitJump(); _state.StepBack(); break;
+                case Keys.Right: ResetDigitJump(); StepIn(); break;
+                case Keys.Space: ResetDigitJump(); ToggleSelected(); break;
+                case Keys.Enter: ResetDigitJump(); ActivateSelected(); break;
                 default: return;
             }
 
             e.Handled = true;
             e.SuppressKeyPress = true;
             EnsureVisible(SelectedMenuNode);
+        }
+
+        /// <inheritdoc />
+        protected override void OnKeyPress(KeyPressEventArgs e)
+        {
+            base.OnKeyPress(e);
+            if (!e.Handled && e.KeyChar == '*')
+            {
+                ResetDigitJump();
+                ExpandAllSelected();
+                e.Handled = true;
+            }
         }
 
         private const int WM_KEYDOWN = 0x0100;
@@ -207,6 +241,8 @@ namespace CascadeControl.Views.Diagram
             }
 
             // 拖曳移動中按 Esc：取消移動，放開滑鼠時也不算點選。
+            if (keyData == Keys.Escape) ResetDigitJump();
+
             if (keyData == Keys.Escape && _move != null)
             {
                 EndMovePress(apply: false);
@@ -310,6 +346,77 @@ namespace CascadeControl.Views.Diagram
             var node = SelectedMenuNode;
             if (node != null && node.Children.Count > 0) SetExpanded(node, !IsExpanded(node));
         }
+
+        private void ExpandAllSelected()
+        {
+            var node = SelectedMenuNode;
+            if (node != null && node.Children.Count > 0) ExpandAll(node);
+        }
+
+        #region 數字鍵跳轉
+
+        private string _digitBuffer = string.Empty;
+
+        private MenuNode _digitNode;
+
+        private static bool TryGetDigit(KeyEventArgs e, out char digit)
+        {
+            digit = '\0';
+            if (e.Control || e.Alt || e.Shift) return false;
+
+            if (e.KeyCode >= Keys.D0 && e.KeyCode <= Keys.D9) digit = (char)('0' + (e.KeyCode - Keys.D0));
+            else if (e.KeyCode >= Keys.NumPad0 && e.KeyCode <= Keys.NumPad9) digit = (char)('0' + (e.KeyCode - Keys.NumPad0));
+            else return false;
+
+            return true;
+        }
+
+        private void ResetDigitJump()
+        {
+            _digitBuffer = string.Empty;
+            _digitNode = null;
+        }
+
+        private void JumpByDigit(char digit)
+        {
+            var selected = SelectedMenuNode;
+            var siblings = selected?.Parent?.Children ?? Tree?.Root.Children;
+            if (siblings == null || siblings.Count == 0) return;
+
+            var drawn = siblings.Where(child => FindImageNode(child) != null).ToList();
+            if (drawn.Count == 0) return;
+
+            if (!ReferenceEquals(_digitNode, selected)) ResetDigitJump();
+
+            var candidate = _digitBuffer + digit;
+            var node = FindBySiblingNumber(drawn, candidate);
+            if (node == null)
+            {
+                candidate = digit.ToString();
+                node = FindBySiblingNumber(drawn, candidate);
+            }
+
+            if (node == null)
+            {
+                ResetDigitJump();
+                return;
+            }
+
+            ClearMultiSelection();
+            _state.TrySelectNode(node);
+            EnsureVisible(SelectedMenuNode);
+
+            _digitBuffer = candidate;
+            _digitNode = SelectedMenuNode;
+        }
+
+        private static MenuNode FindBySiblingNumber(IEnumerable<MenuNode> nodes, string digits)
+        {
+            if (!int.TryParse(digits, out var number)) return null;
+            return nodes.FirstOrDefault(node => node.SiblingNumber == number);
+        }
+
+        #endregion 數字鍵跳轉
 
         #endregion 鍵盤
     }

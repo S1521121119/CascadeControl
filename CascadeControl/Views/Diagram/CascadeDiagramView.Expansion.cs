@@ -49,6 +49,41 @@ namespace CascadeControl.Views.Diagram
             Redraw();
         }
 
+        /// <summary>
+        /// 展開 <paramref name="node"/> 與它底下的所有子孫節點並重畫；葉節點不做任何事。
+        /// </summary>
+        /// <param name="node">要全部展開的節點。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
+        public void ExpandAll(MenuNode node) => SetSubtreeExpanded(node, expanded: true);
+
+        /// <summary>
+        /// 收合 <paramref name="node"/> 與它底下的所有子孫節點並重畫；葉節點不做任何事。
+        /// </summary>
+        /// <param name="node">要全部摺疊的節點。</param>
+        /// <exception cref="ArgumentNullException"><paramref name="node"/> 為 null。</exception>
+        public void CollapseAll(MenuNode node) => SetSubtreeExpanded(node, expanded: false);
+
+        private void SetSubtreeExpanded(MenuNode root, bool expanded)
+        {
+            if (root == null) throw new ArgumentNullException(nameof(root));
+
+            SyncExpandTree();
+            if (root.Children.Count == 0) return;
+
+            var stack = new Stack<MenuNode>();
+            stack.Push(root);
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+                if (current.Children.Count == 0) continue;
+
+                _expandOverrides[current] = expanded;
+                for (var i = 0; i < current.Children.Count; i++) stack.Push(current.Children[i]);
+            }
+
+            Redraw();
+        }
+
         // 展開選取節點的祖先，讓選取的節點畫得出來；之後選取移開也維持展開，和使用者點過展開鈕一樣。
         private void RevealSelection()
         {

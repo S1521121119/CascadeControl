@@ -214,6 +214,8 @@ namespace CascadeControlTests.Views.Diagram
         {
             public void Press(Keys key) => OnKeyDown(new KeyEventArgs(key));
 
+            public void PressChar(char keyChar) => OnKeyPress(new KeyPressEventArgs(keyChar));
+
             public void ClickAt(Point location, MouseButtons button = MouseButtons.Left) =>
                 OnMouseClick(new MouseEventArgs(button, 1, location.X, location.Y, 0));
 
@@ -688,6 +690,136 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.IsTrue(view.StepForward());
                 Assert.IsTrue(view.StepForward());
                 Assert.AreSame(home, view.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void DigitJump_MultiDigitAndFallback_MatchesColumnsBehavior()
+        {
+            var tree = new MenuTree();
+            for (var i = 1; i <= 24; i++) tree.AddPath(new[] { "Root", $"N{i}" });
+
+            using (var imageView = new ProbeImageView())
+            {
+                imageView.SetTree(tree);
+                var root = Find(tree, "Root");
+                imageView.SetExpanded(root, true);
+
+                // 從 5 開始：按 2 -> 2，按 4 -> 24，按 3 -> 3。
+                imageView.TrySelectNode(Find(tree, "Root", "N5"));
+                imageView.SelectAll();
+                imageView.Press(Keys.D2);
+                Assert.AreSame(Find(tree, "Root", "N2"), imageView.SelectedNode);
+                Assert.AreEqual(0, imageView.MultiSelectedNodes.Count, "數字跳轉清除多選");
+
+                imageView.Press(Keys.D4);
+                Assert.AreSame(Find(tree, "Root", "N24"), imageView.SelectedNode);
+
+                imageView.Press(Keys.D3);
+                Assert.AreSame(Find(tree, "Root", "N3"), imageView.SelectedNode);
+
+                // 從 5 開始：按 3 -> 3，按 1 -> 1（沒有 31）。
+                imageView.TrySelectNode(Find(tree, "Root", "N5"));
+                imageView.Press(Keys.NumPad3);
+                Assert.AreSame(Find(tree, "Root", "N3"), imageView.SelectedNode);
+
+                imageView.Press(Keys.NumPad1);
+                Assert.AreSame(Find(tree, "Root", "N1"), imageView.SelectedNode);
+
+                // 方向鍵重設數字累積：從 N5 按 1 -> N1，按 Down -> N2，按 4 -> N4（不是 N14）。
+                imageView.TrySelectNode(Find(tree, "Root", "N5"));
+                imageView.Press(Keys.D1);
+                Assert.AreSame(Find(tree, "Root", "N1"), imageView.SelectedNode);
+                imageView.Press(Keys.Down);
+                Assert.AreSame(Find(tree, "Root", "N2"), imageView.SelectedNode);
+                imageView.Press(Keys.D4);
+                Assert.AreSame(Find(tree, "Root", "N4"), imageView.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void DigitJump_NoSelectionJumpsTopLevel_SkipsUndrawnSiblings()
+        {
+            var tree = TestTrees.Template();
+            using (var imageView = new ProbeImageView { ShowChecks = true, UncheckedDisplay = CascadeDiagramUncheckedDisplay.Hidden })
+            {
+                imageView.SetTree(tree);
+                var checkSet = ((CascadeCheckableState)imageView.State).CheckSet;
+                var system = Find(tree, "System");
+                var io = Find(tree, "IO");
+                checkSet.Check(system);
+                checkSet.Check(io);
+
+                // 未選取時跳第一層畫出來的節點；第 2 個 Motor 沒勾被隱藏，跳不過去。
+                imageView.Press(Keys.D3);
+                Assert.AreSame(io, imageView.SelectedNode);
+
+                imageView.Press(Keys.D2);
+                Assert.AreSame(io, imageView.SelectedNode, "隱藏的兄弟不跳轉");
+
+                imageView.Press(Keys.D1);
+                Assert.AreSame(system, imageView.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void ExpandAllAndCollapseAll_ToggleEntireSubtree_NullThrows_LeafNoOp()
+        {
+            var tree = TestTrees.Template();
+            using (var imageView = new ProbeImageView())
+            {
+                imageView.SetTree(tree);
+                Assert.ThrowsException<System.ArgumentNullException>(() => imageView.ExpandAll(null));
+                Assert.ThrowsException<System.ArgumentNullException>(() => imageView.CollapseAll(null));
+
+                var diagnostics = Find(tree, "Diagnostics");
+                var sensor = Find(tree, "Diagnostics", "Sensor");
+                var temp = Find(tree, "Diagnostics", "Sensor", "Temperature");
+                var zoneB = Find(tree, "Diagnostics", "Sensor", "Temperature", "Zone B");
+                var read = Find(tree, "Diagnostics", "Sensor", "Temperature", "Zone B", "Read");
+                var motor = Find(tree, "Motor");
+
+                imageView.ExpandAll(diagnostics);
+                foreach (var branch in new[] { diagnostics, sensor, temp, zoneB, read })
+                    Assert.IsTrue(imageView.IsExpanded(branch), branch.FullPathText);
+                Assert.IsFalse(imageView.IsExpanded(motor), "其他分支不受影響");
+
+                imageView.CollapseAll(diagnostics);
+                foreach (var branch in new[] { diagnostics, sensor, temp, zoneB, read })
+                    Assert.IsFalse(imageView.IsExpanded(branch), branch.FullPathText);
+
+                var beforeLeaf = imageView.Image;
+                imageView.ExpandAll(Find(tree, "System", "Reboot"));
+                Assert.AreSame(beforeLeaf, imageView.Image, "葉節點不重畫");
+            }
+        }
+
+        [TestMethod]
+        public void MultiplyKey_ExpandsSelectedNodeAndDescendants()
+        {
+            var tree = TestTrees.Template();
+            using (var imageView = new ProbeImageView())
+            {
+                imageView.SetTree(tree);
+                var motor = Find(tree, "Motor");
+                var axisX = Find(tree, "Motor", "Axis X");
+                var axisY = Find(tree, "Motor", "Axis Y");
+                imageView.TrySelectNode(motor);
+
+                imageView.Press(Keys.Multiply);
+                Assert.IsTrue(imageView.IsExpanded(motor));
+                Assert.IsTrue(imageView.IsExpanded(axisX));
+                Assert.IsTrue(imageView.IsExpanded(axisY));
+
+                imageView.CollapseAll(motor);
+                imageView.Press(Keys.Shift | Keys.D8);
+                Assert.IsTrue(imageView.IsExpanded(motor));
+                Assert.IsTrue(imageView.IsExpanded(axisX));
+
+                imageView.CollapseAll(motor);
+                imageView.PressChar('*');
+                Assert.IsTrue(imageView.IsExpanded(motor));
+                Assert.IsTrue(imageView.IsExpanded(axisY));
             }
         }
 

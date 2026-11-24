@@ -526,14 +526,62 @@ namespace CascadeControlTests.Views.Diagram
                 }
 
                 CollectionAssert.AreEqual(
-                    new[] { "復原(Ctrl+Z)", "重做(Ctrl+Y)", "-", "插入", "建立子節點(Ctrl+N)", "重新命名(F2)", "-", "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "剪下(Ctrl+X)", "貼上", "-", "刪除(Del)", "-", "範圍", "顯示" },
+                    new[] { "復原(Ctrl+Z)", "重做(Ctrl+Y)", "-", "插入", "建立子節點(Ctrl+N)", "重新命名(F2)", "-", "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "剪下(Ctrl+X)", "貼上", "-", "刪除(Del)", "-", "全部展開(*)", "全部摺疊", "-", "範圍", "顯示" },
                     OpenMenu());
 
+                f.View.TreeContextMenu.Show(f.View, new System.Drawing.Point(10, 10));
+                Assert.IsFalse(f.View.TreeContextMenu.Items.Cast<ToolStripItem>().Single(item => item.Text == "全部展開").Enabled, "葉節點停用全部展開");
+                Assert.IsFalse(f.View.TreeContextMenu.Items.Cast<ToolStripItem>().Single(item => item.Text == "全部摺疊").Enabled, "葉節點停用全部摺疊");
+                f.View.TreeContextMenu.Close();
+
                 f.View.ReadOnly = true;
-                CollectionAssert.AreEqual(new[] { "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "-", "範圍", "顯示" }, OpenMenu());
+                CollectionAssert.AreEqual(new[] { "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "-", "全部展開(*)", "全部摺疊", "-", "範圍", "顯示" }, OpenMenu());
 
                 f.View.State.ClearSelection();
                 CollectionAssert.AreEqual(new[] { "範圍", "顯示" }, OpenMenu(), "沒有對象時只有顯示設定");
+            }
+        }
+
+        [TestMethod]
+        public void ContextMenu_ExpandAllAndCollapseAll_WorkOnBranchAndReadOnly()
+        {
+            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new System.Drawing.Point(-2000, -2000), ClientSize = new System.Drawing.Size(300, 200), ShowInTaskbar = false })
+            using (var f = new Fixture(readOnly: true))
+            {
+                f.Tree.AddPath(new[] { "A", "A1", "A1a", "A1a1" });
+                f.View.Redraw();
+                f.View.Dock = DockStyle.Fill;
+                form.Controls.Add(f.View);
+                form.Show();
+
+                var a = f.Node("A");
+                var a1 = f.Node("A > A1");
+                var a1a = f.Node("A > A1 > A1a");
+                f.Select("A");
+
+                ToolStripMenuItem FindItem(string text) => f.View.TreeContextMenu.Items.OfType<ToolStripMenuItem>().Single(item => item.Text == text);
+
+                f.View.TreeContextMenu.Show(f.View, new System.Drawing.Point(10, 10));
+                var expandItem = FindItem("全部展開");
+                var collapseItem = FindItem("全部摺疊");
+                Assert.IsTrue(expandItem.Enabled);
+                Assert.IsTrue(collapseItem.Enabled);
+                expandItem.PerformClick();
+                f.View.TreeContextMenu.Close();
+                Application.DoEvents();
+
+                Assert.IsTrue(f.View.IsExpanded(a));
+                Assert.IsTrue(f.View.IsExpanded(a1));
+                Assert.IsTrue(f.View.IsExpanded(a1a));
+
+                f.View.TreeContextMenu.Show(f.View, new System.Drawing.Point(10, 10));
+                FindItem("全部摺疊").PerformClick();
+                f.View.TreeContextMenu.Close();
+                Application.DoEvents();
+
+                Assert.IsFalse(f.View.IsExpanded(a));
+                Assert.IsFalse(f.View.IsExpanded(a1));
+                Assert.IsFalse(f.View.IsExpanded(a1a));
             }
         }
 

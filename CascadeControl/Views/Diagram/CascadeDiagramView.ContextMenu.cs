@@ -20,7 +20,9 @@ namespace CascadeControl.Views.Diagram
             var items = _contextMenu.Items;
             items.Clear();
 
-            AddEditItems(items, _contextMenuNode ?? SelectedMenuNode);
+            var target = _contextMenuNode ?? SelectedMenuNode;
+            AddEditItems(items, target);
+            AddExpansionItems(items, target);
 
             var scopeMenu = new ToolStripMenuItem("範圍");
             scopeMenu.DropDownItems.Add(CreateChoice("整棵樹", _drawScope == CascadeDiagramDrawScope.WholeTree, () => DrawScope = CascadeDiagramDrawScope.WholeTree));
@@ -92,6 +94,37 @@ namespace CascadeControl.Views.Diagram
 
                 items.Add(new ToolStripSeparator());
             }
+        }
+
+        private void AddExpansionItems(ToolStripItemCollection items, MenuNode target)
+        {
+            if (!_state.IsInTree(target)) return;
+
+            var hasChildren = !target.IsLeaf;
+            var expandAll = new ToolStripMenuItem("全部展開")
+            {
+                ShortcutKeyDisplayString = "*",
+                Enabled = hasChildren,
+            };
+            expandAll.Click += (sender, e) => RunMenuAction(() =>
+            {
+                ExpandAll(target);
+                return true;
+            });
+
+            var collapseAll = new ToolStripMenuItem("全部摺疊")
+            {
+                Enabled = hasChildren,
+            };
+            collapseAll.Click += (sender, e) => RunMenuAction(() =>
+            {
+                CollapseAll(target);
+                return true;
+            });
+
+            items.Add(expandAll);
+            items.Add(collapseAll);
+            items.Add(new ToolStripSeparator());
         }
 
         private ToolStripMenuItem CreateCommand(string text, CascadeEditCommand command, bool enabled, Func<bool> action)
