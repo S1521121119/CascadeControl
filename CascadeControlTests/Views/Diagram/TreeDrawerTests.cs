@@ -94,7 +94,9 @@ namespace CascadeControlTests.Views.Diagram
 
                 Assert.IsTrue(HasRedPixel(move.Image, leaving.Bounds), "移動預覽時離開的原節點要畫紅叉");
 
-                // 紅選取框畫在 ghost 外圍且為實心紅，不在 leaving 外圍。
+                var leavingOuterTop = new RectangleF(leaving.Bounds.Left, leaving.Bounds.Top - 5f, leaving.Bounds.Width, 4f);
+                Assert.IsFalse(HasRedPixel(move.Image, leavingOuterTop), "離開的原節點外圍不畫紅色選取框");
+
                 var topBorderBand = new RectangleF(ghost.Bounds.Left, ghost.Bounds.Top - 5f, ghost.Bounds.Width, 4f);
                 Assert.IsTrue(HasRedPixel(move.Image, topBorderBand), "焦點節點的預覽複本外圍要有紅色選取框");
             }
@@ -784,7 +786,6 @@ namespace CascadeControlTests.Views.Diagram
                 var root = Find(tree, "Root");
                 imageView.SetExpanded(root, true);
 
-                // 從 5 開始：按 2 -> 2，按 4 -> 24，按 3 -> 3。
                 imageView.TrySelectNode(Find(tree, "Root", "N5"));
                 imageView.SelectAll();
                 imageView.Press(Keys.D2);
@@ -797,7 +798,6 @@ namespace CascadeControlTests.Views.Diagram
                 imageView.Press(Keys.D3);
                 Assert.AreSame(Find(tree, "Root", "N3"), imageView.SelectedNode);
 
-                // 從 5 開始：按 3 -> 3，按 1 -> 1（沒有 31）。
                 imageView.TrySelectNode(Find(tree, "Root", "N5"));
                 imageView.Press(Keys.NumPad3);
                 Assert.AreSame(Find(tree, "Root", "N3"), imageView.SelectedNode);
@@ -805,7 +805,6 @@ namespace CascadeControlTests.Views.Diagram
                 imageView.Press(Keys.NumPad1);
                 Assert.AreSame(Find(tree, "Root", "N1"), imageView.SelectedNode);
 
-                // 方向鍵重設數字累積：從 N5 按 1 -> N1，按 Down -> N2，按 4 -> N4（不是 N14）。
                 imageView.TrySelectNode(Find(tree, "Root", "N5"));
                 imageView.Press(Keys.D1);
                 Assert.AreSame(Find(tree, "Root", "N1"), imageView.SelectedNode);
@@ -829,7 +828,6 @@ namespace CascadeControlTests.Views.Diagram
                 checkSet.Check(system);
                 checkSet.Check(io);
 
-                // 未選取時跳第一層畫出來的節點；第 2 個 Motor 沒勾被隱藏，跳不過去。
                 imageView.Press(Keys.D3);
                 Assert.AreSame(io, imageView.SelectedNode);
 
@@ -891,13 +889,9 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.IsTrue(imageView.IsExpanded(axisY));
 
                 imageView.CollapseAll(motor);
-                imageView.Press(Keys.Shift | Keys.D8);
-                Assert.IsTrue(imageView.IsExpanded(motor));
-                Assert.IsTrue(imageView.IsExpanded(axisX));
-
-                imageView.CollapseAll(motor);
                 imageView.PressChar('*');
                 Assert.IsTrue(imageView.IsExpanded(motor));
+                Assert.IsTrue(imageView.IsExpanded(axisX));
                 Assert.IsTrue(imageView.IsExpanded(axisY));
             }
         }

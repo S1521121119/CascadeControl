@@ -106,21 +106,13 @@ namespace CascadeControl.Views.Diagram
                 ShortcutKeyDisplayString = "*",
                 Enabled = hasChildren,
             };
-            expandAll.Click += (sender, e) => RunMenuAction(() =>
-            {
-                ExpandAll(target);
-                return true;
-            });
+            expandAll.Click += (sender, e) => ExpandAll(target);
 
             var collapseAll = new ToolStripMenuItem("全部摺疊")
             {
                 Enabled = hasChildren,
             };
-            collapseAll.Click += (sender, e) => RunMenuAction(() =>
-            {
-                CollapseAll(target);
-                return true;
-            });
+            collapseAll.Click += (sender, e) => CollapseAll(target);
 
             items.Add(expandAll);
             items.Add(collapseAll);

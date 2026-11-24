@@ -155,7 +155,6 @@ namespace CascadeControl.Views.Diagram
 
             if (node != null && control && TryBeginMovePress(node, location, startedWithControl: true))
             {
-                // 可編輯時 Ctrl 按在節點上：拖曳時改為複製，沒拖曳就放開時切換多選。
                 _press = null;
                 return;
             }

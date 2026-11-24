@@ -389,7 +389,6 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreSame(f.Node("C > B"), f.View.SelectedNode);
                 Assert.AreEqual(0, f.Clicks.Count);
 
-                // 按著 Ctrl 開始拖曳，中途放開 Ctrl 改回移動。
                 var b = f.Node("B");
                 var target = f.Center("A");
                 f.View.Down(f.Center("B"), control: true);
@@ -407,7 +406,6 @@ namespace CascadeControlTests.Views.Diagram
         {
             using (var f = new Fixture())
             {
-                // 展開的 A 與 B 之間有垂直空隙：拖曳 C 進去插在 A 與 B 之間。
                 var aBounds = f.BoundsOf("A");
                 var bBounds = f.BoundsOf("B");
                 var betweenAB = new Point(bBounds.Left + (bBounds.Width / 2), (aBounds.Bottom + bBounds.Top) / 2);
@@ -417,7 +415,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.Up(betweenAB);
                 f.AssertShape("A", "A > A1", "A > A2", "C", "B");
 
-                // 拖到第一個兄弟 A 上緣（上方一點）：插到最前面。
                 aBounds = f.BoundsOf("A");
                 var beforeA = new Point(aBounds.Left + (aBounds.Width / 2), aBounds.Top + 1);
                 f.View.Down(f.Center("B"));
@@ -425,7 +422,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.Up(beforeA);
                 f.AssertShape("B", "A", "A > A1", "A > A2", "C");
 
-                // 拖到最後一個兄弟 C 下方邊緣：移回最後面。
                 var cBounds = f.BoundsOf("C");
                 var afterC = new Point(cBounds.Left + (cBounds.Width / 2), cBounds.Bottom + 3);
                 f.View.Down(f.Center("B"));
@@ -433,7 +429,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.Up(afterC);
                 f.AssertShape("A", "A > A1", "A > A2", "C", "B");
 
-                // 跨父節點插入兄弟之間：把 B 拖到 A1 與 A2 中間的空隙。
                 var a1Bounds = f.BoundsOf("A > A1");
                 var a2Bounds = f.BoundsOf("A > A2");
                 var betweenA1A2 = new Point(a1Bounds.Left + (a1Bounds.Width / 2), (a1Bounds.Bottom + a2Bounds.Top) / 2);
@@ -442,7 +437,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.Up(betweenA1A2);
                 f.AssertShape("A", "A > A1", "A > B", "A > A2", "C");
 
-                // Ctrl 拖曳 A1 到自己下緣：在旁邊複製一份。
                 a1Bounds = f.BoundsOf("A > A1");
                 var belowA1 = new Point(a1Bounds.Left + (a1Bounds.Width / 2), a1Bounds.Bottom - 1);
                 f.View.Down(f.Center("A > A1"), control: true);
@@ -487,8 +481,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.Up(blank);
                 Assert.AreSame(b, f.View.SelectedNode);
 
-                // 多選 {A1, B} 且先選取 A1，按住 B 拖到 C 底下：拖曳中與放開後都選取 B。
-                // 目前選取是 B，Ctrl+點 A1 會把 B 與 A1 一起加入多選。
                 f.CtrlClick("A > A1");
                 f.AssertMarks("A > A1", "B");
                 f.Select("A > A1");
@@ -512,7 +504,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.Select("A");
                 f.View.DrawScope = CascadeDiagramDrawScope.SelectedSubtree;
 
-                // 子樹起點 A 的上方空隙不可插入同層兄弟。
                 var aBounds = f.BoundsOf("A");
                 var aboveA = new Point(aBounds.Left + (aBounds.Width / 2), aBounds.Top - 3);
                 f.View.Down(f.Center("A > A1"));
@@ -520,7 +511,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.Up(aboveA);
                 f.AssertShape("A", "A > A1", "A > A2", "B", "C");
 
-                // 子樹底下的子節點仍可在彼此之間重排。
                 var a1Bounds = f.BoundsOf("A > A1");
                 var beforeA1 = new Point(a1Bounds.Left + (a1Bounds.Width / 2), a1Bounds.Top + 1);
                 f.View.Down(f.Center("A > A2"));

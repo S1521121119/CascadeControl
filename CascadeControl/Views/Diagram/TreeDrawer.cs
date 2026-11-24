@@ -784,7 +784,7 @@ namespace CascadeControl.Views.Diagram
 
             if (HasExpander(node)) DrawExpander(g, node, border);
             if (node.IsLeaving) DrawLeavingCross(g, bounds);
-            if (drawSelectionFrame && node.IsSelected && !node.IsLeaving) DrawSelectionFrame(g, bounds, borderWidth);
+            if (drawSelectionFrame && node.IsSelected) DrawSelectionFrame(g, bounds, borderWidth);
         }
 
         private static float BorderWidthOf(LayoutNode node, bool showChecks) =>
@@ -837,9 +837,9 @@ namespace CascadeControl.Views.Diagram
                 }
 
                 using (var attributes = new ImageAttributes())
+                using (var transform = g.Transform)
                 {
                     attributes.SetColorMatrix(new ColorMatrix { Matrix33 = GHOST_OPACITY });
-                    var transform = g.Transform;
                     g.ResetTransform();
                     g.DrawImage(layer, new Rectangle(Point.Empty, size), 0, 0, size.Width, size.Height, GraphicsUnit.Pixel, attributes);
                     g.Transform = transform;

@@ -9,21 +9,14 @@ using System.Windows.Forms;
 
 namespace CascadeControl.Views.Diagram
 {
-    // 拖曳移動與複製：拖到節點上成為子節點，拖到兄弟之間或邊緣插入同層；按住 Ctrl 改為複製。
     public partial class CascadeDiagramView
     {
-        // 左鍵按在節點上、放開前的拖曳手勢；沒有時為 null。
         private MovePress _move;
 
         private bool IsMoveDragging => _move != null && _move.Dragged;
 
         internal virtual bool IsControlKeyDown => (ModifierKeys & Keys.Control) != 0;
 
-        /// <summary>
-        /// 左鍵按在節點上（不是唯讀）：開始一次可能的拖曳移動或複製，對象是整個多選（按在多選的節點上時）或只有這個節點。
-        /// 沒拖曳就放開時，按住 Ctrl 切換多選，否則照一般點選處理。
-        /// </summary>
-        /// <returns>有開始時為 true。</returns>
         private bool TryBeginMovePress(MenuNode node, Point location, bool startedWithControl)
         {
             if (!CanEdit) return false;
@@ -213,7 +206,6 @@ namespace CascadeControl.Views.Diagram
                 ? null
                 : image.Nodes.FirstOrDefault(imageNode => !imageNode.IsGhost && ReferenceEquals(imageNode.Node, node));
 
-        // 放成子節點時用選取色（和多選同一個藍色）框住目標父節點；插入兄弟位置時不框。
         private void PaintDropTarget(Graphics graphics)
         {
             var move = _move;
@@ -266,10 +258,6 @@ namespace CascadeControl.Views.Diagram
             Invalidate();
         }
 
-        /// <summary>
-        /// 結束拖曳移動或複製：<paramref name="apply"/> 為 true 且有有效目標時交給 <see cref="CascadeState.MoveNodes(IReadOnlyList{MenuNode}, MenuNode, int)"/> 或 <see cref="CascadeState.PasteNodes(MenuNode, int, IReadOnlyList{MenuNode})"/>；
-        /// 沒拖曳且按下時按著 Ctrl 則切換多選。
-        /// </summary>
         private void EndMovePress(bool apply)
         {
             var move = _move;

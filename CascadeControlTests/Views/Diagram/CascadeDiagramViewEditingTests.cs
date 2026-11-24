@@ -568,7 +568,6 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.IsTrue(collapseItem.Enabled);
                 expandItem.PerformClick();
                 f.View.TreeContextMenu.Close();
-                Application.DoEvents();
 
                 Assert.IsTrue(f.View.IsExpanded(a));
                 Assert.IsTrue(f.View.IsExpanded(a1));
@@ -577,7 +576,6 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.TreeContextMenu.Show(f.View, new System.Drawing.Point(10, 10));
                 FindItem("全部摺疊").PerformClick();
                 f.View.TreeContextMenu.Close();
-                Application.DoEvents();
 
                 Assert.IsFalse(f.View.IsExpanded(a));
                 Assert.IsFalse(f.View.IsExpanded(a1));

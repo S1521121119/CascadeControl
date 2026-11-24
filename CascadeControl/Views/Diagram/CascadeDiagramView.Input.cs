@@ -28,9 +28,14 @@ namespace CascadeControl.Views.Diagram
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+            if (_move != null && e.Button == MouseButtons.Left)
+            {
+                DragMovePress(e.Location);
+                return;
+            }
+
             Cursor = GetNodeAt(e.Location) != null ? Cursors.Hand : Cursors.Default;
             if (_press != null && e.Button == MouseButtons.Left) DragMarkPress(e.Location);
-            if (_move != null && e.Button == MouseButtons.Left) DragMovePress(e.Location);
         }
 
         /// <inheritdoc />
@@ -149,10 +154,9 @@ namespace CascadeControl.Views.Diagram
                 return;
             }
 
-            if (e.Handled) return;
+            if (e.Handled || e.Modifiers != Keys.None) return;
 
-            if ((e.KeyCode == Keys.Multiply && e.Modifiers == Keys.None)
-                || (e.KeyCode == Keys.D8 && e.Modifiers == Keys.Shift))
+            if (e.KeyCode == Keys.Multiply)
             {
                 ResetDigitJump();
                 ExpandAllSelected();
@@ -160,8 +164,6 @@ namespace CascadeControl.Views.Diagram
                 e.SuppressKeyPress = true;
                 return;
             }
-
-            if (e.Modifiers != Keys.None) return;
 
             if (TryGetDigit(e, out var digit))
             {
@@ -254,20 +256,22 @@ namespace CascadeControl.Views.Diagram
                 return base.ProcessCmdKey(ref msg, keyData);
             }
 
-            // 拖曳移動中按 Esc：取消移動，放開滑鼠時也不算點選。
-            if (keyData == Keys.Escape) ResetDigitJump();
-
-            if (keyData == Keys.Escape && _move != null)
+            if (keyData == Keys.Escape)
             {
-                EndMovePress(apply: false);
-                _swallowClick = true;
-                return true;
-            }
+                ResetDigitJump();
 
-            if (keyData == Keys.Escape && _marks.Count > 0)
-            {
-                ClearMultiSelection();
-                return true;
+                if (_move != null)
+                {
+                    EndMovePress(apply: false);
+                    _swallowClick = true;
+                    return true;
+                }
+
+                if (_marks.Count > 0)
+                {
+                    ClearMultiSelection();
+                    return true;
+                }
             }
 
             if (CascadeEditShortcuts.TryGetCommand(keyData, out var command)
@@ -364,7 +368,10 @@ namespace CascadeControl.Views.Diagram
         private void ExpandAllSelected()
         {
             var node = SelectedMenuNode;
-            if (node != null && node.Children.Count > 0) ExpandAll(node);
+            if (node == null || node.Children.Count == 0) return;
+
+            ExpandAll(node);
+            EnsureVisible(node);
         }
 
         #region 數字鍵跳轉
@@ -376,8 +383,6 @@ namespace CascadeControl.Views.Diagram
         private static bool TryGetDigit(KeyEventArgs e, out char digit)
         {
             digit = '\0';
-            if (e.Control || e.Alt || e.Shift) return false;
-
             if (e.KeyCode >= Keys.D0 && e.KeyCode <= Keys.D9) digit = (char)('0' + (e.KeyCode - Keys.D0));
             else if (e.KeyCode >= Keys.NumPad0 && e.KeyCode <= Keys.NumPad9) digit = (char)('0' + (e.KeyCode - Keys.NumPad0));
             else return false;

@@ -166,9 +166,8 @@ namespace CascadeControl.State
             var roots = TopMost(nodes);
             if (roots.Any(root => IsSelfOrAncestor(root, newParent))) return NoMenuNodes;
 
-            var clamped = Math.Max(0, Math.Min(position, newParent.Children.Count));
-            var insertAt = clamped - roots.Count(root => ReferenceEquals(root.Parent, newParent) && (root.SiblingNumber - 1) < clamped);
-            if (IsNoOpMove(roots, newParent, clamped)) return NoMenuNodes;
+            var insertAt = AdjustedInsertIndex(roots, newParent, position);
+            if (IsNoOpMoveAt(roots, newParent, insertAt)) return NoMenuNodes;
 
             using (History.BeginGroup())
             {
@@ -201,12 +200,18 @@ namespace CascadeControl.State
             }
         }
 
-        internal static bool IsNoOpMove(IReadOnlyList<MenuNode> roots, MenuNode newParent, int position)
-        {
-            if (roots == null || roots.Count == 0 || newParent == null) return true;
+        internal static bool IsNoOpMove(IReadOnlyList<MenuNode> roots, MenuNode newParent, int position) =>
+            roots == null || roots.Count == 0 || newParent == null
+            || IsNoOpMoveAt(roots, newParent, AdjustedInsertIndex(roots, newParent, position));
 
+        private static int AdjustedInsertIndex(IReadOnlyList<MenuNode> roots, MenuNode newParent, int position)
+        {
             var clamped = Math.Max(0, Math.Min(position, newParent.Children.Count));
-            var insertAt = clamped - roots.Count(root => ReferenceEquals(root.Parent, newParent) && (root.SiblingNumber - 1) < clamped);
+            return clamped - roots.Count(root => ReferenceEquals(root.Parent, newParent) && (root.SiblingNumber - 1) < clamped);
+        }
+
+        private static bool IsNoOpMoveAt(IReadOnlyList<MenuNode> roots, MenuNode newParent, int insertAt)
+        {
             for (var i = 0; i < roots.Count; i++)
             {
                 if (!ReferenceEquals(roots[i].Parent, newParent) || (roots[i].SiblingNumber - 1) != insertAt + i) return false;

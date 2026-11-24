@@ -254,19 +254,15 @@ namespace CascadeControlTests.State
             var b = f.Node("B");
             var c = f.Node("C");
 
-            // 往前移：C 插到 A 與 B 之間 (position = 1)。
             CollectionAssert.AreEqual(new[] { c }, f.State.MoveNodes(new[] { c }, f.Tree.Root, 1).ToArray());
             CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "C", "B" }, f.Paths());
 
-            // 往後移：A 插到 B 之後 (position = 3)。
             CollectionAssert.AreEqual(new[] { a }, f.State.MoveNodes(new[] { a }, f.Tree.Root, 3).ToArray());
             CollectionAssert.AreEqual(new[] { "C", "B", "A", "A/A1", "A/A2" }, f.Paths());
 
-            // 跨父節點插入指定位置：B 插到 A 的 A1 與 A2 之間 (position = 1)。
             CollectionAssert.AreEqual(new[] { b }, f.State.MoveNodes(new[] { b }, a, 1).ToArray());
             CollectionAssert.AreEqual(new[] { "C", "A", "A/A1", "A/B", "A/A2" }, f.Paths());
 
-            // 多節點同父重排：把 A1 與 A2 移到 position = 2（B 與 A2 之間 -> B, A1, A2）。
             var a1 = f.Node("A/A1");
             var a2 = f.Node("A/A2");
             CollectionAssert.AreEqual(new[] { a1, a2 }, f.State.MoveNodes(new[] { a1, a2 }, a, 2).ToArray());
