@@ -33,7 +33,7 @@ namespace CascadeControl.Views.Diagram
         /// 右鍵點在多選的節點上時，功能表的「複製」、「複製(路徑)」、「剪下」、「刪除」也是。貼上的位置跟著多選，見 <see cref="Paste"/>。
         /// </para>
         /// <para>
-        /// 不是唯讀時，按住節點拖到另一個節點上放開，節點（連同子孫）移到它的子節點最後面（<see cref="CascadeControl.State.CascadeState.MoveNodes"/>）；
+        /// 不是唯讀時，按住節點拖到另一個節點上放開，節點（連同子孫）移到它的子節點最後面（<see cref="CascadeControl.State.CascadeState.MoveNodes(IReadOnlyList{MenuNode}, MenuNode)"/>）；
         /// 按住的是多選的節點時移動整個多選，否則只移動按住的那一個。
         /// 拖曳時預覽移動的結果：移過去的節點以半透明接在目標底下，目標加上藍框；會被移走的節點留在原處，調淡並畫灰色虛線外框，版面不會因為少了節點而跳動。按 Esc 取消。目標不能是被移動的節點或它們的子孫。
         /// </para>

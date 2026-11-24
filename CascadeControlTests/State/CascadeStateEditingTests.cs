@@ -247,6 +247,76 @@ namespace CascadeControlTests.State
         }
 
         [TestMethod]
+        public void MoveNodes_AtPosition_WithinSameParentAndAcrossParents_UndoRedoRestoreOrder()
+        {
+            var f = new Fixture();
+            var a = f.Node("A");
+            var b = f.Node("B");
+            var c = f.Node("C");
+
+            // 往前移：C 插到 A 與 B 之間 (position = 1)。
+            CollectionAssert.AreEqual(new[] { c }, f.State.MoveNodes(new[] { c }, f.Tree.Root, 1).ToArray());
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "C", "B" }, f.Paths());
+
+            // 往後移：A 插到 B 之後 (position = 3)。
+            CollectionAssert.AreEqual(new[] { a }, f.State.MoveNodes(new[] { a }, f.Tree.Root, 3).ToArray());
+            CollectionAssert.AreEqual(new[] { "C", "B", "A", "A/A1", "A/A2" }, f.Paths());
+
+            // 跨父節點插入指定位置：B 插到 A 的 A1 與 A2 之間 (position = 1)。
+            CollectionAssert.AreEqual(new[] { b }, f.State.MoveNodes(new[] { b }, a, 1).ToArray());
+            CollectionAssert.AreEqual(new[] { "C", "A", "A/A1", "A/B", "A/A2" }, f.Paths());
+
+            // 多節點同父重排：把 A1 與 A2 移到 position = 2（B 與 A2 之間 -> B, A1, A2）。
+            var a1 = f.Node("A/A1");
+            var a2 = f.Node("A/A2");
+            CollectionAssert.AreEqual(new[] { a1, a2 }, f.State.MoveNodes(new[] { a1, a2 }, a, 2).ToArray());
+            CollectionAssert.AreEqual(new[] { "C", "A", "A/B", "A/A1", "A/A2" }, f.Paths());
+
+            Assert.IsNotNull(f.State.Undo());
+            CollectionAssert.AreEqual(new[] { "C", "A", "A/A1", "A/B", "A/A2" }, f.Paths());
+            Assert.IsNotNull(f.State.Redo());
+            CollectionAssert.AreEqual(new[] { "C", "A", "A/B", "A/A1", "A/A2" }, f.Paths());
+        }
+
+        [TestMethod]
+        public void MoveNodes_AtPosition_NoOpReturnsEmptyWithoutHistoryOrEvent()
+        {
+            var f = new Fixture();
+            var a = f.Node("A");
+            var b = f.Node("B");
+            var c = f.Node("C");
+
+            Assert.AreEqual(0, f.State.MoveNodes(new[] { a }, f.Tree.Root, 0).Count);
+            Assert.AreEqual(0, f.State.MoveNodes(new[] { a }, f.Tree.Root, 1).Count);
+            Assert.AreEqual(0, f.State.MoveNodes(new[] { c }, f.Tree.Root, 3).Count);
+            Assert.AreEqual(0, f.State.MoveNodes(new[] { a, b }, f.Tree.Root, 0).Count);
+            Assert.AreEqual(0, f.State.MoveNodes(new[] { a, b }, f.Tree.Root, 2).Count);
+
+            CollectionAssert.AreEqual(new[] { "A", "A/A1", "A/A2", "B", "C" }, f.Paths());
+            Assert.AreEqual(0, f.Edits.Count);
+            Assert.AreEqual(0, f.State.History.UndoCount);
+        }
+
+        [TestMethod]
+        public void MoveNodes_AndPasteNodes_WithFocus_SelectsFocusedNode()
+        {
+            var f = new Fixture();
+            var a1 = f.Node("A/A1");
+            var b = f.Node("B");
+            var c = f.Node("C");
+
+            f.State.MoveNodes(new[] { a1, b }, c, 0, focus: b);
+            Assert.AreSame(b, f.State.SelectedNode);
+
+            var pasted = f.State.PasteNodes(f.Tree.Root, 0, new[] { f.Node("A"), c }, focusSource: b);
+            Assert.AreEqual(2, pasted.Count);
+            Assert.AreSame(pasted[1].Children[1], f.State.SelectedNode, "焦點落在複本子樹裡對應的 B");
+
+            var pastedTop = f.State.PasteNodes(f.Tree.Root, 0, new[] { f.Node("A"), c }, focusSource: c);
+            Assert.AreSame(pastedTop[1], f.State.SelectedNode, "焦點落在第二個貼上的頂層複本");
+        }
+
+        [TestMethod]
         public void CutNodes_RemovesLikeDelete_WithCutAction()
         {
             var f = new Fixture();

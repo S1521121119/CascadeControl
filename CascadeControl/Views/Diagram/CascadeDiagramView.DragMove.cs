@@ -108,7 +108,7 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 結束拖曳移動：<paramref name="apply"/> 為 true 而且有拖曳到目標上時交給 <see cref="CascadeControl.State.CascadeState.MoveNodes"/>；否則什麼都不改。
+        /// 結束拖曳移動：<paramref name="apply"/> 為 true 而且有拖曳到目標上時交給 <see cref="CascadeControl.State.CascadeState.MoveNodes(IReadOnlyList{MenuNode}, MenuNode)"/>；否則什麼都不改。
         /// </summary>
         private void EndMovePress(bool apply)
         {

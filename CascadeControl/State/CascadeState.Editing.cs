@@ -92,7 +92,10 @@ namespace CascadeControl.State
         /// 貼上的節點，順序與 <paramref name="sources"/> 相同；同一層已有同名節點時名稱自動加上後綴，所以每一個都是新節點。
         /// <paramref name="parent"/> 不在 <see cref="Tree"/> 裡或沒有來源時為空集合。
         /// </returns>
-        public IReadOnlyList<MenuNode> PasteNodes(MenuNode parent, int position, IReadOnlyList<MenuNode> sources)
+        public IReadOnlyList<MenuNode> PasteNodes(MenuNode parent, int position, IReadOnlyList<MenuNode> sources) =>
+            PasteNodes(parent, position, sources, focusSource: null);
+
+        internal IReadOnlyList<MenuNode> PasteNodes(MenuNode parent, int position, IReadOnlyList<MenuNode> sources, MenuNode focusSource)
         {
             if (!IsInTreeOrRoot(parent) || sources == null || sources.Count == 0) return NoMenuNodes;
 
@@ -106,7 +109,8 @@ namespace CascadeControl.State
                 }
 
                 History.RecordInsert(Tree, parent, pasted);
-                FinishEdit(CascadeEditAction.Paste, pasted, pasted[0]);
+                var selected = ResolvePastedFocus(sources, pasted, focusSource) ?? pasted[0];
+                FinishEdit(CascadeEditAction.Paste, pasted, selected);
                 return pasted;
             }
         }
@@ -140,10 +144,31 @@ namespace CascadeControl.State
         /// </remarks>
         public IReadOnlyList<MenuNode> MoveNodes(IReadOnlyList<MenuNode> nodes, MenuNode newParent)
         {
+            if (!IsInTreeOrRoot(newParent)) return NoMenuNodes;
+
+            return MoveNodes(nodes, newParent, newParent.Children.Count, focus: null);
+        }
+
+        /// <summary>
+        /// 把 <paramref name="nodes"/>（連同子孫）依序移到 <paramref name="newParent"/> 底下第 <paramref name="position"/> 個位置（依移動前的順序計算），並選取第一個。
+        /// </summary>
+        /// <param name="nodes">要移動的節點，都在 <see cref="Tree"/> 裡；可以屬於不同的父節點，祖先也在裡面的節點跟著祖先移動，不另外算。</param>
+        /// <param name="newParent">新的父節點：<see cref="Tree"/> 的樹根或樹裡的節點，不可以是要移動的節點或它們的子孫。</param>
+        /// <param name="position">插入位置（0-based，依移動前 <paramref name="newParent"/> 的子節點順序計算）。</param>
+        /// <returns>移動的節點，順序與 <paramref name="nodes"/> 相同；不能移動或位置沒有改變時為空集合。</returns>
+        public IReadOnlyList<MenuNode> MoveNodes(IReadOnlyList<MenuNode> nodes, MenuNode newParent, int position) =>
+            MoveNodes(nodes, newParent, position, focus: null);
+
+        internal IReadOnlyList<MenuNode> MoveNodes(IReadOnlyList<MenuNode> nodes, MenuNode newParent, int position, MenuNode focus)
+        {
             if (nodes == null || nodes.Count == 0 || !nodes.All(IsInTree) || !IsInTreeOrRoot(newParent)) return NoMenuNodes;
 
             var roots = TopMost(nodes);
             if (roots.Any(root => IsSelfOrAncestor(root, newParent))) return NoMenuNodes;
+
+            var clamped = Math.Max(0, Math.Min(position, newParent.Children.Count));
+            var insertAt = clamped - roots.Count(root => ReferenceEquals(root.Parent, newParent) && (root.SiblingNumber - 1) < clamped);
+            if (IsNoOpMove(roots, newParent, clamped)) return NoMenuNodes;
 
             using (History.BeginGroup())
             {
@@ -157,10 +182,11 @@ namespace CascadeControl.State
 
                 foreach (var entry in entries) entry.Node.RemoveFromParent();
 
-                foreach (var entry in entries)
+                for (var i = 0; i < entries.Count; i++)
                 {
+                    var entry = entries[i];
                     entry.Node.RenameDetached(newParent.GetUniqueChildName(entry.FromName));
-                    newParent.AttachChildAt(newParent.Children.Count, entry.Node);
+                    newParent.AttachChildAt(insertAt + i, entry.Node);
                     entry.ToParent = newParent;
                     entry.ToIndex = entry.Node.SiblingNumber - 1;
                     entry.ToName = entry.Node.Name;
@@ -169,9 +195,60 @@ namespace CascadeControl.State
                 History.RecordMove(Tree, entries);
                 OnNodesMoved(roots);
 
-                FinishEdit(CascadeEditAction.Move, roots, roots[0]);
+                var selected = focus != null && IsInTree(focus) ? focus : roots[0];
+                FinishEdit(CascadeEditAction.Move, roots, selected);
                 return roots;
             }
+        }
+
+        internal static bool IsNoOpMove(IReadOnlyList<MenuNode> roots, MenuNode newParent, int position)
+        {
+            if (roots == null || roots.Count == 0 || newParent == null) return true;
+
+            var clamped = Math.Max(0, Math.Min(position, newParent.Children.Count));
+            var insertAt = clamped - roots.Count(root => ReferenceEquals(root.Parent, newParent) && (root.SiblingNumber - 1) < clamped);
+            for (var i = 0; i < roots.Count; i++)
+            {
+                if (!ReferenceEquals(roots[i].Parent, newParent) || (roots[i].SiblingNumber - 1) != insertAt + i) return false;
+            }
+
+            return true;
+        }
+
+        private static MenuNode ResolvePastedFocus(IReadOnlyList<MenuNode> sources, IReadOnlyList<MenuNode> pasted, MenuNode focusSource)
+        {
+            if (focusSource == null) return null;
+
+            for (var i = 0; i < sources.Count; i++)
+            {
+                if (ReferenceEquals(sources[i], focusSource)) return pasted[i];
+
+                var path = new List<int>();
+                for (var current = focusSource; current != null && !ReferenceEquals(current, sources[i]); current = current.Parent)
+                {
+                    if (current.Parent == null)
+                    {
+                        path = null;
+                        break;
+                    }
+
+                    path.Add(current.SiblingNumber - 1);
+                }
+
+                if (path == null) continue;
+
+                var target = pasted[i];
+                for (var step = path.Count - 1; step >= 0; step--)
+                {
+                    var index = path[step];
+                    if (index < 0 || index >= target.Children.Count) return pasted[i];
+                    target = target.Children[index];
+                }
+
+                return target;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -197,7 +274,7 @@ namespace CascadeControl.State
         protected virtual void OnTreeEdited(CascadeTreeEditedEventArgs e) => TreeEdited?.Invoke(this, e);
 
         /// <summary>
-        /// 剪下、刪除把節點移出樹之後、選取更新之前呼叫，和移除在同一組歷史步驟裡；預設不做任何事。<see cref="MoveNodes"/> 不呼叫這裡，見 <see cref="OnNodesMoved"/>。
+        /// 剪下、刪除把節點移出樹之後、選取更新之前呼叫，和移除在同一組歷史步驟裡；預設不做任何事。<see cref="MoveNodes(IReadOnlyList{MenuNode}, MenuNode)"/> 不呼叫這裡，見 <see cref="OnNodesMoved"/>。
         /// </summary>
         /// <param name="nodes">被移除的節點（不含子孫），已經不在樹裡。</param>
         protected virtual void OnNodesRemoved(IReadOnlyList<MenuNode> nodes)
@@ -205,7 +282,7 @@ namespace CascadeControl.State
         }
 
         /// <summary>
-        /// <see cref="MoveNodes"/> 把節點接到新的父節點之後、選取更新之前呼叫，和移動在同一組歷史步驟裡；預設不做任何事。
+        /// <see cref="MoveNodes(IReadOnlyList{MenuNode}, MenuNode)"/> 把節點接到新的父節點之後、選取更新之前呼叫，和移動在同一組歷史步驟裡；預設不做任何事。
         /// </summary>
         /// <param name="nodes">被移動的節點（不含子孫），已經在新的父節點底下。</param>
         protected virtual void OnNodesMoved(IReadOnlyList<MenuNode> nodes)

@@ -57,6 +57,85 @@ namespace CascadeControlTests.Views.Diagram
             }
         }
 
+        private static bool HasRedPixel(Bitmap bitmap, RectangleF area)
+        {
+            var left = System.Math.Max(0, (int)System.Math.Floor(area.Left));
+            var top = System.Math.Max(0, (int)System.Math.Floor(area.Top));
+            var right = System.Math.Min(bitmap.Width - 1, (int)System.Math.Ceiling(area.Right));
+            var bottom = System.Math.Min(bitmap.Height - 1, (int)System.Math.Ceiling(area.Bottom));
+
+            for (var y = top; y <= bottom; y++)
+            {
+                for (var x = left; x <= right; x++)
+                {
+                    var pixel = bitmap.GetPixel(x, y);
+                    if (pixel.R > 210 && pixel.G < 80 && pixel.B < 80) return true;
+                }
+            }
+
+            return false;
+        }
+
+        [TestMethod]
+        public void MovePreview_MoveDrawsRedCrossOnLeaving_CopyLeavesOriginalUntouched()
+        {
+            var tree = new MenuTree();
+            tree.ExpandAndAddPaths("A", "A1|A2");
+            tree.AddPath(new[] { "B" });
+            tree.AddPath(new[] { "C" });
+            var a1 = Find(tree, "A", "A1");
+            var c = Find(tree, "C");
+
+            using (var move = TreeDrawer.RenderImageWithPlaceholder(tree, SystemFonts.DefaultFont, null, CascadeDiagramDrawScope.WholeTree,
+                CascadeDiagramUncheckedDisplay.Dimmed, a1, null, null, new TreeDrawer.MovePreview(c, 0, new[] { a1 }, isCopy: false, focusedNode: a1)))
+            {
+                var leaving = move.Nodes.Single(n => ReferenceEquals(n.Node, a1) && n.IsLeaving);
+                var ghost = move.Nodes.Single(n => ReferenceEquals(n.Node, a1) && n.IsGhost);
+
+                Assert.IsTrue(HasRedPixel(move.Image, leaving.Bounds), "移動預覽時離開的原節點要畫紅叉");
+
+                // 紅選取框畫在 ghost 外圍且為實心紅，不在 leaving 外圍。
+                var topBorderBand = new RectangleF(ghost.Bounds.Left, ghost.Bounds.Top - 5f, ghost.Bounds.Width, 4f);
+                Assert.IsTrue(HasRedPixel(move.Image, topBorderBand), "焦點節點的預覽複本外圍要有紅色選取框");
+            }
+
+            using (var copy = TreeDrawer.RenderImageWithPlaceholder(tree, SystemFonts.DefaultFont, null, CascadeDiagramDrawScope.WholeTree,
+                CascadeDiagramUncheckedDisplay.Dimmed, a1, null, null, new TreeDrawer.MovePreview(c, 0, new[] { a1 }, isCopy: true, focusedNode: a1)))
+            {
+                Assert.IsFalse(copy.Nodes.Any(n => n.IsLeaving), "複製模式不標示任何節點為即將離開");
+                var original = copy.Nodes.Single(n => ReferenceEquals(n.Node, a1) && !n.IsGhost);
+                var ghost = copy.Nodes.Single(n => ReferenceEquals(n.Node, a1) && n.IsGhost);
+
+                Assert.IsFalse(HasRedPixel(copy.Image, original.Bounds), "複製模式原節點不畫紅叉");
+                var ghostBorderBand = new RectangleF(ghost.Bounds.Left, ghost.Bounds.Top - 5f, ghost.Bounds.Width, 4f);
+                Assert.IsTrue(HasRedPixel(copy.Image, ghostBorderBand), "複製模式焦點複本外圍有紅色選取框");
+            }
+        }
+
+        [TestMethod]
+        public void MovePreview_SiblingInsertIndex_PlacesGhostBetweenSiblings()
+        {
+            var tree = new MenuTree();
+            tree.AddPath(new[] { "A" });
+            tree.AddPath(new[] { "B" });
+            tree.AddPath(new[] { "C" });
+            var a = Find(tree, "A");
+            var b = Find(tree, "B");
+            var c = Find(tree, "C");
+
+            using (var preview = TreeDrawer.RenderImageWithPlaceholder(tree, SystemFonts.DefaultFont, null, CascadeDiagramDrawScope.WholeTree,
+                CascadeDiagramUncheckedDisplay.Dimmed, c, null, null, new TreeDrawer.MovePreview(tree.Root, 1, new[] { c }, isCopy: false, focusedNode: c)))
+            {
+                var aNode = preview.Nodes.Single(n => ReferenceEquals(n.Node, a));
+                var bNode = preview.Nodes.Single(n => ReferenceEquals(n.Node, b));
+                var ghostC = preview.Nodes.Single(n => ReferenceEquals(n.Node, c) && n.IsGhost);
+                var leavingC = preview.Nodes.Single(n => ReferenceEquals(n.Node, c) && n.IsLeaving);
+
+                Assert.IsTrue(aNode.Bounds.Bottom < ghostC.Bounds.Top && ghostC.Bounds.Bottom < bNode.Bounds.Top, "ghost 插在 A 與 B 之間");
+                Assert.IsTrue(bNode.Bounds.Bottom < leavingC.Bounds.Top, "leaving 原位保留在 B 下方");
+            }
+        }
+
         [TestMethod]
         public void RenderImage_WithoutIsExpanded_DrawsEveryNodeExpanded()
         {

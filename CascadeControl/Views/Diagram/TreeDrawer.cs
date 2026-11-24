@@ -97,25 +97,49 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 拖曳移動時的預覽：<see cref="Nodes"/>（連同子孫）另外接一份在 <see cref="Parent"/> 的子節點最後面，畫成半透明；
-        /// 原本的位置照樣畫出來，但調淡、外框改成灰色虛線，標示放開後會被移走。原處不拿掉，版面才不會因為少了節點而跳動。
+        /// 拖曳移動或複製時的預覽：<see cref="Nodes"/>（連同子孫）另外接一份在 <see cref="Parent"/> 底下第 <see cref="InsertIndex"/> 個位置，畫成半透明；
+        /// 移動模式時原處標示為即將離開（調淡、灰色虛線外框與紅色叉叉），複製模式時原處維持原樣。
         /// </summary>
         internal sealed class MovePreview
         {
             private readonly HashSet<MenuNode> _moved;
 
             public MovePreview(MenuNode parent, IReadOnlyList<MenuNode> nodes)
+                : this(parent, parent.Children.Count, nodes, isCopy: false, focusedNode: null)
+            {
+            }
+
+            public MovePreview(MenuNode parent, int insertIndex, IReadOnlyList<MenuNode> nodes, bool isCopy = false, MenuNode focusedNode = null)
             {
                 Parent = parent;
+                InsertIndex = insertIndex;
                 Nodes = nodes;
+                IsCopy = isCopy;
+                FocusedNode = focusedNode;
                 _moved = new HashSet<MenuNode>(nodes);
             }
 
             public MenuNode Parent { get; }
 
+            public int InsertIndex { get; }
+
             public IReadOnlyList<MenuNode> Nodes { get; }
 
+            public bool IsCopy { get; }
+
+            public MenuNode FocusedNode { get; }
+
             public bool IsMoved(MenuNode node) => _moved.Contains(node);
+
+            public bool IsInMovedSubtree(MenuNode node)
+            {
+                for (var current = node; current != null; current = current.Parent)
+                {
+                    if (_moved.Contains(current)) return true;
+                }
+
+                return false;
+            }
         }
 
         // 建立要畫的節點時，每一層都一樣的設定。
@@ -328,7 +352,9 @@ namespace CascadeControl.Views.Diagram
                         node.Source,
                         Scale(node.Bounds, scale),
                         HasExpander(node) ? Scale(ExpanderBounds(node), scale) : RectangleF.Empty,
-                        node.IsExpanded))
+                        node.IsExpanded,
+                        node.IsGhost,
+                        node.IsLeaving))
                     .ToList();
 
                 return new TreeImage(bitmap, hitNodes);
@@ -388,13 +414,28 @@ namespace CascadeControl.Views.Diagram
             var isNodeChecked = options.IsChecked == null || options.IsChecked(source);
             if (!isNodeChecked && options.HideUnchecked) return null;
 
+            var preview = options.Preview;
+            bool isSelected;
+            if (preview == null)
+            {
+                isSelected = ReferenceEquals(source, options.SelectedNode);
+            }
+            else
+            {
+                var selected = preview.FocusedNode ?? options.SelectedNode;
+                if (selected != null && preview.IsInMovedSubtree(selected))
+                    isSelected = ghost && ReferenceEquals(source, selected);
+                else
+                    isSelected = !ghost && !leaving && ReferenceEquals(source, selected);
+            }
+
             var node = new LayoutNode
             {
                 Source = source,
                 Level = level,
                 Depth = depth,
                 IsChecked = isNodeChecked,
-                IsSelected = ReferenceEquals(source, options.SelectedNode),
+                IsSelected = isSelected,
                 IsGhost = ghost,
                 IsLeaving = leaving,
             };
@@ -405,7 +446,7 @@ namespace CascadeControl.Views.Diagram
 
         // 加入子節點，並順便算出「子孫是否全勾」；被略過的子節點一定沒勾，所以父節點不算全勾。
         // 佔位方塊排在原樹第 Position 個子節點之前（隱藏沒勾的節點時照樣對得上），不算進全勾。
-        // 預覽移動時：被移動的節點留在原處（標成會被移走，編號照原樹），另外接一份到新的父節點最後面（半透明）；其他節點的編號照移動後的順序重算。
+        // 預覽移動或複製時：在目標父節點的 InsertIndex 插入半透明的預覽節點；移動模式時原處標成會被移走，其他節點的編號照結果重算。
         private static void AddChildren(LayoutNode parent, BuildOptions options)
         {
             var placeholder = options.Placeholder;
@@ -415,30 +456,15 @@ namespace CascadeControl.Views.Diagram
             var allFullyChecked = true;
             var number = 0;
             var children = parent.Source.Children;
-            for (var i = 0; i < children.Count; i++)
-            {
-                if (placeholderHere != null && i == placeholderHere.Position) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
-                var leaving = parent.IsLeaving || (preview != null && preview.IsMoved(children[i]));
-                if (!leaving) number++;
+            var insertPreviewHere = preview != null && !parent.IsGhost && !parent.IsLeaving && ReferenceEquals(preview.Parent, parent.Source);
+            var insertIndex = insertPreviewHere ? Math.Max(0, Math.Min(preview.InsertIndex, children.Count)) : -1;
 
-                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, leaving, options);
-                if (child != null)
-                {
-                    if (preview != null && !leaving) child.Number = number;
-                    parent.Children.Add(child);
-                }
-
-                allFullyChecked &= child != null && child.IsFullyChecked;
-            }
-
-            if (placeholderHere != null && placeholderHere.Position >= children.Count) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
-
-            if (preview != null && ReferenceEquals(preview.Parent, parent.Source))
+            void AddGhosts()
             {
                 foreach (var moved in preview.Nodes)
                 {
                     number++;
-                    var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, true, false, options);
+                    var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, ghost: true, leaving: false, options: options);
                     if (ghost == null) continue;
 
                     ghost.Number = number;
@@ -446,6 +472,27 @@ namespace CascadeControl.Views.Diagram
                     allFullyChecked &= ghost.IsFullyChecked;
                 }
             }
+
+            for (var i = 0; i < children.Count; i++)
+            {
+                if (placeholderHere != null && i == placeholderHere.Position) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
+                if (insertPreviewHere && i == insertIndex) AddGhosts();
+
+                var leaving = parent.IsLeaving || (preview != null && !preview.IsCopy && !parent.IsGhost && preview.IsMoved(children[i]));
+                if (!leaving) number++;
+
+                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, leaving, options);
+                if (child != null)
+                {
+                    if (preview != null && !leaving && !parent.IsGhost) child.Number = number;
+                    parent.Children.Add(child);
+                }
+
+                allFullyChecked &= child != null && child.IsFullyChecked;
+            }
+
+            if (placeholderHere != null && placeholderHere.Position >= children.Count) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
+            if (insertPreviewHere && insertIndex >= children.Count) AddGhosts();
 
             parent.IsFullyChecked = allFullyChecked;
         }
@@ -676,12 +723,12 @@ namespace CascadeControl.Views.Diagram
         /// 選取的節點照樣畫原本的外框，再往外留 <see cref="SELECTED_BORDER_GAP"/> 的空隙另外畫一圈矩形紅框，不蓋住原本的外框；
         /// 預覽移動時會被移走的節點：底色往白色調淡 <see cref="LEAVING_FADE"/>，外框與文字用灰色，外框是虛線，不畫選取框。
         /// </remarks>
-        private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks)
+        private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks, bool drawSelectionFrame = true)
         {
             var back = LevelColor(node);
             var border = Darken(back, BORDER_LIGHTNESS_RATIO);
             var fore = Color.Black;
-            var borderWidth = BORDER_WIDTH;
+            var borderWidth = BorderWidthOf(node, showChecks);
             var dashStyle = DashStyle.Solid;
 
             if (node.IsPlaceholder)
@@ -697,7 +744,6 @@ namespace CascadeControl.Views.Diagram
             }
             else if (showChecks)
             {
-                borderWidth = CHECKED_BORDER_WIDTH;
                 if (!node.IsFullyChecked) dashStyle = DashStyle.Dash;
             }
 
@@ -737,7 +783,28 @@ namespace CascadeControl.Views.Diagram
             }
 
             if (HasExpander(node)) DrawExpander(g, node, border);
-            if (node.IsSelected && !node.IsLeaving) DrawSelectionFrame(g, bounds, borderWidth);
+            if (node.IsLeaving) DrawLeavingCross(g, bounds);
+            if (drawSelectionFrame && node.IsSelected && !node.IsLeaving) DrawSelectionFrame(g, bounds, borderWidth);
+        }
+
+        private static float BorderWidthOf(LayoutNode node, bool showChecks) =>
+            !node.IsPlaceholder && !node.IsLeaving && showChecks && node.IsChecked ? CHECKED_BORDER_WIDTH : BORDER_WIDTH;
+
+        private const float LEAVING_CROSS_WIDTH = 1.8f;
+
+        private static void DrawLeavingCross(Graphics g, RectangleF bounds)
+        {
+            var inset = Math.Min(3f, Math.Min(bounds.Width, bounds.Height) / 4f);
+            var left = bounds.Left + inset;
+            var top = bounds.Top + inset;
+            var right = bounds.Right - inset;
+            var bottom = bounds.Bottom - inset;
+
+            using (var pen = new Pen(SELECTED_BORDER, LEAVING_CROSS_WIDTH))
+            {
+                g.DrawLine(pen, left, top, right, bottom);
+                g.DrawLine(pen, left, bottom, right, top);
+            }
         }
 
         // 預覽移動時會被移走的節點，底色往白色調淡的比例（0 不變、1 全白）。
@@ -766,7 +833,7 @@ namespace CascadeControl.Views.Diagram
                     if (scale != 1f) lg.ScaleTransform(scale, scale);
 
                     DrawLinks(lg, nodes, showChecks, ghost: true);
-                    foreach (var node in nodes.Where(node => node.IsGhost)) DrawNode(lg, font, format, node, showChecks);
+                    foreach (var node in nodes.Where(node => node.IsGhost)) DrawNode(lg, font, format, node, showChecks, drawSelectionFrame: false);
                 }
 
                 using (var attributes = new ImageAttributes())
@@ -777,6 +844,11 @@ namespace CascadeControl.Views.Diagram
                     g.DrawImage(layer, new Rectangle(Point.Empty, size), 0, 0, size.Width, size.Height, GraphicsUnit.Pixel, attributes);
                     g.Transform = transform;
                 }
+            }
+
+            foreach (var node in nodes.Where(node => node.IsGhost && node.IsSelected))
+            {
+                DrawSelectionFrame(g, node.Bounds, BorderWidthOf(node, showChecks));
             }
         }
 

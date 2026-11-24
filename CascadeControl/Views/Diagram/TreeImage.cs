@@ -76,12 +76,14 @@ namespace CascadeControl.Views.Diagram
     /// </summary>
     public sealed class TreeImageNode
     {
-        internal TreeImageNode(MenuNode node, RectangleF bounds, RectangleF expanderBounds, bool isExpanded)
+        internal TreeImageNode(MenuNode node, RectangleF bounds, RectangleF expanderBounds, bool isExpanded, bool isGhost = false, bool isLeaving = false)
         {
             Node = node;
             Bounds = bounds;
             ExpanderBounds = expanderBounds;
             IsExpanded = isExpanded;
+            IsGhost = isGhost;
+            IsLeaving = isLeaving;
         }
 
         /// <summary>
@@ -103,5 +105,9 @@ namespace CascadeControl.Views.Diagram
         /// 是否展開；收合的節點畫 [+]，子節點不在圖上。葉節點一律為 true。
         /// </summary>
         public bool IsExpanded { get; }
+
+        internal bool IsGhost { get; }
+
+        internal bool IsLeaving { get; }
     }
 }
