@@ -44,17 +44,17 @@ namespace MindMap
             if (index == _zoomIndex) return;
 
             var oldFactor = ZoomFactor;
-            var scroll = AutoScrollPosition;
+            var anchorImage = SizeMode == CascadeDiagramSizeMode.ActualSize && anchor is Point p ? ToImagePoint(p) : (PointF?)null;
             _zoomIndex = index;
             ZoomFactor = ZoomPercent / 100f;
 
-            if (anchor is Point point)
+            if (anchorImage is PointF imagePoint && anchor is Point point)
             {
-                // 圖上原本在 point 底下的位置，放大後仍在 point 底下。AutoScrollPosition 讀出來是負的，設定時給正的。
+                // AutoScrollPosition 設定時給正值。
                 var ratio = ZoomFactor / oldFactor;
                 AutoScrollPosition = new Point(
-                    (int)Math.Round(((point.X - scroll.X) * ratio) - point.X),
-                    (int)Math.Round(((point.Y - scroll.Y) * ratio) - point.Y));
+                    (int)Math.Round((imagePoint.X * ratio) - point.X),
+                    (int)Math.Round((imagePoint.Y * ratio) - point.Y));
             }
         }
 

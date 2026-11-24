@@ -65,10 +65,17 @@ namespace CascadeControl.Views.Diagram
         /// </summary>
         private void GetTransform(out float scale, out PointF offset)
         {
-            if (_sizeMode == CascadeDiagramSizeMode.ActualSize || _image == null)
+            if (_image == null)
             {
                 scale = 1f;
                 offset = AutoScrollPosition;
+                return;
+            }
+
+            if (_sizeMode == CascadeDiagramSizeMode.ActualSize)
+            {
+                scale = 1f;
+                offset = new PointF(AutoScrollPosition.X, AutoScrollPosition.Y + VerticalCenterOffset(_image.Image.Height, ClientSize.Height));
                 return;
             }
 
@@ -77,7 +84,12 @@ namespace CascadeControl.Views.Diagram
             var client = ClientSize;
             scale = Math.Min(1f, Math.Min(client.Width / (float)size.Width, client.Height / (float)size.Height));
             if (scale <= 0f) scale = 1f;
-            offset = PointF.Empty;
+            offset = new PointF(0f, VerticalCenterOffset(size.Height * scale, client.Height));
+        }
+
+        private static float VerticalCenterOffset(float contentHeight, int clientHeight)
+        {
+            return clientHeight > contentHeight ? (float)Math.Floor((clientHeight - contentHeight) / 2f) : 0f;
         }
 
         /// <inheritdoc />
@@ -111,7 +123,6 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <inheritdoc />
-        /// <remarks>自動縮放時比例跟著大小變，就地編輯框要重新對齊節點方塊。</remarks>
         protected override void OnClientSizeChanged(EventArgs e)
         {
             base.OnClientSizeChanged(e);
@@ -152,7 +163,12 @@ namespace CascadeControl.Views.Diagram
             return _image?.GetExpanderAt(ToImagePoint(clientLocation));
         }
 
-        private PointF ToImagePoint(Point clientLocation)
+        /// <summary>
+        /// 將控制項的用戶區座標換算為圖上座標，已考慮捲動位置、縮放與垂直置中。
+        /// </summary>
+        /// <param name="clientLocation">控制項的用戶區座標。</param>
+        /// <returns>對應的圖上座標。</returns>
+        protected PointF ToImagePoint(Point clientLocation)
         {
             GetTransform(out var scale, out var offset);
             return new PointF((clientLocation.X - offset.X) / scale, (clientLocation.Y - offset.Y) / scale);
