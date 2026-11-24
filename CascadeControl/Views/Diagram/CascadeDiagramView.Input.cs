@@ -53,7 +53,7 @@ namespace CascadeControl.Views.Diagram
             _press = null;
             if (_move != null) EndMovePress(apply: false);
             if (e.Button == MouseButtons.Left && !_swallowClick && GetExpanderAt(e.Location) == null)
-                BeginMarkPress(e.Location, (ModifierKeys & Keys.Control) != 0);
+                BeginMarkPress(e.Location, IsControlKeyDown);
 
             base.OnMouseDown(e);
         }
@@ -62,7 +62,7 @@ namespace CascadeControl.Views.Diagram
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            if (_swallowClick || _press != null || IsMoveDragging || TryToggleExpander(e)) return;
+            if (_swallowClick || _press != null || IsMoveDragging || (_move != null && _move.StartedWithControl) || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node == null) return;
@@ -77,7 +77,7 @@ namespace CascadeControl.Views.Diagram
             base.OnMouseDoubleClick(e);
 
             // 連點兩下時第二下只會送 DoubleClick，當成第二次點擊再切換一次。
-            if (_swallowClick || _press != null || IsMoveDragging || TryToggleExpander(e)) return;
+            if (_swallowClick || _press != null || IsMoveDragging || (_move != null && _move.StartedWithControl) || TryToggleExpander(e)) return;
 
             var node = GetNodeAt(e.Location);
             if (node != null) OnNodeMouseDoubleClick(CreateMouseEventArgs(node, e));
@@ -143,6 +143,12 @@ namespace CascadeControl.Views.Diagram
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
+            if (_move != null && _move.Dragged && e.KeyCode == Keys.ControlKey)
+            {
+                UpdateMoveDropTarget(_move.LastClient);
+                return;
+            }
+
             if (e.Handled) return;
 
             if ((e.KeyCode == Keys.Multiply && e.Modifiers == Keys.None)
@@ -179,6 +185,14 @@ namespace CascadeControl.Views.Diagram
             e.Handled = true;
             e.SuppressKeyPress = true;
             EnsureVisible(SelectedMenuNode);
+        }
+
+        /// <inheritdoc />
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            base.OnKeyUp(e);
+            if (_move != null && _move.Dragged && e.KeyCode == Keys.ControlKey)
+                UpdateMoveDropTarget(_move.LastClient);
         }
 
         /// <inheritdoc />

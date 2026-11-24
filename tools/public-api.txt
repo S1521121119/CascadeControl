@@ -395,6 +395,7 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method Sys
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnFontChanged(System.EventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyDown(System.Windows.Forms.KeyEventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyPress(System.Windows.Forms.KeyPressEventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyUp(System.Windows.Forms.KeyEventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnMouseCaptureChanged(System.EventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnMouseClick(System.Windows.Forms.MouseEventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnMouseDoubleClick(System.Windows.Forms.MouseEventArgs e)

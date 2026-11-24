@@ -1,41 +1,38 @@
-﻿using CascadeControl.Trees;
+﻿using CascadeControl.State;
+using CascadeControl.Trees;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
 namespace CascadeControl.Views.Diagram
 {
-    // 拖曳移動：按住節點拖到另一個節點上放開，節點（連同子孫）接到它的子節點最後面；按住的是多選的節點時移動整個多選。
+    // 拖曳移動與複製：拖到節點上成為子節點，拖到兄弟之間或邊緣插入同層；按住 Ctrl 改為複製。
     public partial class CascadeDiagramView
     {
-        // 左鍵按在節點上、放開前的拖曳移動；沒有時為 null。
+        // 左鍵按在節點上、放開前的拖曳手勢；沒有時為 null。
         private MovePress _move;
 
         private bool IsMoveDragging => _move != null && _move.Dragged;
 
+        internal virtual bool IsControlKeyDown => (ModifierKeys & Keys.Control) != 0;
+
         /// <summary>
-        /// 左鍵按在節點上（沒按 Ctrl、不是唯讀）：開始一次可能的拖曳移動，對象是整個多選（按在多選的節點上時）或只有這個節點。
-        /// 沒拖曳就放開時照一般點選處理。
+        /// 左鍵按在節點上（不是唯讀）：開始一次可能的拖曳移動或複製，對象是整個多選（按在多選的節點上時）或只有這個節點。
+        /// 沒拖曳就放開時，按住 Ctrl 切換多選，否則照一般點選處理。
         /// </summary>
         /// <returns>有開始時為 true。</returns>
-        private bool TryBeginMovePress(MenuNode node, Point location)
+        private bool TryBeginMovePress(MenuNode node, Point location, bool startedWithControl)
         {
             if (!CanEdit) return false;
 
-            _move = new MovePress(location, _marks.Contains(node) ? TopMostMarks() : new[] { node });
+            _move = new MovePress(location, node, _marks.Contains(node) ? TopMostMarks() : new[] { node }, startedWithControl);
             Capture = true;
             return true;
         }
 
-        /// <summary>
-        /// 拖曳中：找出滑鼠下的節點當成放下的目標，換目標時重畫預覽。
-        /// </summary>
-        /// <remarks>
-        /// 預覽是移動之後的整張圖，排版會變；畫的時候整張位移，讓目標留在原本的位置，所以目標一直在滑鼠底下，不會因為排版改變而跳來跳去。
-        /// 找目標時看的是畫面上的那張圖（有預覽就是預覽）：滑到預覽裡半透明的節點上時目標不變，滑到空白處時沒有目標。
-        /// </remarks>
         private void DragMovePress(Point location)
         {
             var move = _move;
@@ -45,27 +42,185 @@ namespace CascadeControl.Views.Diagram
                 if (Math.Abs(location.X - move.StartClient.X) <= drag.Width / 2 && Math.Abs(location.Y - move.StartClient.Y) <= drag.Height / 2) return;
 
                 move.Dragged = true;
+                if (!_marks.Contains(move.PressedNode)) ClearMultiSelection();
+                if (_drawScope == CascadeDiagramDrawScope.WholeTree) _state.TrySelectNode(move.PressedNode);
             }
 
+            move.LastClient = location;
             ScrollTowards(location);
+            UpdateMoveDropTarget(location);
+        }
 
+        private void UpdateMoveDropTarget(Point location)
+        {
+            var move = _move;
+            if (move == null || !move.Dragged || _image == null) return;
+
+            var isCopy = IsControlKeyDown;
             var point = ToImagePoint(location);
             var shown = move.Preview ?? _image;
             var offset = move.Preview == null ? PointF.Empty : move.Offset;
+
             var hit = shown.Nodes.FirstOrDefault(imageNode => Offset(imageNode.Bounds, offset).Contains(point));
+            if (hit != null)
+            {
+                if (hit.IsGhost)
+                {
+                    if (move.Destination != null && move.Destination.IsCopy != isCopy)
+                    {
+                        var updated = ValidateDestination(move, move.Destination.WithCopy(isCopy));
+                        if (updated != null)
+                        {
+                            var anchorNode = FindStationaryNode(shown, updated.Anchor);
+                            SetDropDestination(updated, anchorNode != null ? Offset(anchorNode.Bounds, offset) : RectangleF.Empty);
+                        }
+                        else
+                        {
+                            SetDropDestination(null, RectangleF.Empty);
+                        }
+                    }
 
-            if (hit == null) SetDropTarget(null, RectangleF.Empty);
-            else if (!move.IsMoved(hit.Node)) SetDropTarget(hit.Node, Offset(hit.Bounds, offset));
-            else if (move.Preview == null) SetDropTarget(null, RectangleF.Empty);
+                    Cursor = move.Destination != null ? Cursors.Hand : Cursors.No;
+                    return;
+                }
 
-            Cursor = move.Target != null ? Cursors.Hand : Cursors.No;
+                if (hit.IsLeaving)
+                {
+                    SetDropDestination(null, RectangleF.Empty);
+                    Cursor = Cursors.No;
+                    return;
+                }
+
+                var bounds = Offset(hit.Bounds, offset);
+                var candidate = BuildNodeHitDestination(shown, hit.Node, bounds, point, isCopy);
+                var valid = ValidateDestination(move, candidate);
+                SetDropDestination(valid, valid != null ? bounds : RectangleF.Empty);
+                Cursor = move.Destination != null ? Cursors.Hand : Cursors.No;
+                return;
+            }
+
+            if (TryFindSiblingGapDestination(shown, offset, point, isCopy, out var gapDestination, out var gapAnchorBounds))
+            {
+                var valid = ValidateDestination(move, gapDestination);
+                SetDropDestination(valid, valid != null ? gapAnchorBounds : RectangleF.Empty);
+            }
+            else
+            {
+                SetDropDestination(null, RectangleF.Empty);
+            }
+
+            Cursor = move.Destination != null ? Cursors.Hand : Cursors.No;
         }
 
-        // 放下的目標用選取色（和多選同一個藍色）框起來，一眼看得出會接到哪裡。
+        private DropDestination BuildNodeHitDestination(TreeImage shown, MenuNode hitNode, RectangleF bounds, PointF point, bool isCopy)
+        {
+            var edgeMargin = bounds.Height * 0.2f;
+            if (CanInsertSibling(shown, hitNode))
+            {
+                if (point.Y < bounds.Top + edgeMargin)
+                    return new DropDestination(DropKind.InsertSibling, hitNode.Parent, hitNode.SiblingNumber - 1, hitNode, isCopy);
+
+                if (point.Y > bounds.Bottom - edgeMargin)
+                    return new DropDestination(DropKind.InsertSibling, hitNode.Parent, hitNode.SiblingNumber, hitNode, isCopy);
+            }
+
+            return new DropDestination(DropKind.AsChild, hitNode, hitNode.Children.Count, hitNode, isCopy);
+        }
+
+        private bool TryFindSiblingGapDestination(TreeImage shown, PointF offset, PointF point, bool isCopy, out DropDestination destination, out RectangleF anchorBounds)
+        {
+            destination = null;
+            anchorBounds = RectangleF.Empty;
+
+            TreeImageNode above = null;
+            RectangleF aboveRect = RectangleF.Empty;
+            TreeImageNode below = null;
+            RectangleF belowRect = RectangleF.Empty;
+
+            foreach (var imageNode in shown.Nodes)
+            {
+                if (imageNode.IsGhost || imageNode.IsLeaving) continue;
+
+                var rect = Offset(imageNode.Bounds, offset);
+                if (point.X < rect.Left || point.X > rect.Right) continue;
+
+                if (rect.Bottom <= point.Y)
+                {
+                    if (above == null || rect.Bottom > aboveRect.Bottom)
+                    {
+                        above = imageNode;
+                        aboveRect = rect;
+                    }
+                }
+                else if (rect.Top >= point.Y)
+                {
+                    if (below == null || rect.Top < belowRect.Top)
+                    {
+                        below = imageNode;
+                        belowRect = rect;
+                    }
+                }
+            }
+
+            if (above != null && below != null && ReferenceEquals(above.Node.Parent, below.Node.Parent) && CanInsertSibling(shown, below.Node))
+            {
+                destination = new DropDestination(DropKind.InsertSibling, above.Node.Parent, below.Node.SiblingNumber - 1, above.Node, isCopy);
+                anchorBounds = aboveRect;
+                return true;
+            }
+
+            var aboveDist = above != null ? point.Y - aboveRect.Bottom : float.MaxValue;
+            var belowDist = below != null ? belowRect.Top - point.Y : float.MaxValue;
+            var aboveOk = above != null && CanInsertSibling(shown, above.Node) && aboveDist <= aboveRect.Height * 0.5f;
+            var belowOk = below != null && CanInsertSibling(shown, below.Node) && belowDist <= belowRect.Height * 0.5f;
+
+            if (aboveOk && (!belowOk || aboveDist <= belowDist))
+            {
+                destination = new DropDestination(DropKind.InsertSibling, above.Node.Parent, above.Node.SiblingNumber, above.Node, isCopy);
+                anchorBounds = aboveRect;
+                return true;
+            }
+
+            if (belowOk)
+            {
+                destination = new DropDestination(DropKind.InsertSibling, below.Node.Parent, below.Node.SiblingNumber - 1, below.Node, isCopy);
+                anchorBounds = belowRect;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool CanInsertSibling(TreeImage shown, MenuNode node) =>
+            node != null
+            && node.Parent != null
+            && !(_drawScope == CascadeDiagramDrawScope.SelectedSubtree
+                 && shown.Nodes.Count > 0
+                 && ReferenceEquals(node, shown.Nodes[0].Node));
+
+        private static DropDestination ValidateDestination(MovePress move, DropDestination candidate)
+        {
+            if (candidate == null || candidate.Parent == null) return null;
+            if (move.IsMoved(candidate.Parent)) return null;
+            if (candidate.Kind == DropKind.AsChild && move.IsMoved(candidate.Anchor)) return null;
+            if (!candidate.IsCopy && CascadeState.IsNoOpMove(move.Nodes, candidate.Parent, candidate.Position)) return null;
+
+            return candidate;
+        }
+
+        private static TreeImageNode FindStationaryNode(TreeImage image, MenuNode node) =>
+            image == null || node == null
+                ? null
+                : image.Nodes.FirstOrDefault(imageNode => !imageNode.IsGhost && ReferenceEquals(imageNode.Node, node));
+
+        // 放成子節點時用選取色（和多選同一個藍色）框住目標父節點；插入兄弟位置時不框。
         private void PaintDropTarget(Graphics graphics)
         {
             var move = _move;
-            var target = move.Preview.Nodes.FirstOrDefault(imageNode => ReferenceEquals(imageNode.Node, move.Target));
+            var destination = move.Destination;
+            if (destination == null || destination.Kind != DropKind.AsChild) return;
+
+            var target = FindStationaryNode(move.Preview, destination.Anchor);
             if (target == null) return;
 
             var bounds = ToClientRectangle(Offset(target.Bounds, move.Offset));
@@ -77,30 +232,34 @@ namespace CascadeControl.Views.Diagram
 
         private static RectangleF Offset(RectangleF bounds, PointF offset) => new RectangleF(bounds.X + offset.X, bounds.Y + offset.Y, bounds.Width, bounds.Height);
 
-        // 換放下的目標；shownBounds 是目標現在畫在畫面上的位置（圖座標），預覽要對齊到這裡。
-        private void SetDropTarget(MenuNode target, RectangleF shownBounds)
+        private void SetDropDestination(DropDestination destination, RectangleF anchorBounds)
         {
             var move = _move;
-            if (ReferenceEquals(move.Target, target)) return;
+            if (Equals(move.Destination, destination)) return;
 
-            move.Target = target;
+            move.Destination = destination;
             move.Preview?.Dispose();
             move.Preview = null;
             move.Offset = PointF.Empty;
 
-            if (target != null)
+            if (destination != null)
             {
-                var preview = RenderTreeImage(new TreeDrawer.MovePreview(target, move.Nodes));
-                var targetNode = preview.Nodes.FirstOrDefault(imageNode => ReferenceEquals(imageNode.Node, target));
-                if (targetNode == null)
+                var preview = RenderTreeImage(new TreeDrawer.MovePreview(
+                    destination.Parent,
+                    destination.Position,
+                    move.Nodes,
+                    destination.IsCopy,
+                    move.PressedNode));
+                var anchorNode = FindStationaryNode(preview, destination.Anchor);
+                if (anchorNode == null)
                 {
                     preview.Dispose();
-                    move.Target = null;
+                    move.Destination = null;
                 }
                 else
                 {
                     move.Preview = preview;
-                    move.Offset = new PointF(shownBounds.X - targetNode.Bounds.X, shownBounds.Y - targetNode.Bounds.Y);
+                    move.Offset = new PointF(anchorBounds.X - anchorNode.Bounds.X, anchorBounds.Y - anchorNode.Bounds.Y);
                 }
             }
 
@@ -108,7 +267,8 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 結束拖曳移動：<paramref name="apply"/> 為 true 而且有拖曳到目標上時交給 <see cref="CascadeControl.State.CascadeState.MoveNodes(IReadOnlyList{MenuNode}, MenuNode)"/>；否則什麼都不改。
+        /// 結束拖曳移動或複製：<paramref name="apply"/> 為 true 且有有效目標時交給 <see cref="CascadeState.MoveNodes(IReadOnlyList{MenuNode}, MenuNode, int)"/> 或 <see cref="CascadeState.PasteNodes(MenuNode, int, IReadOnlyList{MenuNode})"/>；
+        /// 沒拖曳且按下時按著 Ctrl 則切換多選。
         /// </summary>
         private void EndMovePress(bool apply)
         {
@@ -119,41 +279,112 @@ namespace CascadeControl.Views.Diagram
             Cursor = Cursors.Default;
             Invalidate();
 
-            if (apply && move.Dragged && move.Target != null && CanEdit) _state.MoveNodes(move.Nodes, move.Target);
+            if (!apply) return;
+
+            if (!move.Dragged)
+            {
+                if (move.StartedWithControl) ToggleMark(move.PressedNode);
+                return;
+            }
+
+            if (move.Destination == null || !CanEdit) return;
+
+            var isCopy = IsControlKeyDown;
+            var destination = isCopy == move.Destination.IsCopy
+                ? move.Destination
+                : ValidateDestination(move, move.Destination.WithCopy(isCopy));
+            if (destination == null) return;
+
+            if (destination.IsCopy)
+                _state.PasteNodes(destination.Parent, destination.Position, move.Nodes, move.PressedNode);
+            else
+                _state.MoveNodes(move.Nodes, destination.Parent, destination.Position, move.PressedNode);
         }
 
-        /// <summary>
-        /// 一次拖曳移動：要移動哪些節點、目前要放到哪個節點底下，以及預覽圖。
-        /// </summary>
+        private enum DropKind
+        {
+            AsChild,
+            InsertSibling,
+        }
+
+        private sealed class DropDestination : IEquatable<DropDestination>
+        {
+            public DropDestination(DropKind kind, MenuNode parent, int position, MenuNode anchor, bool isCopy)
+            {
+                Kind = kind;
+                Parent = parent;
+                Position = position;
+                Anchor = anchor;
+                IsCopy = isCopy;
+            }
+
+            public DropKind Kind { get; }
+
+            public MenuNode Parent { get; }
+
+            public int Position { get; }
+
+            public MenuNode Anchor { get; }
+
+            public bool IsCopy { get; }
+
+            public DropDestination WithCopy(bool isCopy) =>
+                IsCopy == isCopy ? this : new DropDestination(Kind, Parent, Position, Anchor, isCopy);
+
+            public bool Equals(DropDestination other) =>
+                other != null
+                && Kind == other.Kind
+                && ReferenceEquals(Parent, other.Parent)
+                && Position == other.Position
+                && IsCopy == other.IsCopy;
+
+            public override bool Equals(object obj) => Equals(obj as DropDestination);
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    var hash = (int)Kind;
+                    hash = (hash * 397) ^ (Parent != null ? RuntimeHelpers.GetHashCode(Parent) : 0);
+                    hash = (hash * 397) ^ Position;
+                    hash = (hash * 397) ^ (IsCopy ? 1 : 0);
+                    return hash;
+                }
+            }
+        }
+
         private sealed class MovePress
         {
             private readonly HashSet<MenuNode> _roots;
 
-            public MovePress(Point startClient, IReadOnlyList<MenuNode> nodes)
+            public MovePress(Point startClient, MenuNode pressedNode, IReadOnlyList<MenuNode> nodes, bool startedWithControl)
             {
                 StartClient = startClient;
+                LastClient = startClient;
+                PressedNode = pressedNode;
                 Nodes = nodes;
+                StartedWithControl = startedWithControl;
                 _roots = new HashSet<MenuNode>(nodes);
             }
 
-            /// <summary>按下時的控制項座標，判斷有沒有拖曳用。</summary>
             public Point StartClient { get; }
 
-            /// <summary>要移動的節點（祖先也被多選的子孫不算），依圖上的順序。</summary>
+            public Point LastClient { get; set; }
+
+            public MenuNode PressedNode { get; }
+
             public IReadOnlyList<MenuNode> Nodes { get; }
+
+            public bool StartedWithControl { get; }
 
             public bool Dragged { get; set; }
 
-            /// <summary>放下的目標；沒有時為 null。</summary>
-            public MenuNode Target { get; set; }
+            public DropDestination Destination { get; set; }
 
-            /// <summary>移到 <see cref="Target"/> 底下之後的樣子；沒有目標時為 null。</summary>
             public TreeImage Preview { get; set; }
 
-            /// <summary>預覽圖畫在原本的圖座標上要位移多少，目標才會留在原處。</summary>
             public PointF Offset { get; set; }
 
-            /// <summary>節點在被移動的子樹裡（不能當目標）。</summary>
             public bool IsMoved(MenuNode node)
             {
                 for (var current = node; current != null; current = current.Parent)

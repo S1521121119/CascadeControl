@@ -339,11 +339,218 @@ namespace CascadeControlTests.Views.Diagram
             }
         });
 
+        [TestMethod]
+        public void CtrlMidDrag_CopiesSingleAndMultiSelectedNodes_UndoRemovesCopy()
+        {
+            using (var f = new Fixture())
+            {
+                var c = f.Center("C");
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(c);
+                f.View.PressCtrlKey(true);
+                f.View.Up(c);
+                f.View.ControlDown = false;
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C", "C > B");
+                Assert.AreSame(f.Node("C > B"), f.View.SelectedNode);
+                Assert.IsTrue(f.View.Undo());
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+
+                f.View.State.ClearSelection();
+                f.CtrlClick("A > A1");
+                f.CtrlClick("B");
+                f.AssertMarks("A > A1", "B");
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(c);
+                f.View.PressCtrlKey(true);
+                f.View.Up(c);
+                f.View.ControlDown = false;
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C", "C > A1", "C > B");
+                Assert.AreSame(f.Node("C > B"), f.View.SelectedNode, "多選複製後選取被按住節點的複本");
+                f.AssertMarks("C > A1", "C > B");
+                Assert.IsTrue(f.View.Undo());
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+            }
+        }
+
+        [TestMethod]
+        public void CtrlDragStartedOnNode_CopiesNode_ReleaseCtrlMidDragSwitchesToMove()
+        {
+            using (var f = new Fixture())
+            {
+                var c = f.Center("C");
+                f.View.Down(f.Center("B"), control: true);
+                f.View.DragTo(c);
+                f.View.Up(c);
+                f.View.ControlDown = false;
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C", "C > B");
+                Assert.AreSame(f.Node("C > B"), f.View.SelectedNode);
+                Assert.AreEqual(0, f.Clicks.Count);
+
+                // 按著 Ctrl 開始拖曳，中途放開 Ctrl 改回移動。
+                var b = f.Node("B");
+                var target = f.Center("A");
+                f.View.Down(f.Center("B"), control: true);
+                f.View.DragTo(target);
+                f.View.PressCtrlKey(false);
+                f.View.Up(target);
+
+                f.AssertShape("A", "A > A1", "A > A2", "A > B", "C", "C > B");
+                Assert.AreSame(b, f.View.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void DragBetweenSiblings_InsertsAtSiblingIndex_TopLevelCrossParentEdgesAndCopy()
+        {
+            using (var f = new Fixture())
+            {
+                // 展開的 A 與 B 之間有垂直空隙：拖曳 C 進去插在 A 與 B 之間。
+                var aBounds = f.BoundsOf("A");
+                var bBounds = f.BoundsOf("B");
+                var betweenAB = new Point(bBounds.Left + (bBounds.Width / 2), (aBounds.Bottom + bBounds.Top) / 2);
+
+                f.View.Down(f.Center("C"));
+                f.View.DragTo(betweenAB);
+                f.View.Up(betweenAB);
+                f.AssertShape("A", "A > A1", "A > A2", "C", "B");
+
+                // 拖到第一個兄弟 A 上緣（上方一點）：插到最前面。
+                aBounds = f.BoundsOf("A");
+                var beforeA = new Point(aBounds.Left + (aBounds.Width / 2), aBounds.Top + 1);
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(beforeA);
+                f.View.Up(beforeA);
+                f.AssertShape("B", "A", "A > A1", "A > A2", "C");
+
+                // 拖到最後一個兄弟 C 下方邊緣：移回最後面。
+                var cBounds = f.BoundsOf("C");
+                var afterC = new Point(cBounds.Left + (cBounds.Width / 2), cBounds.Bottom + 3);
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(afterC);
+                f.View.Up(afterC);
+                f.AssertShape("A", "A > A1", "A > A2", "C", "B");
+
+                // 跨父節點插入兄弟之間：把 B 拖到 A1 與 A2 中間的空隙。
+                var a1Bounds = f.BoundsOf("A > A1");
+                var a2Bounds = f.BoundsOf("A > A2");
+                var betweenA1A2 = new Point(a1Bounds.Left + (a1Bounds.Width / 2), (a1Bounds.Bottom + a2Bounds.Top) / 2);
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(betweenA1A2);
+                f.View.Up(betweenA1A2);
+                f.AssertShape("A", "A > A1", "A > B", "A > A2", "C");
+
+                // Ctrl 拖曳 A1 到自己下緣：在旁邊複製一份。
+                a1Bounds = f.BoundsOf("A > A1");
+                var belowA1 = new Point(a1Bounds.Left + (a1Bounds.Width / 2), a1Bounds.Bottom - 1);
+                f.View.Down(f.Center("A > A1"), control: true);
+                f.View.DragTo(belowA1);
+                f.View.Up(belowA1);
+                f.View.ControlDown = false;
+                f.AssertShape("A", "A > A1", "A > A1 - 2", "A > B", "A > A2", "C");
+                Assert.AreSame(f.Node("A > A1 - 2"), f.View.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void DragSiblingToSameSlot_IsNoOpWithoutHistory()
+        {
+            using (var f = new Fixture())
+            {
+                var bBounds = f.BoundsOf("B");
+                var cBounds = f.BoundsOf("C");
+                var betweenBC = new Point(bBounds.Left + (bBounds.Width / 2), (bBounds.Bottom + cBounds.Top) / 2);
+
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(betweenBC);
+                f.View.Up(betweenBC);
+
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                Assert.AreEqual(0, f.View.State.History.UndoCount);
+            }
+        }
+
+        [TestMethod]
+        public void DragMarksPressedNodeDuringDrag_AndSelectsPressedNodeAfterMoveOrCancel()
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("A");
+                var b = f.Node("B");
+                var blank = f.BlankRightOf("A > A1", "A > A2");
+
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(blank);
+                Assert.AreSame(b, f.View.SelectedNode, "拖曳開始即選取被按住的節點");
+                f.View.Up(blank);
+                Assert.AreSame(b, f.View.SelectedNode);
+
+                // 多選 {A1, B} 且先選取 A1，按住 B 拖到 C 底下：拖曳中與放開後都選取 B。
+                // 目前選取是 B，Ctrl+點 A1 會把 B 與 A1 一起加入多選。
+                f.CtrlClick("A > A1");
+                f.AssertMarks("A > A1", "B");
+                f.Select("A > A1");
+                var c = f.Center("C");
+                f.View.Down(f.Center("B"));
+                f.View.DragTo(c);
+                Assert.AreSame(b, f.View.SelectedNode, "多選拖曳中標示被按住的節點 B");
+                f.View.Up(c);
+
+                f.AssertShape("A", "A > A2", "C", "C > A1", "C > B");
+                Assert.AreSame(b, f.View.SelectedNode, "多選移動完成後仍選取被按住的節點 B");
+                f.AssertMarks("C > A1", "C > B");
+            }
+        }
+
+        [TestMethod]
+        public void SelectedSubtree_CannotInsertSiblingOfSubtreeRoot_CanReorderChildren()
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("A");
+                f.View.DrawScope = CascadeDiagramDrawScope.SelectedSubtree;
+
+                // 子樹起點 A 的上方空隙不可插入同層兄弟。
+                var aBounds = f.BoundsOf("A");
+                var aboveA = new Point(aBounds.Left + (aBounds.Width / 2), aBounds.Top - 3);
+                f.View.Down(f.Center("A > A1"));
+                f.View.DragTo(aboveA);
+                f.View.Up(aboveA);
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+
+                // 子樹底下的子節點仍可在彼此之間重排。
+                var a1Bounds = f.BoundsOf("A > A1");
+                var beforeA1 = new Point(a1Bounds.Left + (a1Bounds.Width / 2), a1Bounds.Top + 1);
+                f.View.Down(f.Center("A > A2"));
+                f.View.DragTo(beforeA1);
+                f.View.Up(beforeA1);
+                f.AssertShape("A", "A > A2", "A > A1", "B", "C");
+            }
+        }
+
         private sealed class ProbeView : CascadeDiagramView
         {
-            public void Down(Point location) => BeginMarkPress(location, control: false);
+            public bool ControlDown { get; set; }
+
+            internal override bool IsControlKeyDown => ControlDown;
+
+            public void Down(Point location, bool control = false)
+            {
+                ControlDown = control;
+                BeginMarkPress(location, control);
+            }
 
             public void DragTo(Point location) => OnMouseMove(new MouseEventArgs(MouseButtons.Left, 0, location.X, location.Y, 0));
+
+            public void PressCtrlKey(bool down)
+            {
+                ControlDown = down;
+                var args = new KeyEventArgs(Keys.ControlKey | (down ? Keys.Control : Keys.None));
+                if (down) OnKeyDown(args);
+                else OnKeyUp(args);
+            }
 
             public void Up(Point location)
             {
@@ -354,6 +561,7 @@ namespace CascadeControlTests.Views.Diagram
 
             public void MouseDownUp(Point location, bool control, Point? dragTo)
             {
+                ControlDown = control;
                 BeginMarkPress(location, control);
                 if (dragTo.HasValue) OnMouseMove(new MouseEventArgs(MouseButtons.Left, 0, dragTo.Value.X, dragTo.Value.Y, 0));
 
@@ -361,6 +569,7 @@ namespace CascadeControlTests.Views.Diagram
                 var args = new MouseEventArgs(MouseButtons.Left, 1, up.X, up.Y, 0);
                 OnMouseClick(args);
                 OnMouseUp(args);
+                ControlDown = false;
             }
         }
 

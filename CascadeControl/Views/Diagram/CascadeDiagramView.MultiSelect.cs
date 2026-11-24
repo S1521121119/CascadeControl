@@ -33,9 +33,9 @@ namespace CascadeControl.Views.Diagram
         /// 右鍵點在多選的節點上時，功能表的「複製」、「複製(路徑)」、「剪下」、「刪除」也是。貼上的位置跟著多選，見 <see cref="Paste"/>。
         /// </para>
         /// <para>
-        /// 不是唯讀時，按住節點拖到另一個節點上放開，節點（連同子孫）移到它的子節點最後面（<see cref="CascadeControl.State.CascadeState.MoveNodes(IReadOnlyList{MenuNode}, MenuNode)"/>）；
-        /// 按住的是多選的節點時移動整個多選，否則只移動按住的那一個。
-        /// 拖曳時預覽移動的結果：移過去的節點以半透明接在目標底下，目標加上藍框；會被移走的節點留在原處，調淡並畫灰色虛線外框，版面不會因為少了節點而跳動。按 Esc 取消。目標不能是被移動的節點或它們的子孫。
+        /// 不是唯讀時，按住節點拖到另一個節點上放開，節點（連同子孫）移到它的子節點最後面（<see cref="CascadeControl.State.CascadeState.MoveNodes(IReadOnlyList{MenuNode}, MenuNode, int)"/>）；
+        /// 拖到兄弟之間或首尾邊緣時插入同層指定位置；按住 Ctrl 拖曳改為複製。按住的是多選的節點時移動或複製整個多選，否則只操作按住的那一個。
+        /// 拖曳時會標示被按住的節點，預覽結果以半透明顯示在新位置（移動時原處調淡、虛線外框並畫紅叉，複製時原處維持原樣）。按 Esc 取消。
         /// </para>
         /// </remarks>
         [Browsable(false)]
@@ -149,7 +149,14 @@ namespace CascadeControl.Views.Diagram
             {
                 // 可能是拖曳移動；沒拖曳就放開是一般點選。
                 _press = null;
-                TryBeginMovePress(node, location);
+                TryBeginMovePress(node, location, startedWithControl: false);
+                return;
+            }
+
+            if (node != null && control && TryBeginMovePress(node, location, startedWithControl: true))
+            {
+                // 可編輯時 Ctrl 按在節點上：拖曳時改為複製，沒拖曳就放開時切換多選。
+                _press = null;
                 return;
             }
 
