@@ -302,6 +302,8 @@ namespace CascadeControlTests.Views.Diagram
 
             public void DoubleClickAt(Point location, MouseButtons button = MouseButtons.Left) =>
                 OnMouseDoubleClick(new MouseEventArgs(button, 2, location.X, location.Y, 0));
+
+            public PointF ImagePointOf(Point clientLocation) => ToImagePoint(clientLocation);
         }
 
         private static Point RoundPoint(PointF point) => new Point((int)System.Math.Round(point.X), (int)System.Math.Round(point.Y));
@@ -597,6 +599,194 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreEqual(6, selectedPaths.Count);
                 image.Press(Keys.Enter);
                 CollectionAssert.AreEqual(new[] { "Motor" }, activatedPaths);
+            }
+        }
+
+        [TestMethod]
+        public void ActualSize_ShorterThanClient_LeftAlignedAndVerticallyCentered_UpdatesOnResize()
+        {
+            var tree = TestTrees.Template();
+            var motor = Find(tree, "Motor");
+            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ShowInTaskbar = false })
+            using (var imageView = new CascadeDiagramView { Dock = DockStyle.Fill })
+            {
+                form.Controls.Add(imageView);
+                imageView.SetTree(tree);
+
+                var imageSize = imageView.Image.Size;
+                form.ClientSize = new Size(imageSize.Width + 200, (imageSize.Height * 3) + 1);
+                form.Show();
+
+                var offsetY = (int)System.Math.Floor((imageView.ClientSize.Height - imageSize.Height) / 2f);
+                Assert.AreEqual(imageSize.Height, offsetY);
+
+                var motorLayout = LayoutNodeOf(imageView, tree, motor);
+                var sampleX = (int)(motorLayout.Bounds.Left + 4f);
+                var sampleImageY = (int)(motorLayout.Bounds.Top + (motorLayout.Bounds.Height / 2f));
+                var expanderCenter = RoundPoint(Center(motorLayout.ExpanderBounds));
+
+                Assert.IsNull(imageView.GetNodeAt(new Point(sampleX, sampleImageY)), "未置中的原位應為空白");
+                Assert.AreSame(motor, imageView.GetNodeAt(new Point(sampleX, sampleImageY + offsetY)));
+                Assert.IsNull(imageView.GetExpanderAt(expanderCenter), "未置中的展開鈕原位不應命中");
+                Assert.AreSame(motor, imageView.GetExpanderAt(new Point(expanderCenter.X, expanderCenter.Y + offsetY)));
+
+                using (var rendered = new Bitmap(imageView.ClientSize.Width, imageView.ClientSize.Height))
+                {
+                    imageView.DrawToBitmap(rendered, new Rectangle(Point.Empty, imageView.ClientSize));
+                    Assert.AreEqual(imageView.BackColor.ToArgb(), rendered.GetPixel(sampleX, sampleImageY).ToArgb(), "上方空白區域應維持背景色");
+                    Assert.AreNotEqual(imageView.BackColor.ToArgb(), rendered.GetPixel(sampleX, sampleImageY + offsetY).ToArgb(), "置中位置應畫出節點底色");
+                }
+
+                form.ClientSize = new Size(imageSize.Width + 200, (imageSize.Height * 5) + 1);
+                var resizedOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - imageSize.Height) / 2f);
+                Assert.AreEqual(imageSize.Height * 2, resizedOffsetY);
+                Assert.IsNull(imageView.GetNodeAt(new Point(sampleX, sampleImageY + offsetY)), "調整大小後舊置中位置不應命中");
+                Assert.AreSame(motor, imageView.GetNodeAt(new Point(sampleX, sampleImageY + resizedOffsetY)));
+                Assert.AreSame(motor, imageView.GetExpanderAt(new Point(expanderCenter.X, expanderCenter.Y + resizedOffsetY)));
+            }
+        }
+
+        [TestMethod]
+        public void ActualSize_TallerThanClient_TopAlignedAndVerticalScrollWorks()
+        {
+            var tree = new MenuTree();
+            for (var i = 1; i <= 16; i++) tree.AddPath(new[] { $"Item{i}" });
+
+            var first = Find(tree, "Item1");
+            var last = Find(tree, "Item16");
+            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ShowInTaskbar = false })
+            using (var imageView = new CascadeDiagramView { Dock = DockStyle.Fill })
+            {
+                form.Controls.Add(imageView);
+                imageView.SetTree(tree);
+                Assert.IsTrue(imageView.Image.Height > 120);
+
+                form.ClientSize = new Size(imageView.Image.Width + 60, 120);
+                form.Show();
+
+                var firstLayout = LayoutNodeOf(imageView, tree, first);
+                var firstPoint = RoundPoint(new PointF(firstLayout.Bounds.Left + 4f, firstLayout.Bounds.Top + (firstLayout.Bounds.Height / 2f)));
+                Assert.AreEqual(Point.Empty, imageView.AutoScrollPosition);
+                Assert.AreSame(first, imageView.GetNodeAt(firstPoint), "圖高於可視區域時靠上對齊");
+
+                Assert.IsTrue(imageView.TrySelectNode(last));
+                Assert.IsTrue(imageView.AutoScrollPosition.Y < 0, "選取下方節點應觸發垂直捲動");
+
+                var lastLayout = LayoutNodeOf(imageView, tree, last);
+                var scrolledLastPoint = new Point(
+                    (int)System.Math.Round(lastLayout.Bounds.Left + 4f) + imageView.AutoScrollPosition.X,
+                    (int)System.Math.Round(lastLayout.Bounds.Top + (lastLayout.Bounds.Height / 2f)) + imageView.AutoScrollPosition.Y);
+                Assert.AreSame(last, imageView.GetNodeAt(scrolledLastPoint));
+            }
+        }
+
+        [TestMethod]
+        public void Zoom_WidthLimitedAndSmallerThanClient_LeftAlignedAndVerticallyCentered()
+        {
+            var tree = new MenuTree();
+            tree.AddPath(new[] { "Level1", "Level2", "Level3", "Level4", "Level5", "Level6" });
+            var level1 = Find(tree, "Level1");
+
+            using (var imageView = new CascadeDiagramView { SizeMode = CascadeDiagramSizeMode.Zoom })
+            {
+                imageView.SetTree(tree);
+                imageView.ExpandAll(level1);
+
+                var imageSize = imageView.Image.Size;
+                imageView.Size = new Size(imageSize.Width / 2, System.Math.Max(300, imageSize.Height * 4));
+
+                var scale = imageView.ClientSize.Width / (float)imageSize.Width;
+                var offsetY = (float)System.Math.Floor((imageView.ClientSize.Height - (imageSize.Height * scale)) / 2f);
+                Assert.IsTrue(scale < 1f && offsetY > 0f);
+
+                var l1Bounds = LayoutNodeOf(imageView, tree, level1).Bounds;
+                var scaledCenter = RoundPoint(new PointF(
+                    (l1Bounds.Left + (l1Bounds.Width / 2f)) * scale,
+                    ((l1Bounds.Top + (l1Bounds.Height / 2f)) * scale) + offsetY));
+                var unshiftedTop = RoundPoint(new PointF(
+                    (l1Bounds.Left + (l1Bounds.Width / 2f)) * scale,
+                    (l1Bounds.Top + (l1Bounds.Height / 2f)) * scale));
+
+                Assert.AreSame(level1, imageView.GetNodeAt(scaledCenter));
+                Assert.IsNull(imageView.GetNodeAt(unshiftedTop), "Zoom 模式高度小於可視區時應垂直置中而非靠上");
+
+                imageView.Size = new Size(imageSize.Width + 300, (imageSize.Height * 3) + 1);
+                var unscaledOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - imageSize.Height) / 2f);
+                var leftAlignedPoint = RoundPoint(new PointF(
+                    l1Bounds.Left + (l1Bounds.Width / 2f),
+                    l1Bounds.Top + (l1Bounds.Height / 2f) + unscaledOffsetY));
+                var horizontallyCenteredPoint = RoundPoint(new PointF(
+                    l1Bounds.Left + (l1Bounds.Width / 2f) + ((imageView.ClientSize.Width - imageSize.Width) / 2f),
+                    l1Bounds.Top + (l1Bounds.Height / 2f) + unscaledOffsetY));
+
+                Assert.AreSame(level1, imageView.GetNodeAt(leftAlignedPoint), "水平仍維持靠左對齊");
+                Assert.AreNotSame(level1, imageView.GetNodeAt(horizontallyCenteredPoint), "不應水平置中");
+            }
+        }
+
+        [TestMethod]
+        public void BeginRename_AlignsEditBoxWithVerticallyCenteredNode_AndRepositionsOnResize()
+        {
+            var tree = new MenuTree();
+            tree.AddPath(new[] { "Alpha" });
+            tree.AddPath(new[] { "Beta" });
+            var beta = Find(tree, "Beta");
+
+            using (var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000), ShowInTaskbar = false })
+            using (var imageView = new CascadeDiagramView { Dock = DockStyle.Fill, ReadOnly = false })
+            {
+                form.Controls.Add(imageView);
+                imageView.SetTree(tree);
+                var imageSize = imageView.Image.Size;
+                form.ClientSize = new Size(imageSize.Width + 200, imageSize.Height + 160);
+                form.Show();
+
+                Assert.IsTrue(imageView.TrySelectNode(beta));
+                Assert.IsTrue(imageView.BeginRename());
+
+                var editBox = imageView.Controls.OfType<TextBox>().Single();
+                var betaBounds = LayoutNodeOf(imageView, tree, beta).Bounds;
+                var initialOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - imageSize.Height) / 2f);
+
+                Assert.AreEqual(betaBounds.Left, editBox.Left, 1);
+                Assert.AreEqual(betaBounds.Top + (betaBounds.Height / 2f) + initialOffsetY, editBox.Top + (editBox.Height / 2f), 2);
+
+                form.ClientSize = new Size(imageSize.Width + 200, imageSize.Height + 260);
+                var resizedOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - imageSize.Height) / 2f);
+
+                Assert.IsTrue(imageView.IsEditing);
+                Assert.AreEqual(betaBounds.Left, editBox.Left, 1);
+                Assert.AreEqual(betaBounds.Top + (betaBounds.Height / 2f) + resizedOffsetY, editBox.Top + (editBox.Height / 2f), 2);
+            }
+        }
+
+        [TestMethod]
+        public void ToImagePoint_ReflectsVerticalCenteringInActualSizeAndZoom()
+        {
+            var tree = new MenuTree();
+            tree.AddPath(new[] { "L1", "L2", "L3", "L4", "L5" });
+
+            using (var imageView = new ProbeImageView())
+            {
+                imageView.SetTree(tree);
+                imageView.ExpandAll(Find(tree, "L1"));
+
+                var imageSize = imageView.Image.Size;
+                imageView.Size = new Size(imageSize.Width + 100, imageSize.Height + 101);
+                var actualOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - imageSize.Height) / 2f);
+                var actualPoint = imageView.ImagePointOf(new Point(24, 18 + actualOffsetY));
+                Assert.AreEqual(24f, actualPoint.X, 0.01f);
+                Assert.AreEqual(18f, actualPoint.Y, 0.01f);
+
+                imageView.SizeMode = CascadeDiagramSizeMode.Zoom;
+                imageView.Size = new Size(imageSize.Width / 2, System.Math.Max(300, imageSize.Height * 4));
+                var scale = imageView.ClientSize.Width / (float)imageSize.Width;
+                var zoomOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - (imageSize.Height * scale)) / 2f);
+                Assert.IsTrue(scale < 1f && zoomOffsetY > 0);
+
+                var zoomPoint = imageView.ImagePointOf(new Point(40, zoomOffsetY + 10));
+                Assert.AreEqual(40f / scale, zoomPoint.X, 0.01f);
+                Assert.AreEqual(10f / scale, zoomPoint.Y, 0.01f);
             }
         }
 

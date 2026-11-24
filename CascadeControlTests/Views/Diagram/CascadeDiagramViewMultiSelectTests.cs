@@ -586,14 +586,19 @@ namespace CascadeControlTests.Views.Diagram
             {
                 var normal = f.BoundsOf("B");
                 var normalWidth = f.View.Image.Width;
+                var normalOffsetY = Math.Max(0, (int)Math.Floor((f.View.ClientSize.Height - f.View.Image.Height) / 2f));
+                var normalImageTop = normal.Top - normalOffsetY;
 
                 f.View.ZoomFactor = 2f;
 
                 var zoomed = f.BoundsOf("B");
+                var zoomedOffsetY = Math.Max(0, (int)Math.Floor((f.View.ClientSize.Height - f.View.Image.Height) / 2f));
                 Assert.AreEqual(normal.Width * 2, zoomed.Width, 2);
                 Assert.AreEqual(normal.Height * 2, zoomed.Height, 2);
                 Assert.AreEqual(normalWidth * 2, f.View.Image.Width, 2);
-                Assert.AreSame(f.Node("B"), f.View.GetNodeAt(new Point(normal.Left * 2 + 1, normal.Top * 2 + 1)));
+                Assert.AreEqual(normal.Left * 2, zoomed.Left, 2);
+                Assert.AreEqual((normalImageTop * 2) + zoomedOffsetY, zoomed.Top, 2);
+                Assert.AreSame(f.Node("B"), f.View.GetNodeAt(new Point(zoomed.Left + 1, zoomed.Top + 1)));
             }
         }
 
