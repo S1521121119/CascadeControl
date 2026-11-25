@@ -83,7 +83,7 @@
             this.mnuFileSep1,
             this.mnuFileExit});
             this.mnuFile.Name = "mnuFile";
-            this.mnuFile.Size = new System.Drawing.Size(55, 30);
+            this.mnuFile.Size = new System.Drawing.Size(55, 32);
             this.mnuFile.Text = "&File";
             // 
             // mnuFileNew
@@ -145,7 +145,7 @@
             this.mnuEditSep2,
             this.mnuEditInsert});
             this.mnuEdit.Name = "mnuEdit";
-            this.mnuEdit.Size = new System.Drawing.Size(59, 30);
+            this.mnuEdit.Size = new System.Drawing.Size(59, 32);
             this.mnuEdit.Text = "&Edit";
             this.mnuEdit.DropDownOpening += new System.EventHandler(this.MnuEdit_DropDownOpening);
             // 
@@ -230,7 +230,7 @@
             this.mnuViewZoomOut,
             this.mnuViewResetZoom});
             this.mnuView.Name = "mnuView";
-            this.mnuView.Size = new System.Drawing.Size(67, 30);
+            this.mnuView.Size = new System.Drawing.Size(67, 32);
             this.mnuView.Text = "&View";
             // 
             // mnuViewZoomIn
@@ -238,7 +238,7 @@
             this.mnuViewZoomIn.Name = "mnuViewZoomIn";
             this.mnuViewZoomIn.ShortcutKeyDisplayString = "Ctrl++";
             this.mnuViewZoomIn.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Oemplus)));
-            this.mnuViewZoomIn.Size = new System.Drawing.Size(260, 34);
+            this.mnuViewZoomIn.Size = new System.Drawing.Size(339, 34);
             this.mnuViewZoomIn.Text = "Zoom &In";
             this.mnuViewZoomIn.Click += new System.EventHandler(this.MnuViewZoomIn_Click);
             // 
@@ -247,7 +247,7 @@
             this.mnuViewZoomOut.Name = "mnuViewZoomOut";
             this.mnuViewZoomOut.ShortcutKeyDisplayString = "Ctrl+-";
             this.mnuViewZoomOut.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.OemMinus)));
-            this.mnuViewZoomOut.Size = new System.Drawing.Size(260, 34);
+            this.mnuViewZoomOut.Size = new System.Drawing.Size(339, 34);
             this.mnuViewZoomOut.Text = "Zoom &Out";
             this.mnuViewZoomOut.Click += new System.EventHandler(this.MnuViewZoomOut_Click);
             // 
@@ -255,6 +255,7 @@
             // 
             this.mnuViewResetZoom.Name = "mnuViewResetZoom";
             this.mnuViewResetZoom.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.D0)));
+            this.mnuViewResetZoom.Size = new System.Drawing.Size(339, 34);
             this.mnuViewResetZoom.Text = "&Reset Zoom (100%)";
             this.mnuViewResetZoom.Click += new System.EventHandler(this.MnuViewResetZoom_Click);
             // 
@@ -290,8 +291,9 @@
             this.diagramView1.AutoScrollMinSize = new System.Drawing.Size(1, 1);
             this.diagramView1.BackColor = System.Drawing.Color.White;
             this.diagramView1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.diagramView1.Font = new System.Drawing.Font("Consolas", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.diagramView1.Location = new System.Drawing.Point(0, 36);
-            this.diagramView1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.diagramView1.Margin = new System.Windows.Forms.Padding(4);
             this.diagramView1.Name = "diagramView1";
             this.diagramView1.ReadOnly = false;
             this.diagramView1.Size = new System.Drawing.Size(1176, 772);
@@ -308,7 +310,7 @@
             this.Controls.Add(this.ssStatus);
             this.Controls.Add(this.msMenu);
             this.MainMenuStrip = this.msMenu;
-            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "MainForm";
             this.Text = "MindMap";
             this.msMenu.ResumeLayout(false);
