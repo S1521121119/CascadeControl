@@ -219,6 +219,7 @@ namespace CascadeControlTests.Views.Diagram
                 var box = f.EditBox();
                 Assert.AreEqual("A1", box.Text, "編輯框一開始是原本的名稱");
                 Assert.AreSame(a1, f.View.GetNodeAt(new System.Drawing.Point(box.Left + 2, box.Top + (box.Height / 2))), "編輯框蓋在節點方塊上");
+                Assert.AreEqual(f.Bounds(a1).Size, box.Size, "編輯框和節點方塊一樣大");
 
                 box.Text = "Z";
                 f.View.EndEdit(commit: true);
@@ -389,6 +390,8 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.IsTrue(f.View.IsEditing);
                 var box = f.EditBox();
                 Assert.IsTrue(box.Left > f.Bounds(b).Right, "空白方塊在 B 的下一欄");
+                Assert.AreEqual(f.Bounds(b).Height, box.Height, "編輯框和方塊一樣高，蓋住虛線框");
+                Assert.IsTrue(box.Width > box.Height * 2, "空白方塊留了打字的寬度");
 
                 box.Text = "B1";
                 f.View.EndEdit(commit: true);

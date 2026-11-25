@@ -41,6 +41,9 @@ namespace CascadeControl.Views.Diagram
         private const float MIN_LEVEL_GAP = 40f;
         private const float CORNER_RADIUS = 6f;
 
+        // 佔位方塊的名稱寬度（幾個行高），隨字型縮放。
+        private const float PLACEHOLDER_NAME_LINES = 4f;
+
         // GDI+ 的 Bitmap 單邊太大會配置失敗；超過時整張等比例縮小。
         private const float MAX_BITMAP_SIDE = 16000f;
 
@@ -613,7 +616,9 @@ namespace CascadeControl.Views.Diagram
                 hasExpanders[node.Level] |= HasExpander(node);
 
                 if (showIndex) numberWidths[node.Level] = Math.Max(numberWidths[node.Level], (float)Math.Ceiling(MeasureWidth(g, font, format, NumberText(node))));
-                nameWidths[node.Level] = Math.Max(nameWidths[node.Level], (float)Math.Ceiling(MeasureWidth(g, font, format, NameText(node))));
+                // 佔位方塊沒有名稱，留 PLACEHOLDER_NAME_LINES 個行高的寬度給蓋在上面的編輯框輸入。
+                var nameWidth = node.IsPlaceholder ? lineHeight * PLACEHOLDER_NAME_LINES : MeasureWidth(g, font, format, NameText(node));
+                nameWidths[node.Level] = Math.Max(nameWidths[node.Level], (float)Math.Ceiling(nameWidth));
             }
 
             var levelCount = numberWidths.Count;

@@ -271,9 +271,6 @@ namespace CascadeControl.Views.Diagram
 
         #region 就地編輯
 
-        // 編輯框最窄的寬度：方塊縮得很小（自動縮放）時還打得下字。
-        private const int MIN_EDIT_BOX_WIDTH = 80;
-
         // 編輯的對象要是選取的節點（插入時是插在它旁邊的那個）：選取改了會重畫，之後才算得出方塊的位置。
 
         private bool BeginInsert(MenuNode anchor, bool before)
@@ -321,6 +318,7 @@ namespace CascadeControl.Views.Diagram
                 Font = _zoomFactor == 1f ? Font : new Font(Font.FontFamily, Font.Size * _zoomFactor, Font.Style, Font.Unit),
                 Text = text,
                 ImeMode = ImeMode.NoControl,
+                AutoSize = false,
             };
         }
 
@@ -360,9 +358,8 @@ namespace CascadeControl.Views.Diagram
                 return;
             }
 
-            var height = session.Box.PreferredHeight;
-            var width = Math.Max(MIN_EDIT_BOX_WIDTH, bounds.Width);
-            session.Box.Bounds = new Rectangle(bounds.Left, bounds.Top + ((bounds.Height - height) / 2), width, height);
+            // 和方塊一樣大，蓋住佔位方塊的虛線框；單行 TextBox 要關掉 AutoSize 才能指定高度。
+            session.Box.Bounds = bounds;
         }
 
         // 焦點離開編輯框（Tab、點了表單上的其他控制項、切到別的程式）就套用；等這一輪訊息處理完再做，不在焦點切換的當下改樹。
