@@ -185,6 +185,26 @@ namespace CascadeControlTests.Views.Diagram
             }
         }
 
+        [TestMethod]
+        public void RenderImage_ShowIndex_WidensNodeBoundsOnlyWhenEnabled()
+        {
+            var tree = TestTrees.Template();
+            var system = Find(tree, "System");
+
+            using (var defaultImage = TreeDrawer.RenderImage(tree, SystemFonts.DefaultFont))
+            using (var hiddenIndex = TreeDrawer.RenderImage(tree, SystemFonts.DefaultFont, showIndex: false))
+            using (var shownIndex = TreeDrawer.RenderImage(tree, SystemFonts.DefaultFont, showIndex: true))
+            {
+                var defaultBounds = defaultImage.Nodes.Single(node => ReferenceEquals(node.Node, system)).Bounds;
+                var hiddenBounds = hiddenIndex.Nodes.Single(node => ReferenceEquals(node.Node, system)).Bounds;
+                var shownBounds = shownIndex.Nodes.Single(node => ReferenceEquals(node.Node, system)).Bounds;
+
+                Assert.AreEqual(hiddenBounds, defaultBounds, "預設不顯示編號");
+                Assert.IsTrue(shownBounds.Width > defaultBounds.Width, "showIndex: true 時節點方塊要容納編號而變寬");
+                Assert.IsTrue(shownIndex.Image.Width > defaultImage.Image.Width);
+            }
+        }
+
         #endregion TreeDrawer
 
         #region CascadeDiagramView
@@ -295,6 +315,13 @@ namespace CascadeControlTests.Views.Diagram
         {
             public void Press(Keys key) => OnKeyDown(new KeyEventArgs(key));
 
+            public KeyEventArgs PressKey(Keys key)
+            {
+                var args = new KeyEventArgs(key);
+                OnKeyDown(args);
+                return args;
+            }
+
             public void PressChar(char keyChar) => OnKeyPress(new KeyPressEventArgs(keyChar));
 
             public void ClickAt(Point location, MouseButtons button = MouseButtons.Left) =>
@@ -312,7 +339,7 @@ namespace CascadeControlTests.Views.Diagram
         {
             var checkSet = (imageView.State as CascadeCheckableState)?.CheckSet;
             var isChecked = checkSet == null ? (System.Func<MenuNode, bool>)null : checkSet.IsChecked;
-            using (var layout = TreeDrawer.RenderImage(tree, imageView.Font, isChecked, imageView.DrawScope, imageView.UncheckedDisplay, imageView.SelectedNode as MenuNode, imageView.IsExpanded))
+            using (var layout = TreeDrawer.RenderImage(tree, imageView.Font, isChecked, imageView.DrawScope, imageView.UncheckedDisplay, imageView.SelectedNode as MenuNode, imageView.IsExpanded, imageView.ShowIndex))
             {
                 return layout.Nodes.Single(node => ReferenceEquals(node.Node, target));
             }
@@ -970,7 +997,7 @@ namespace CascadeControlTests.Views.Diagram
             var tree = new MenuTree();
             for (var i = 1; i <= 24; i++) tree.AddPath(new[] { "Root", $"N{i}" });
 
-            using (var imageView = new ProbeImageView())
+            using (var imageView = new ProbeImageView { ShowIndex = true })
             {
                 imageView.SetTree(tree);
                 var root = Find(tree, "Root");
@@ -1009,7 +1036,7 @@ namespace CascadeControlTests.Views.Diagram
         public void DigitJump_NoSelectionJumpsTopLevel_SkipsUndrawnSiblings()
         {
             var tree = TestTrees.Template();
-            using (var imageView = new ProbeImageView { ShowChecks = true, UncheckedDisplay = CascadeDiagramUncheckedDisplay.Hidden })
+            using (var imageView = new ProbeImageView { ShowChecks = true, ShowIndex = true, UncheckedDisplay = CascadeDiagramUncheckedDisplay.Hidden })
             {
                 imageView.SetTree(tree);
                 var checkSet = ((CascadeCheckableState)imageView.State).CheckSet;
@@ -1026,6 +1053,89 @@ namespace CascadeControlTests.Views.Diagram
 
                 imageView.Press(Keys.D1);
                 Assert.AreSame(system, imageView.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void ShowIndex_DefaultsFalse_IgnoresDigitKeysAndDrawsNarrowerNodes()
+        {
+            var tree = TestTrees.Template();
+            var system = Find(tree, "System");
+            using (var imageView = new ProbeImageView())
+            {
+                Assert.IsFalse(imageView.ShowIndex, "ShowIndex 預設為 false");
+                imageView.SetTree(tree);
+
+                var topDigit = imageView.PressKey(Keys.D2);
+                Assert.IsNull(imageView.SelectedNode);
+                Assert.IsFalse(topDigit.Handled);
+                Assert.IsFalse(topDigit.SuppressKeyPress);
+
+                imageView.TrySelectNode(system);
+                var padDigit = imageView.PressKey(Keys.NumPad2);
+                Assert.AreSame(system, imageView.SelectedNode);
+                Assert.IsFalse(padDigit.Handled);
+                Assert.IsFalse(padDigit.SuppressKeyPress);
+
+                var hiddenImageWidth = imageView.Image.Width;
+                var hiddenNodeWidth = LayoutNodeOf(imageView, tree, system).Bounds.Width;
+
+                imageView.ShowIndex = true;
+                var shownImageWidth = imageView.Image.Width;
+                var shownNodeWidth = LayoutNodeOf(imageView, tree, system).Bounds.Width;
+
+                Assert.IsTrue(hiddenNodeWidth < shownNodeWidth, "ShowIndex 關閉時節點較窄");
+                Assert.IsTrue(hiddenImageWidth < shownImageWidth);
+            }
+        }
+
+        [TestMethod]
+        public void ShowIndex_Toggle_RaisesDrawSettingsChanged_WidensBounds_AndResetsDigitBuffer()
+        {
+            var tree = new MenuTree();
+            for (var i = 1; i <= 15; i++) tree.AddPath(new[] { "Root", $"N{i}" });
+            var root = Find(tree, "Root");
+            var n1 = Find(tree, "Root", "N1");
+            var n2 = Find(tree, "Root", "N2");
+            var n5 = Find(tree, "Root", "N5");
+
+            using (var imageView = new ProbeImageView())
+            {
+                var settingsChanged = 0;
+                imageView.DrawSettingsChanged += (sender, e) => settingsChanged++;
+
+                imageView.SetTree(tree);
+                imageView.SetExpanded(root, true);
+                imageView.TrySelectNode(n5);
+
+                var narrowImageWidth = imageView.Image.Width;
+                var narrowNodeWidth = LayoutNodeOf(imageView, tree, n1).Bounds.Width;
+
+                imageView.ShowIndex = false;
+                Assert.AreEqual(0, settingsChanged, "值未改變不觸發 DrawSettingsChanged");
+
+                imageView.ShowIndex = true;
+                Assert.AreEqual(1, settingsChanged);
+                Assert.IsTrue(imageView.Image.Width > narrowImageWidth);
+                Assert.IsTrue(LayoutNodeOf(imageView, tree, n1).Bounds.Width > narrowNodeWidth);
+
+                var firstDigit = imageView.PressKey(Keys.D1);
+                Assert.IsTrue(firstDigit.Handled);
+                Assert.AreSame(n1, imageView.SelectedNode);
+
+                imageView.ShowIndex = false;
+                Assert.AreEqual(2, settingsChanged);
+                Assert.AreEqual(narrowImageWidth, imageView.Image.Width);
+                Assert.AreEqual(narrowNodeWidth, LayoutNodeOf(imageView, tree, n1).Bounds.Width);
+
+                var ignoredDigit = imageView.PressKey(Keys.D2);
+                Assert.IsFalse(ignoredDigit.Handled);
+                Assert.AreSame(n1, imageView.SelectedNode);
+
+                imageView.ShowIndex = true;
+                Assert.AreEqual(3, settingsChanged);
+                imageView.Press(Keys.D2);
+                Assert.AreSame(n2, imageView.SelectedNode, "關閉 ShowIndex 時已清空前次緩衝的 1，重開後按 2 應跳到第 2 項而非第 12 項");
             }
         }
 

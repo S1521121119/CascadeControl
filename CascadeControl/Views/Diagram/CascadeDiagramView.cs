@@ -55,6 +55,7 @@ namespace CascadeControl.Views.Diagram
         private CascadeDiagramDrawScope _drawScope = CascadeDiagramDrawScope.WholeTree;
         private CascadeDiagramUncheckedDisplay _uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed;
         private bool _showChecks;
+        private bool _showIndex;
         private CascadeDiagramSizeMode _sizeMode = CascadeDiagramSizeMode.ActualSize;
         private float _zoomFactor = 1f;
 
@@ -221,6 +222,25 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
+        /// 是否在節點名稱前顯示同層編號（如 &lt;1&gt;）並啟用數字鍵跳轉；預設為 false。
+        /// </summary>
+        [Category("Cascade")]
+        [Description("true：在節點名稱前顯示同層編號並啟用數字鍵跳轉；false：只顯示節點名稱並停用數字鍵跳轉。")]
+        [DefaultValue(false)]
+        public bool ShowIndex
+        {
+            get => _showIndex;
+            set
+            {
+                if (_showIndex == value) return;
+                _showIndex = value;
+                if (!value) ResetDigitJump();
+                Redraw();
+                OnDrawSettingsChanged(EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
         /// <see cref="ShowChecks"/> 為 true 且有勾選資訊時，沒勾的節點怎麼呈現。
         /// </summary>
         [Category("Cascade")]
@@ -347,7 +367,7 @@ namespace CascadeControl.Views.Diagram
         public event EventHandler<CascadeNodeEventArgs> NodeActivated;
 
         /// <summary>
-        /// <see cref="DrawScope"/>、<see cref="ShowChecks"/>、<see cref="UncheckedDisplay"/> 或 <see cref="SizeMode"/> 改變後觸發，包含從右鍵功能表切換。
+        /// <see cref="DrawScope"/>、<see cref="ShowChecks"/>、<see cref="ShowIndex"/>、<see cref="UncheckedDisplay"/>、<see cref="SizeMode"/> 或 <see cref="ZoomFactor"/> 改變後觸發，包含從右鍵功能表切換。
         /// </summary>
         [Category("Cascade")]
         public event EventHandler DrawSettingsChanged;

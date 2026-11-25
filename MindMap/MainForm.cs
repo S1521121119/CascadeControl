@@ -266,11 +266,18 @@ namespace MindMap
 
         #region 功能表：View
 
+        private void MnuView_DropDownOpening(object sender, EventArgs e)
+        {
+            mnuViewShowIndex.Checked = diagramView1.ShowIndex;
+        }
+
         private void MnuViewZoomIn_Click(object sender, EventArgs e) => diagramView1.ZoomIn();
 
         private void MnuViewZoomOut_Click(object sender, EventArgs e) => diagramView1.ZoomOut();
 
         private void MnuViewResetZoom_Click(object sender, EventArgs e) => diagramView1.ResetZoom();
+
+        private void MnuViewShowIndex_Click(object sender, EventArgs e) => diagramView1.ShowIndex = !diagramView1.ShowIndex;
 
         #endregion 功能表：View
     }

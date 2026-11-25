@@ -52,6 +52,8 @@
             this.mnuViewZoomIn = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuViewZoomOut = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuViewResetZoom = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuViewSep1 = new System.Windows.Forms.ToolStripSeparator();
+            this.mnuViewShowIndex = new System.Windows.Forms.ToolStripMenuItem();
             this.ssStatus = new System.Windows.Forms.StatusStrip();
             this.lblTreeInfo = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblZoom = new System.Windows.Forms.ToolStripStatusLabel();
@@ -228,10 +230,13 @@
             this.mnuView.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.mnuViewZoomIn,
             this.mnuViewZoomOut,
-            this.mnuViewResetZoom});
+            this.mnuViewResetZoom,
+            this.mnuViewSep1,
+            this.mnuViewShowIndex});
             this.mnuView.Name = "mnuView";
             this.mnuView.Size = new System.Drawing.Size(67, 32);
             this.mnuView.Text = "&View";
+            this.mnuView.DropDownOpening += new System.EventHandler(this.MnuView_DropDownOpening);
             // 
             // mnuViewZoomIn
             // 
@@ -258,6 +263,18 @@
             this.mnuViewResetZoom.Size = new System.Drawing.Size(339, 34);
             this.mnuViewResetZoom.Text = "&Reset Zoom (100%)";
             this.mnuViewResetZoom.Click += new System.EventHandler(this.MnuViewResetZoom_Click);
+            // 
+            // mnuViewSep1
+            // 
+            this.mnuViewSep1.Name = "mnuViewSep1";
+            this.mnuViewSep1.Size = new System.Drawing.Size(336, 6);
+            // 
+            // mnuViewShowIndex
+            // 
+            this.mnuViewShowIndex.Name = "mnuViewShowIndex";
+            this.mnuViewShowIndex.Size = new System.Drawing.Size(339, 34);
+            this.mnuViewShowIndex.Text = "&Show Index";
+            this.mnuViewShowIndex.Click += new System.EventHandler(this.MnuViewShowIndex_Click);
             // 
             // ssStatus
             // 
@@ -347,6 +364,8 @@
         private System.Windows.Forms.ToolStripMenuItem mnuViewZoomIn;
         private System.Windows.Forms.ToolStripMenuItem mnuViewZoomOut;
         private System.Windows.Forms.ToolStripMenuItem mnuViewResetZoom;
+        private System.Windows.Forms.ToolStripSeparator mnuViewSep1;
+        private System.Windows.Forms.ToolStripMenuItem mnuViewShowIndex;
         private System.Windows.Forms.StatusStrip ssStatus;
         private System.Windows.Forms.ToolStripStatusLabel lblTreeInfo;
         private System.Windows.Forms.ToolStripStatusLabel lblZoom;

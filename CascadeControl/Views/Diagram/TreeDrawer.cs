@@ -11,13 +11,13 @@ using System.Windows.Forms;
 namespace CascadeControl.Views.Diagram
 {
     /// <summary>
-    /// 把 <see cref="MenuTree"/> 畫成由左到右展開的樹：一層一欄，節點是方塊（一行：編號在前、名稱在後，都靠左），
+    /// 把 <see cref="MenuTree"/> 畫成由左到右展開的樹：一層一欄，節點是方塊（一行靠左，顯示名稱；開啟編號時在名稱前加上同層編號），
     /// 父子之間用貝茲曲線連接。
     /// </summary>
     /// <remarks>
     /// 有子節點的畫圓角長方形，方塊內的最右邊畫一個正方形的展開鈕（該層因此加寬）：收合時是 [+]、子節點不畫，展開時是 [-]；
-    /// 葉節點畫直角長方形。畫整棵樹時第一層的節點各自從最左欄開始，不另外畫 Root 把它們接起來。同一層的方塊等寬，寬度依字型量出該層最長的編號與名稱決定，且不小於高度；
-    /// 同一層的名稱從同一個位置開始，編號位數不同也對得齊。
+    /// 葉節點畫直角長方形。畫整棵樹時第一層的節點各自從最左欄開始，不另外畫 Root 把它們接起來。同一層的方塊等寬，寬度依字型量出該層最長的名稱（顯示編號時含最長編號）決定，且不小於高度；
+    /// 顯示編號時同一層的名稱從同一個位置開始，編號位數不同也對得齊。
     /// 圖照實際大小畫，不會為了塞進控制項而縮小；放不下時由外層的捲動容器處理。
     /// <para>
     /// 上色分三件事，彼此不衝突：
@@ -209,6 +209,7 @@ namespace CascadeControl.Views.Diagram
         /// <see cref="CascadeDiagramDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
+        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;）；預設為 false。</param>
         public static void Draw(
             PictureBox pictureBox,
             MenuTree tree,
@@ -216,11 +217,12 @@ namespace CascadeControl.Views.Diagram
             CascadeDiagramDrawScope scope = CascadeDiagramDrawScope.WholeTree,
             CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed,
             MenuNode selectedNode = null,
-            Func<MenuNode, bool> isExpanded = null)
+            Func<MenuNode, bool> isExpanded = null,
+            bool showIndex = false)
         {
             if (pictureBox == null) throw new ArgumentNullException(nameof(pictureBox));
 
-            var bitmap = Render(tree, pictureBox.Font ?? SystemFonts.DefaultFont, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded);
+            var bitmap = Render(tree, pictureBox.Font ?? SystemFonts.DefaultFont, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded, showIndex);
 
             var oldImage = pictureBox.Image;
             pictureBox.Image = bitmap;
@@ -242,6 +244,7 @@ namespace CascadeControl.Views.Diagram
         /// <see cref="CascadeDiagramDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
+        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;）；預設為 false。</param>
         public static Bitmap Render(
             MenuTree tree,
             Font font,
@@ -249,9 +252,10 @@ namespace CascadeControl.Views.Diagram
             CascadeDiagramDrawScope scope = CascadeDiagramDrawScope.WholeTree,
             CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed,
             MenuNode selectedNode = null,
-            Func<MenuNode, bool> isExpanded = null)
+            Func<MenuNode, bool> isExpanded = null,
+            bool showIndex = false)
         {
-            return RenderImage(tree, font, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded).Image;
+            return RenderImage(tree, font, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded, showIndex).Image;
         }
 
         /// <summary>
@@ -264,6 +268,7 @@ namespace CascadeControl.Views.Diagram
         /// <param name="uncheckedDisplay">有勾選資訊時，沒勾的節點怎麼呈現。</param>
         /// <param name="selectedNode">目前選取的節點，規則同 <see cref="Render"/>。</param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
+        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;）；預設為 false。</param>
         /// <returns>圖與節點位置；用完要 Dispose。</returns>
         public static TreeImage RenderImage(
             MenuTree tree,
@@ -272,9 +277,10 @@ namespace CascadeControl.Views.Diagram
             CascadeDiagramDrawScope scope = CascadeDiagramDrawScope.WholeTree,
             CascadeDiagramUncheckedDisplay uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed,
             MenuNode selectedNode = null,
-            Func<MenuNode, bool> isExpanded = null)
+            Func<MenuNode, bool> isExpanded = null,
+            bool showIndex = false)
         {
-            return RenderImageWithPlaceholder(tree, font, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded, placeholder: null);
+            return RenderImageWithPlaceholder(tree, font, isChecked, scope, uncheckedDisplay, selectedNode, isExpanded, placeholder: null, showIndex: showIndex);
         }
 
         /// <summary>
@@ -290,7 +296,8 @@ namespace CascadeControl.Views.Diagram
             Func<MenuNode, bool> isExpanded,
             Placeholder placeholder,
             MovePreview preview = null,
-            float zoom = 1f)
+            float zoom = 1f,
+            bool showIndex = false)
         {
             font = font ?? SystemFonts.DefaultFont;
             if (tree == null || !BelongsTo(selectedNode, tree)) selectedNode = null;
@@ -326,7 +333,7 @@ namespace CascadeControl.Views.Diagram
                 using (var scratch = new Bitmap(1, 1))
                 using (var g = Graphics.FromImage(scratch))
                 {
-                    size = Arrange(g, font, format, roots, nodes);
+                    size = Arrange(g, font, format, roots, nodes, showIndex);
                 }
 
                 var scale = Math.Min(zoom, Math.Min(MAX_BITMAP_SIDE / size.Width, MAX_BITMAP_SIDE / size.Height));
@@ -342,9 +349,9 @@ namespace CascadeControl.Views.Diagram
                     if (scale != 1f) g.ScaleTransform(scale, scale);
 
                     DrawLinks(g, nodes, showChecks, ghost: false);
-                    foreach (var node in nodes.Where(node => !node.IsGhost)) DrawNode(g, font, format, node, showChecks);
+                    foreach (var node in nodes.Where(node => !node.IsGhost)) DrawNode(g, font, format, node, showChecks, showIndex);
 
-                    if (nodes.Any(node => node.IsGhost)) DrawGhosts(g, bitmap.Size, scale, font, format, nodes, showChecks);
+                    if (nodes.Any(node => node.IsGhost)) DrawGhosts(g, bitmap.Size, scale, font, format, nodes, showChecks, showIndex);
                 }
 
                 var hitNodes = nodes
@@ -585,20 +592,12 @@ namespace CascadeControl.Views.Diagram
 
         #region 排版
 
-        /// <summary>
-        /// 算出每個方塊的位置與大小，回傳整張圖需要的尺寸。
-        /// </summary>
-        /// <remarks>
-        /// 垂直方向：每個沒有子節點可畫的方塊各佔一列，父節點置中對齊第一個與最後一個子節點，所以不會重疊。
-        /// 水平方向：一層一欄，欄寬是該層最寬的編號加上最寬的名稱再加內距，且不小於方塊高度。
-        /// </remarks>
-        private static SizeF Arrange(Graphics g, Font font, StringFormat format, List<LayoutNode> roots, List<LayoutNode> nodes)
+        private static SizeF Arrange(Graphics g, Font font, StringFormat format, List<LayoutNode> roots, List<LayoutNode> nodes, bool showIndex)
         {
             var lineHeight = (float)Math.Ceiling(font.GetHeight(g));
             var boxHeight = lineHeight + PADDING_Y * 2f;
             var levelGap = Math.Max(MIN_LEVEL_GAP, boxHeight);
 
-            // 每一層最寬的編號與最寬的名稱分開量，名稱才能從同一個位置開始；該層有任何節點要畫 [+] 時，整層都留它的位置。
             var numberWidths = new List<float>();
             var nameWidths = new List<float>();
             var hasExpanders = new List<bool>();
@@ -613,7 +612,7 @@ namespace CascadeControl.Views.Diagram
 
                 hasExpanders[node.Level] |= HasExpander(node);
 
-                numberWidths[node.Level] = Math.Max(numberWidths[node.Level], (float)Math.Ceiling(MeasureWidth(g, font, format, NumberText(node))));
+                if (showIndex) numberWidths[node.Level] = Math.Max(numberWidths[node.Level], (float)Math.Ceiling(MeasureWidth(g, font, format, NumberText(node))));
                 nameWidths[node.Level] = Math.Max(nameWidths[node.Level], (float)Math.Ceiling(MeasureWidth(g, font, format, NameText(node))));
             }
 
@@ -723,7 +722,7 @@ namespace CascadeControl.Views.Diagram
         /// 選取的節點照樣畫原本的外框，再往外留 <see cref="SELECTED_BORDER_GAP"/> 的空隙另外畫一圈矩形紅框，不蓋住原本的外框；
         /// 預覽移動時會被移走的節點：底色往白色調淡 <see cref="LEAVING_FADE"/>，外框與文字用灰色，外框是虛線，不畫選取框。
         /// </remarks>
-        private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks, bool drawSelectionFrame = true)
+        private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks, bool showIndex, bool drawSelectionFrame = true)
         {
             var back = LevelColor(node);
             var border = Darken(back, BORDER_LIGHTNESS_RATIO);
@@ -775,8 +774,11 @@ namespace CascadeControl.Views.Diagram
                     g.DrawRectangle(borderPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
                 }
 
-                var numberLeft = bounds.Left + PADDING_X;
-                g.DrawString(NumberText(node), font, foreBrush, new RectangleF(numberLeft, bounds.Top, node.NameLeft - numberLeft, bounds.Height), format);
+                if (showIndex)
+                {
+                    var numberLeft = bounds.Left + PADDING_X;
+                    g.DrawString(NumberText(node), font, foreBrush, new RectangleF(numberLeft, bounds.Top, node.NameLeft - numberLeft, bounds.Height), format);
+                }
 
                 var nameRight = HasExpander(node) ? ExpanderBounds(node).Left - EXPANDER_GAP : bounds.Right - PADDING_X;
                 g.DrawString(NameText(node), font, foreBrush, new RectangleF(node.NameLeft, bounds.Top, nameRight - node.NameLeft, bounds.Height), format);
@@ -822,7 +824,7 @@ namespace CascadeControl.Views.Diagram
         /// <summary>
         /// 預覽移動的節點與通往它們的連線先畫在一張透明圖上，再以 <see cref="GHOST_OPACITY"/> 疊上去：整組一起變淡，重疊的地方不會更深。
         /// </summary>
-        private static void DrawGhosts(Graphics g, Size size, float scale, Font font, StringFormat format, List<LayoutNode> nodes, bool showChecks)
+        private static void DrawGhosts(Graphics g, Size size, float scale, Font font, StringFormat format, List<LayoutNode> nodes, bool showChecks, bool showIndex)
         {
             using (var layer = new Bitmap(size.Width, size.Height))
             {
@@ -833,7 +835,7 @@ namespace CascadeControl.Views.Diagram
                     if (scale != 1f) lg.ScaleTransform(scale, scale);
 
                     DrawLinks(lg, nodes, showChecks, ghost: true);
-                    foreach (var node in nodes.Where(node => node.IsGhost)) DrawNode(lg, font, format, node, showChecks, drawSelectionFrame: false);
+                    foreach (var node in nodes.Where(node => node.IsGhost)) DrawNode(lg, font, format, node, showChecks, showIndex, drawSelectionFrame: false);
                 }
 
                 using (var attributes = new ImageAttributes())

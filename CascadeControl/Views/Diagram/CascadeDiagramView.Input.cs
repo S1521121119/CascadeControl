@@ -141,7 +141,7 @@ namespace CascadeControl.Views.Diagram
 
         /// <summary>
         /// ↑↓ 在圖上看得到的同一層節點之間移動（可以跨父節點）；← 退回上一層、→ 進入下一層（記憶與 <see cref="State"/> 共用）；
-        /// 空白鍵展開或收合選取的節點；* 展開選取節點與其全部子孫；數字鍵在同層兄弟之間依編號跳轉；
+        /// 空白鍵展開或收合選取的節點；* 展開選取節點與其全部子孫；<see cref="ShowIndex"/> 為 true 時，數字鍵在同層兄弟之間依編號跳轉；
         /// Enter 在選取的節點上觸發 <see cref="NodeActivated"/>。改的是 <see cref="State"/> 的選取，所以共享狀態的檢視一起動。
         /// </summary>
         /// <param name="e">按鍵資料。</param>
@@ -165,7 +165,7 @@ namespace CascadeControl.Views.Diagram
                 return;
             }
 
-            if (TryGetDigit(e, out var digit))
+            if (_showIndex && TryGetDigit(e, out var digit))
             {
                 JumpByDigit(digit);
                 e.Handled = true;
