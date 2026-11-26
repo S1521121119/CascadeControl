@@ -51,8 +51,16 @@ namespace CascadeControl.Views.Diagram
 
             PruneMarks();
             UpdateScrollSize();
+            OnImageUpdated();
             PositionEditBox();
             Invalidate();
+        }
+
+        /// <summary>
+        /// 每次樹狀圖重畫並更新捲動大小後呼叫（在重新定位就地編輯框與重繪畫面之前）。
+        /// </summary>
+        protected virtual void OnImageUpdated()
+        {
         }
 
         private void UpdateScrollSize()
@@ -61,9 +69,16 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
+        /// 原始尺寸模式下的額外畫布平移量（控制項像素）；預設為 <see cref="Point.Empty"/>。
+        /// </summary>
+        protected virtual Point PanOffset => Point.Empty;
+
+        /// <summary>
         /// 圖畫在控制項上的縮放比例與位置：控制項座標 = 圖座標 × <paramref name="scale"/> + <paramref name="offset"/>。
         /// </summary>
-        private void GetTransform(out float scale, out PointF offset)
+        /// <param name="scale">圖面縮放比例。</param>
+        /// <param name="offset">圖面原點在控制項用戶區的偏移量。</param>
+        protected void GetTransform(out float scale, out PointF offset)
         {
             if (_image == null)
             {
@@ -75,7 +90,10 @@ namespace CascadeControl.Views.Diagram
             if (_sizeMode == CascadeDiagramSizeMode.ActualSize)
             {
                 scale = 1f;
-                offset = new PointF(AutoScrollPosition.X, AutoScrollPosition.Y + VerticalCenterOffset(_image.Image.Height, ClientSize.Height));
+                var pan = PanOffset;
+                offset = new PointF(
+                    AutoScrollPosition.X + pan.X,
+                    AutoScrollPosition.Y + VerticalCenterOffset(_image.Image.Height, ClientSize.Height) + pan.Y);
                 return;
             }
 
@@ -198,6 +216,31 @@ namespace CascadeControl.Views.Diagram
         private const int ENSURE_VISIBLE_MARGIN = 12;
 
         /// <summary>
+        /// 在原始尺寸模式下平移畫面內容（正值往右／往下移動圖面）。
+        /// </summary>
+        /// <param name="dx">水平位移量（像素）。</param>
+        /// <param name="dy">垂直位移量（像素）。</param>
+        protected virtual void ShiftViewport(int dx, int dy)
+        {
+            if (_sizeMode != CascadeDiagramSizeMode.ActualSize || (dx == 0 && dy == 0)) return;
+
+            var target = new Point(Math.Max(0, -AutoScrollPosition.X - dx), Math.Max(0, -AutoScrollPosition.Y - dy));
+            if (target == new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y)) return;
+
+            AutoScrollPosition = target;
+            Invalidate();
+        }
+
+        /// <summary>
+        /// 通知基底 <see cref="PanOffset"/> 已變更，重新對齊就地編輯框並重畫。
+        /// </summary>
+        protected void NotifyPanChanged()
+        {
+            PositionEditBox();
+            Invalidate();
+        }
+
+        /// <summary>
         /// 原始尺寸模式下，捲動到選取節點的方塊完整露出（外圍多留 <see cref="ENSURE_VISIBLE_MARGIN"/>）；自動縮放時整張都看得到，不用捲。
         /// </summary>
         private void EnsureVisible(MenuNode node)
@@ -207,24 +250,26 @@ namespace CascadeControl.Views.Diagram
             var imageNode = FindImageNode(node);
             if (imageNode == null) return;
 
+            GetTransform(out _, out var offset);
             var bounds = RectangleF.Inflate(imageNode.Bounds, ENSURE_VISIBLE_MARGIN, ENSURE_VISIBLE_MARGIN);
+            var left = bounds.Left + offset.X;
+            var right = bounds.Right + offset.X;
+            var top = bounds.Top + offset.Y;
+            var bottom = bounds.Bottom + offset.Y;
             var client = ClientSize;
 
-            // AutoScrollPosition 讀出來是負的，設定時要給正的。
-            var x = -AutoScrollPosition.X;
-            var y = -AutoScrollPosition.Y;
+            var dx = 0;
+            if (left < 0f) dx = (int)Math.Ceiling(-left);
+            else if (right > client.Width) dx = (int)Math.Floor(client.Width - right);
 
-            if (bounds.Left < x) x = (int)Math.Floor(bounds.Left);
-            else if (bounds.Right > x + client.Width) x = (int)Math.Ceiling(bounds.Right) - client.Width;
+            var dy = 0;
+            if (top < 0f) dy = (int)Math.Ceiling(-top);
+            else if (bottom > client.Height) dy = (int)Math.Floor(client.Height - bottom);
 
-            if (bounds.Top < y) y = (int)Math.Floor(bounds.Top);
-            else if (bounds.Bottom > y + client.Height) y = (int)Math.Ceiling(bounds.Bottom) - client.Height;
+            if (dx == 0 && dy == 0) return;
 
-            var target = new Point(Math.Max(0, x), Math.Max(0, y));
-            if (target == new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y)) return;
-
-            AutoScrollPosition = target;
-            Invalidate();
+            ShiftViewport(dx, dy);
+            PositionEditBox();
         }
 
         #endregion 座標轉換

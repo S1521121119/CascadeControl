@@ -61,6 +61,7 @@
     <Compile Include="Common\MultiNameCellSyntaxTests.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramViewEditingTests.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramViewMultiSelectTests.cs" />
+    <Compile Include="Views\Diagram\CascadeDiagramViewPanTests.cs" />
     <Compile Include="Views\Diagram\TreeDrawerTests.cs" />
     <Compile Include="Trees\MenuCheckSetTests.cs" />
     <Compile Include="Trees\MenuHistoryTests.cs" />

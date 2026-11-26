@@ -188,14 +188,25 @@ namespace CascadeControl.Views.Diagram
 
         private void ScrollTowards(Point location)
         {
-            if (_sizeMode != CascadeDiagramSizeMode.ActualSize) return;
+            if (_sizeMode != CascadeDiagramSizeMode.ActualSize || _image == null) return;
 
             var client = ClientSize;
             var dx = location.X < 0 ? location.X : Math.Max(0, location.X - client.Width);
             var dy = location.Y < 0 ? location.Y : Math.Max(0, location.Y - client.Height);
             if (dx == 0 && dy == 0) return;
 
-            AutoScrollPosition = new Point(Math.Max(0, -AutoScrollPosition.X + dx), Math.Max(0, -AutoScrollPosition.Y + dy));
+            GetTransform(out _, out var offset);
+            var size = _image.Image.Size;
+
+            var shiftX = 0;
+            if (dx < 0 && offset.X < 0f) shiftX = Math.Min(-dx, (int)Math.Ceiling(-offset.X));
+            else if (dx > 0 && offset.X + size.Width > client.Width) shiftX = -Math.Min(dx, (int)Math.Ceiling(offset.X + size.Width - client.Width));
+
+            var shiftY = 0;
+            if (dy < 0 && offset.Y < 0f) shiftY = Math.Min(-dy, (int)Math.Ceiling(-offset.Y));
+            else if (dy > 0 && offset.Y + size.Height > client.Height) shiftY = -Math.Min(dy, (int)Math.Ceiling(offset.Y + size.Height - client.Height));
+
+            if (shiftX != 0 || shiftY != 0) ShiftViewport(shiftX, shiftY);
         }
 
         // 放開左鍵：拖曳過的多選已經在拖曳中算好；沒拖曳時 Ctrl+點節點切換它，沒按 Ctrl 點空白處取消多選。
