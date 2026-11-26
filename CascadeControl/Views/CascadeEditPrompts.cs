@@ -14,17 +14,17 @@ namespace CascadeControl.Views
     internal static class CascadeEditPrompts
     {
         /// <summary>
-        /// 刪除前向使用者確認；預設按鈕是「否」。
+        /// 刪除前向使用者確認；預設按鈕是「是」。
         /// </summary>
         /// <returns>使用者按了「是」時為 true。</returns>
         internal static bool ConfirmDelete(IWin32Window owner, IReadOnlyList<MenuNode> nodes)
         {
             var message = nodes.Count == 1
-                ? $"確定要刪除「{nodes[0].FullPathText}」？"
-                : $"確定要刪除選取的 {nodes.Count} 個節點？";
+                ? $"是否要刪除「{nodes[0].Name}」？\r\n\r\nPath:\r\n  {nodes[0].FullPathText}"
+                : $"是否要刪除已選取的 {nodes.Count} 個節點？";
             if (nodes.Any(node => !node.IsLeaf)) message += Environment.NewLine + "底下的子節點也會一起刪除。";
 
-            return MessageBox.Show(owner, message, "刪除", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+            return MessageBox.Show(owner, message, "刪除", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) == DialogResult.Yes;
         }
 
         /// <summary>
