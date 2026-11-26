@@ -269,6 +269,7 @@ namespace MindMap
         private void MnuView_DropDownOpening(object sender, EventArgs e)
         {
             mnuViewShowIndex.Checked = diagramView1.ShowIndex;
+            mnuViewShowChildCount.Checked = diagramView1.ShowChildCount;
         }
 
         private void MnuViewZoomIn_Click(object sender, EventArgs e) => diagramView1.ZoomIn();
@@ -278,6 +279,8 @@ namespace MindMap
         private void MnuViewResetZoom_Click(object sender, EventArgs e) => diagramView1.ResetZoom();
 
         private void MnuViewShowIndex_Click(object sender, EventArgs e) => diagramView1.ShowIndex = !diagramView1.ShowIndex;
+
+        private void MnuViewShowChildCount_Click(object sender, EventArgs e) => diagramView1.ShowChildCount = !diagramView1.ShowChildCount;
 
         #endregion 功能表：View
     }

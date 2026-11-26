@@ -37,7 +37,7 @@ namespace CascadeControl.Views.Diagram
             var checkSet = DisplayedCheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
 
-            return TreeDrawer.RenderImageWithPlaceholder(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded, _edit?.Placeholder, preview, _zoomFactor, _showIndex);
+            return TreeDrawer.RenderImageWithPlaceholder(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded, _edit?.Placeholder, preview, _zoomFactor, _showIndex, _showChildCount);
         }
 
         // ShowChecks 關閉時當成沒有勾選資訊。

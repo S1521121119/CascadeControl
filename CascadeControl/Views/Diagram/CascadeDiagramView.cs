@@ -56,6 +56,7 @@ namespace CascadeControl.Views.Diagram
         private CascadeDiagramUncheckedDisplay _uncheckedDisplay = CascadeDiagramUncheckedDisplay.Dimmed;
         private bool _showChecks;
         private bool _showIndex;
+        private bool _showChildCount;
         private CascadeDiagramSizeMode _sizeMode = CascadeDiagramSizeMode.ActualSize;
         private float _zoomFactor = 1f;
 
@@ -241,6 +242,24 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
+        /// 是否在有子節點的節點名稱後顯示子節點數量（如 <c>Motor (3)</c>）；子節點數為 0 時不顯示，預設為 false。
+        /// </summary>
+        [Category("Cascade")]
+        [Description("true：在有子節點的節點名稱後加上 (數量)，無子節點時不顯示；false：只顯示節點名稱。")]
+        [DefaultValue(false)]
+        public bool ShowChildCount
+        {
+            get => _showChildCount;
+            set
+            {
+                if (_showChildCount == value) return;
+                _showChildCount = value;
+                Redraw();
+                OnDrawSettingsChanged(EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
         /// <see cref="ShowChecks"/> 為 true 且有勾選資訊時，沒勾的節點怎麼呈現。
         /// </summary>
         [Category("Cascade")]
@@ -367,7 +386,7 @@ namespace CascadeControl.Views.Diagram
         public event EventHandler<CascadeNodeEventArgs> NodeActivated;
 
         /// <summary>
-        /// <see cref="DrawScope"/>、<see cref="ShowChecks"/>、<see cref="ShowIndex"/>、<see cref="UncheckedDisplay"/>、<see cref="SizeMode"/> 或 <see cref="ZoomFactor"/> 改變後觸發，包含從右鍵功能表切換。
+        /// <see cref="DrawScope"/>、<see cref="ShowChecks"/>、<see cref="ShowIndex"/>、<see cref="ShowChildCount"/>、<see cref="UncheckedDisplay"/>、<see cref="SizeMode"/> 或 <see cref="ZoomFactor"/> 改變後觸發，包含從右鍵功能表切換。
         /// </summary>
         [Category("Cascade")]
         public event EventHandler DrawSettingsChanged;

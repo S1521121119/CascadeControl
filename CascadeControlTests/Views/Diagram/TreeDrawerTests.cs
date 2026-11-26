@@ -1140,6 +1140,79 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
+        public void ShowChildCount_DefaultsFalse_WidensParentsOnlyAndMatchesExplicitLabel()
+        {
+            var tree = new MenuTree();
+            tree.AddPath(new[] { "Motor", "Axis X", "Home" });
+            tree.AddPath(new[] { "Motor", "Axis X", "Speed" });
+            tree.AddPath(new[] { "Motor", "Axis X", "Jog", "Plus" });
+            tree.AddPath(new[] { "Motor", "Axis X", "Jog", "Minus" });
+            tree.AddPath(new[] { "Motor", "Axis Y", "Home" });
+            tree.AddPath(new[] { "Motor", "Axis Y", "Speed" });
+            tree.AddPath(new[] { "Motor", "Axis Y", "Jog" });
+            tree.AddPath(new[] { "Motor", "Axis Z", "Home" });
+            tree.AddPath(new[] { "Motor", "Axis Z", "Speed" });
+            tree.AddPath(new[] { "Motor", "Axis Z", "Jog" });
+
+            var expected = new MenuTree();
+            expected.AddPath(new[] { "Motor (3)", "Axis X (3)", "Home" });
+            expected.AddPath(new[] { "Motor (3)", "Axis X (3)", "Speed" });
+            expected.AddPath(new[] { "Motor (3)", "Axis X (3)", "Jog (2)", "Plus" });
+            expected.AddPath(new[] { "Motor (3)", "Axis X (3)", "Jog (2)", "Minus" });
+            expected.AddPath(new[] { "Motor (3)", "Axis Y (3)", "Home" });
+            expected.AddPath(new[] { "Motor (3)", "Axis Y (3)", "Speed" });
+            expected.AddPath(new[] { "Motor (3)", "Axis Y (3)", "Jog" });
+            expected.AddPath(new[] { "Motor (3)", "Axis Z (3)", "Home" });
+            expected.AddPath(new[] { "Motor (3)", "Axis Z (3)", "Speed" });
+            expected.AddPath(new[] { "Motor (3)", "Axis Z (3)", "Jog" });
+
+            var motor = Find(tree, "Motor");
+            var axisX = Find(tree, "Motor", "Axis X");
+            var plus = Find(tree, "Motor", "Axis X", "Jog", "Plus");
+
+            using (var imageView = new ProbeImageView())
+            {
+                Assert.IsFalse(imageView.ShowChildCount, "ShowChildCount 預設為 false");
+                var settingsChanged = 0;
+                imageView.DrawSettingsChanged += (sender, e) => settingsChanged++;
+
+                imageView.SetTree(tree);
+                imageView.ExpandAll(motor);
+
+                var baseMotorWidth = LayoutNodeOf(imageView, tree, motor).Bounds.Width;
+                var baseAxisWidth = LayoutNodeOf(imageView, tree, axisX).Bounds.Width;
+                var baseLeafWidth = LayoutNodeOf(imageView, tree, plus).Bounds.Width;
+
+                imageView.ShowChildCount = false;
+                Assert.AreEqual(0, settingsChanged, "值未改變不觸發 DrawSettingsChanged");
+
+                imageView.ShowChildCount = true;
+                Assert.AreEqual(1, settingsChanged);
+                Assert.IsTrue(LayoutNodeOf(imageView, tree, motor).Bounds.Width > baseMotorWidth, "有子節點時方塊變寬以容納 (3)");
+                Assert.IsTrue(LayoutNodeOf(imageView, tree, axisX).Bounds.Width > baseAxisWidth, "Axis X 有子節點時方塊變寬");
+                Assert.AreEqual(baseLeafWidth, LayoutNodeOf(imageView, tree, plus).Bounds.Width, "葉節點（0 個子節點）不顯示數量，寬度不變");
+
+                using (var actual = TreeDrawer.RenderImage(tree, imageView.Font, showChildCount: true))
+                using (var reference = TreeDrawer.RenderImage(expected, imageView.Font, showChildCount: false))
+                {
+                    Assert.AreEqual(reference.Image.Size, actual.Image.Size, "帶子節點數量的圖面大小應與明確加上 (數量) 的名稱完全一致");
+                    for (var i = 0; i < reference.Nodes.Count; i++)
+                    {
+                        Assert.AreEqual(reference.Nodes[i].Bounds, actual.Nodes[i].Bounds, reference.Nodes[i].Node.FullPathText);
+                    }
+                }
+
+                // 收合時仍維持相同方塊寬度（依原樹直屬子節點數顯示 (3)）。
+                imageView.SetExpanded(motor, false);
+                Assert.IsTrue(LayoutNodeOf(imageView, tree, motor).Bounds.Width > baseMotorWidth, "收合時仍顯示子節點數量");
+
+                imageView.ShowChildCount = false;
+                Assert.AreEqual(2, settingsChanged);
+                Assert.AreEqual(baseMotorWidth, LayoutNodeOf(imageView, tree, motor).Bounds.Width);
+            }
+        }
+
+        [TestMethod]
         public void ExpandAllAndCollapseAll_ToggleEntireSubtree_NullThrows_LeafNoOp()
         {
             var tree = TestTrees.Template();

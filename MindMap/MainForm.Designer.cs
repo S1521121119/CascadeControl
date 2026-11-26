@@ -54,6 +54,7 @@
             this.mnuViewResetZoom = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuViewSep1 = new System.Windows.Forms.ToolStripSeparator();
             this.mnuViewShowIndex = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuViewShowChildCount = new System.Windows.Forms.ToolStripMenuItem();
             this.ssStatus = new System.Windows.Forms.StatusStrip();
             this.lblTreeInfo = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblZoom = new System.Windows.Forms.ToolStripStatusLabel();
@@ -232,7 +233,8 @@
             this.mnuViewZoomOut,
             this.mnuViewResetZoom,
             this.mnuViewSep1,
-            this.mnuViewShowIndex});
+            this.mnuViewShowIndex,
+            this.mnuViewShowChildCount});
             this.mnuView.Name = "mnuView";
             this.mnuView.Size = new System.Drawing.Size(67, 32);
             this.mnuView.Text = "&View";
@@ -275,6 +277,13 @@
             this.mnuViewShowIndex.Size = new System.Drawing.Size(339, 34);
             this.mnuViewShowIndex.Text = "&Show Index";
             this.mnuViewShowIndex.Click += new System.EventHandler(this.MnuViewShowIndex_Click);
+            // 
+            // mnuViewShowChildCount
+            // 
+            this.mnuViewShowChildCount.Name = "mnuViewShowChildCount";
+            this.mnuViewShowChildCount.Size = new System.Drawing.Size(339, 34);
+            this.mnuViewShowChildCount.Text = "Show &Child Count";
+            this.mnuViewShowChildCount.Click += new System.EventHandler(this.MnuViewShowChildCount_Click);
             // 
             // ssStatus
             // 
@@ -366,6 +375,7 @@
         private System.Windows.Forms.ToolStripMenuItem mnuViewResetZoom;
         private System.Windows.Forms.ToolStripSeparator mnuViewSep1;
         private System.Windows.Forms.ToolStripMenuItem mnuViewShowIndex;
+        private System.Windows.Forms.ToolStripMenuItem mnuViewShowChildCount;
         private System.Windows.Forms.StatusStrip ssStatus;
         private System.Windows.Forms.ToolStripStatusLabel lblTreeInfo;
         private System.Windows.Forms.ToolStripStatusLabel lblZoom;

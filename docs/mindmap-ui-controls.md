@@ -77,7 +77,7 @@
 
 - **File**：New、Open...、Save、Save As...、Exit。
 - **Edit**：Undo、Redo、Cut、Copy、Paste、Delete、Select All、Insert（開啟下拉時依選取與復原狀態更新啟用；快捷鍵僅設 `ShortcutKeyDisplayString` 供顯示，實際按鍵交由畫布處理）。
-- **View**：Zoom In、Zoom Out、Reset Zoom (100%)、Show Index（切換節點編號顯示與數字鍵跳轉）。
+- **View**：Zoom In、Zoom Out、Reset Zoom (100%)、Show Index（切換節點編號顯示與數字鍵跳轉）、Show Child Count（切換在有子節點的節點名稱後顯示直屬子節點數量，如 `Motor (3)`，無子節點時不顯示）。
 
 ### 畫布右鍵選單
 
@@ -98,7 +98,7 @@
 
 - `MindMap/MainForm.cs`、`MindMap/MainForm.Designer.cs`：主功能表（File、Edit、View）點擊與快捷鍵設定、外部拖放 CSV 開檔、未存檔關閉確認框、狀態列（節點數、層數、選取、縮放百分比）更新。
 - `MindMap/MindMapDiagramView.cs`：MindMap 專屬互動覆寫，包含 `Shift` + 左鍵自由平移畫布、`Ctrl` + 滾輪縮放（維持游標錨點）、左鍵點節點選取、`Tab` 插入子項、`Enter` 下方插入同層、`Ctrl+A` 全選，以及讓主功能表快捷鍵優先於基底編輯快捷鍵。
-- `CascadeControl/Views/Diagram/CascadeDiagramView.cs`：右鍵選單物件建立與事件掛載、檢視模式屬性（`DrawScope`、`SizeMode`、`ZoomFactor`、`ShowIndex`、`StepIntoCollapsed`）。
+- `CascadeControl/Views/Diagram/CascadeDiagramView.cs`：右鍵選單物件建立與事件掛載、檢視模式屬性（`DrawScope`、`SizeMode`、`ZoomFactor`、`ShowIndex`、`ShowChildCount`、`StepIntoCollapsed`）。
 - `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`：畫布滑鼠事件（Hover、Click、DoubleClick、MouseDown、MouseMove、MouseUp、CaptureChanged）與鍵盤分派（方向鍵、`Space` 與中文輸入法 `WndProc` 修正、`*`、數字鍵跳轉、`Esc`、編輯快捷鍵派發）。
 - `CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`：框選多選、`Ctrl` + 點選切換、拖曳時邊緣自動捲動、全選與清除多選、多選與選取框繪製。
 - `CascadeControl/Views/Diagram/CascadeDiagramView.DragMove.cs`：左鍵拖曳搬移、`Ctrl` + 拖曳複製、拖曳中即時切換搬移與複製、落點判定（兄弟間隙、上下 20% 邊緣、目標子節點）、預覽與目標高亮相框繪製。
