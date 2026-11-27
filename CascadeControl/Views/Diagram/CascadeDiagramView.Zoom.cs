@@ -4,11 +4,11 @@ using System.Windows.Forms;
 
 namespace CascadeControl.Views.Diagram
 {
-    // 縮放：級距、選單（以可視區中心為錨點）、Ctrl+滾輪（以游標為錨點）、符合視窗大小。
+    // 縮放：級距、選單（以可視區中心為錨點）、Ctrl+滾輪或按住右鍵+滾輪（以游標為錨點）、符合視窗大小。
     public partial class CascadeDiagramView
     {
         /// <summary>
-        /// 縮放的級距（百分比）：<see cref="ZoomIn"/>、<see cref="ZoomOut"/> 與 Ctrl+滾輪在相鄰級距間移動。
+        /// 縮放的級距（百分比）：<see cref="ZoomIn"/>、<see cref="ZoomOut"/> 與 Ctrl+滾輪／按住右鍵+滾輪在相鄰級距間移動。
         /// </summary>
         protected static readonly int[] ZoomSteps = { 20, 25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500 };
 
@@ -191,15 +191,18 @@ namespace CascadeControl.Views.Diagram
             }
         }
 
-        /// <remarks>按住 Ctrl 時滾輪縮放（往上放大、往下縮小），以游標為錨點；沒按 Ctrl 照常捲動。</remarks>
+        /// <remarks>按住 Ctrl 或滑鼠右鍵時滾輪縮放（往上放大、往下縮小），以游標為錨點；否則照常捲動。</remarks>
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            if ((ModifierKeys & Keys.Control) == 0)
+            var rightButtonZoom = IsRightWheelZoomActive;
+            if (!IsControlKeyDown && !rightButtonZoom)
             {
                 _pendingWheelDelta = 0;
                 base.OnMouseWheel(e);
                 return;
             }
+
+            if (rightButtonZoom) MarkRightPressWheelZoomed(e.Location);
 
             if (e is HandledMouseEventArgs handled) handled.Handled = true;
 
@@ -210,6 +213,8 @@ namespace CascadeControl.Views.Diagram
             _pendingWheelDelta -= steps * SystemInformation.MouseWheelScrollDelta;
             var direction = steps > 0 ? 1 : -1;
             for (var i = 0; i < Math.Abs(steps); i++) StepZoom(direction, e.Location);
+
+            ReanchorPanAfterZoom(e.Location);
         }
     }
 }

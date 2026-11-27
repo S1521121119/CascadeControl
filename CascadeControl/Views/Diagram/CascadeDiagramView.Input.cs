@@ -30,16 +30,13 @@ namespace CascadeControl.Views.Diagram
         {
             if (_isPanning)
             {
-                if ((e.Button & MouseButtons.Left) != 0)
-                {
-                    SetScreenOffset(new Point(
-                        _panStartScreenOffset.X + (e.Location.X - _panStartClient.X),
-                        _panStartScreenOffset.Y + (e.Location.Y - _panStartClient.Y)));
-                }
+                if ((e.Button & _panButton) != 0) UpdatePan(e.Location);
 
                 Cursor = Cursors.SizeAll;
                 return;
             }
+
+            if (TryDragRightPress(e)) return;
 
             base.OnMouseMove(e);
             if (_move != null && e.Button == MouseButtons.Left)
@@ -54,14 +51,17 @@ namespace CascadeControl.Views.Diagram
 
         /// <inheritdoc />
         /// <remarks>
-        /// <see cref="AllowFreePan"/> 為 true 時，按住 Shift + 左鍵拖曳平移畫布，不觸發選取、展開、框選或搬移；編輯中則照常套用編輯。
+        /// <see cref="AllowFreePan"/> 為 true 時，按住 Shift + 左鍵拖曳或右鍵拖曳平移畫布，不觸發選取、展開、框選、搬移或右鍵功能表；編輯中則照常套用編輯。
         /// </remarks>
         protected override void OnMouseDown(MouseEventArgs e)
         {
+            if (_isPanning || (_rightPress != null && e.Button != MouseButtons.Right)) return;
+
             _swallowPanRelease = false;
+            _suppressContextMenu = false;
             if (AllowFreePan && _edit == null && e.Button == MouseButtons.Left && IsPanKeyDown)
             {
-                BeginPan(e.Location);
+                BeginPan(e.Location, MouseButtons.Left);
                 return;
             }
 
@@ -81,7 +81,9 @@ namespace CascadeControl.Views.Diagram
             // 展開鈕交給點擊處理；其他左鍵按壓可能是框選或 Ctrl+點選（見 MultiSelectedNodes）。
             _press = null;
             if (_move != null) EndMovePress(apply: false);
-            if (e.Button == MouseButtons.Left && !_swallowClick && GetExpanderAt(e.Location) == null)
+            if (e.Button == MouseButtons.Right && !_swallowClick)
+                BeginRightPress(e.Location);
+            else if (e.Button == MouseButtons.Left && !_swallowClick && GetExpanderAt(e.Location) == null)
                 BeginMarkPress(e.Location, IsControlKeyDown);
 
             base.OnMouseDown(e);
@@ -90,7 +92,7 @@ namespace CascadeControl.Views.Diagram
         /// <inheritdoc />
         protected override void OnMouseClick(MouseEventArgs e)
         {
-            if (_isPanning || _swallowPanRelease) return;
+            if (ShouldSwallowMouseClick(e.Button)) return;
 
             base.OnMouseClick(e);
             if (_swallowClick || _press != null || IsMoveDragging || (_move != null && _move.StartedWithControl) || TryToggleExpander(e)) return;
@@ -105,7 +107,7 @@ namespace CascadeControl.Views.Diagram
         /// <inheritdoc />
         protected override void OnMouseDoubleClick(MouseEventArgs e)
         {
-            if (_isPanning || _swallowPanRelease) return;
+            if (ShouldSwallowMouseClick(e.Button)) return;
 
             base.OnMouseDoubleClick(e);
 
@@ -120,12 +122,7 @@ namespace CascadeControl.Views.Diagram
         /// <remarks>Click 與 DoubleClick 在 MouseUp 之前觸發，所以在這裡結束略過與多選手勢。</remarks>
         protected override void OnMouseUp(MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left && (_isPanning || _swallowPanRelease))
-            {
-                _swallowPanRelease = false;
-                EndPan(restore: false, cursorLocation: e.Location);
-                return;
-            }
+            if (TryCompletePanRelease(e)) return;
 
             base.OnMouseUp(e);
             _swallowClick = false;
@@ -140,7 +137,7 @@ namespace CascadeControl.Views.Diagram
             base.OnMouseCaptureChanged(e);
             if (Capture) return;
 
-            if (_isPanning) EndPan(restore: false, cursorLocation: null);
+            OnPanCaptureLost();
 
             if (_move != null) EndMovePress(apply: false);
             if (_press == null) return;
@@ -255,7 +252,9 @@ namespace CascadeControl.Views.Diagram
             }
         }
 
+        private const int WM_CONTEXTMENU = 0x007B;
         private const int WM_KEYDOWN = 0x0100;
+        private const int WM_RBUTTONUP = 0x0205;
         private const int VK_PROCESSKEY = 0xE5;
         private const int SPACE_SCAN_CODE = 0x39;
 
@@ -264,11 +263,29 @@ namespace CascadeControl.Views.Diagram
         /// 中文輸入法開著的時候，Space 會先被輸入法收走，送到這裡的 WM_KEYDOWN 是 ProcessKey 而不是 Space，展開／收合就沒反應。
         /// ProcessKey 的 lParam 仍帶著原本的掃描碼，認得出是 Space 就改回 Space，讓 <see cref="OnKeyDown"/> 照常處理。
         /// 就地編輯框是另一個視窗，它的按鍵不會經過這裡。
+        /// 另外在右鍵拖曳平移或按住右鍵滾輪縮放後放開右鍵時，攔截此次 <c>WM_CONTEXTMENU</c>，不跳出右鍵功能表。
         /// </remarks>
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == WM_KEYDOWN && m.WParam.ToInt64() == VK_PROCESSKEY && ScanCodeOf(m.LParam) == SPACE_SCAN_CODE)
                 m.WParam = (IntPtr)Keys.Space;
+
+            if (m.Msg == WM_CONTEXTMENU && ShouldSuppressContextMenu(m.LParam))
+                return;
+
+            if (m.Msg == WM_RBUTTONUP)
+            {
+                try
+                {
+                    base.WndProc(ref m);
+                }
+                finally
+                {
+                    _suppressContextMenu = false;
+                }
+
+                return;
+            }
 
             base.WndProc(ref m);
         }
@@ -305,8 +322,7 @@ namespace CascadeControl.Views.Diagram
 
             if (_isPanning && keyData == Keys.Escape)
             {
-                EndPan(restore: true, cursorLocation: null);
-                _swallowPanRelease = true;
+                CancelPanByEscape();
                 return true;
             }
 
