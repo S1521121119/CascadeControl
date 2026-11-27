@@ -9,27 +9,17 @@ using System.Windows.Forms;
 namespace MindMap
 {
     /// <summary>
-    /// 心智圖用的 <see cref="CascadeDiagramView"/>：Tab 插入子項、Enter 在下方插入、Ctrl+A 全選、Ctrl+滾輪縮放、Shift+左鍵拖曳自由平移畫布，表單功能表的快捷鍵優先於圖的編輯快捷鍵。
+    /// 心智圖用的 <see cref="CascadeDiagramView"/>：Tab 插入子項、Enter 在下方插入、Ctrl+A 全選、Shift+左鍵拖曳自由平移畫布，表單功能表的快捷鍵優先於圖的編輯快捷鍵。
     /// </summary>
     internal sealed class MindMapDiagramView : CascadeDiagramView
     {
-        // 縮放的級距（百分比）：Zoom In / Zoom Out 與 Ctrl+滾輪在相鄰級距間移動。
-        private static readonly int[] ZoomSteps = { 25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400 };
-
-        private const int ACTUAL_SIZE_INDEX = 6;
         private const int PAN_VISIBLE_MARGIN = 48;
-
-        private int _zoomIndex = ACTUAL_SIZE_INDEX;
-
-        // 還沒湊滿一格（WHEEL_DELTA）的滾輪量；觸控板一次只送一小段。
-        private int _pendingWheelDelta;
 
         // 超過捲軸範圍（或圖比視窗小）時的自由平移量。
         private Point _panOffset;
         private MenuTree _pannedTree;
         private bool _isPanning;
         private bool _swallowPanRelease;
-        private bool _isZooming;
         private Point _panStartClient;
         private Point _panStartScreenOffset;
 
@@ -38,28 +28,13 @@ namespace MindMap
 
         private bool IsPanModifierOnly => ShiftKeyOverride ?? ((ModifierKeys & (Keys.Shift | Keys.Control | Keys.Alt)) == Keys.Shift);
 
-        /// <summary>
-        /// 目前的縮放百分比。
-        /// </summary>
-        public int ZoomPercent => ZoomSteps[_zoomIndex];
-
         /// <inheritdoc />
-        protected override Point PanOffset => SizeMode == CascadeDiagramSizeMode.ActualSize ? _panOffset : Point.Empty;
-
-        public void ZoomIn() => SetZoomIndex(_zoomIndex + 1, anchor: null);
-
-        public void ZoomOut() => SetZoomIndex(_zoomIndex - 1, anchor: null);
-
-        public void ResetZoom()
-        {
-            SetZoomIndex(ACTUAL_SIZE_INDEX, anchor: null);
-            ResetPan();
-        }
+        protected override Point PanOffset => _panOffset;
 
         /// <summary>
         /// 重設自由平移與捲動位置。
         /// </summary>
-        public void ResetPan()
+        public override void ResetPan()
         {
             var changed = _panOffset != Point.Empty;
             _panOffset = Point.Empty;
@@ -72,46 +47,10 @@ namespace MindMap
             if (changed) NotifyPanChanged();
         }
 
-        /// <summary>
-        /// 換到 <paramref name="index"/> 的級距（超出範圍時停在兩端）。
-        /// </summary>
-        /// <param name="anchor">縮放前後要留在原處的控制項座標（滾輪縮放時是游標）；null 時保持左上角。</param>
-        private void SetZoomIndex(int index, Point? anchor)
-        {
-            index = Math.Max(0, Math.Min(index, ZoomSteps.Length - 1));
-            if (index == _zoomIndex) return;
-
-            var oldFactor = ZoomFactor;
-            var anchorImage = SizeMode == CascadeDiagramSizeMode.ActualSize && anchor is Point p ? ToImagePoint(p) : (PointF?)null;
-            _zoomIndex = index;
-
-            _isZooming = true;
-            try
-            {
-                ZoomFactor = ZoomPercent / 100f;
-            }
-            finally
-            {
-                _isZooming = false;
-            }
-
-            if (anchorImage is PointF imagePoint && anchor is Point point)
-            {
-                var ratio = ZoomFactor / oldFactor;
-                SetScreenOffset(new Point(
-                    (int)Math.Round(point.X - (imagePoint.X * ratio)),
-                    (int)Math.Round(point.Y - (imagePoint.Y * ratio))));
-            }
-            else
-            {
-                ClampCurrentView();
-            }
-        }
-
         /// <inheritdoc />
         protected override void ShiftViewport(int dx, int dy)
         {
-            if (SizeMode != CascadeDiagramSizeMode.ActualSize || (dx == 0 && dy == 0)) return;
+            if (dx == 0 && dy == 0) return;
 
             var current = GetScreenOffset();
             SetScreenOffset(new Point(current.X + dx, current.Y + dy));
@@ -128,26 +67,15 @@ namespace MindMap
                 return;
             }
 
-            if (!_isZooming) ClampCurrentView();
+            if (!IsZooming) ClampCurrentView();
         }
 
         /// <inheritdoc />
-        protected override void OnClientSizeChanged(EventArgs e)
+        protected override void ClampCurrentView()
         {
-            ClampCurrentView();
-            base.OnClientSizeChanged(e);
-        }
+            if (_panOffset == Point.Empty) return;
 
-        /// <inheritdoc />
-        protected override void OnDrawSettingsChanged(EventArgs e)
-        {
-            if (SizeMode != CascadeDiagramSizeMode.ActualSize && _panOffset != Point.Empty)
-            {
-                _panOffset = Point.Empty;
-                NotifyPanChanged();
-            }
-
-            base.OnDrawSettingsChanged(e);
+            SetScreenOffset(GetScreenOffset());
         }
 
         private Point GetScreenOffset()
@@ -156,17 +84,11 @@ namespace MindMap
             return Point.Round(offset);
         }
 
-        private void ClampCurrentView()
-        {
-            if (SizeMode != CascadeDiagramSizeMode.ActualSize || _panOffset == Point.Empty) return;
-
-            SetScreenOffset(GetScreenOffset());
-        }
-
         // 將圖面原點移到 desiredScreenOffset：可捲動範圍內優先由 AutoScrollPosition 吸收，超出邊界由 _panOffset 承接。
-        private void SetScreenOffset(Point desiredScreenOffset)
+        /// <inheritdoc />
+        protected override void SetScreenOffset(Point desiredScreenOffset)
         {
-            if (SizeMode != CascadeDiagramSizeMode.ActualSize || Image == null) return;
+            if (Image == null) return;
 
             var client = ClientSize;
             var size = Image.Size;
@@ -232,7 +154,7 @@ namespace MindMap
         protected override void OnMouseDown(MouseEventArgs e)
         {
             _swallowPanRelease = false;
-            if (!IsEditing && e.Button == MouseButtons.Left && SizeMode == CascadeDiagramSizeMode.ActualSize && IsPanModifierOnly)
+            if (!IsEditing && e.Button == MouseButtons.Left && IsPanModifierOnly)
             {
                 BeginPan(e.Location);
                 return;
@@ -292,26 +214,6 @@ namespace MindMap
         {
             base.OnMouseCaptureChanged(e);
             if (!Capture && _isPanning) EndPan(restore: false, cursorLocation: null);
-        }
-
-        /// <remarks>按住 Ctrl 時滾輪縮放（往上放大、往下縮小），以游標為中心；沒按 Ctrl 照常捲動。</remarks>
-        protected override void OnMouseWheel(MouseEventArgs e)
-        {
-            if ((ModifierKeys & Keys.Control) == 0)
-            {
-                _pendingWheelDelta = 0;
-                base.OnMouseWheel(e);
-                return;
-            }
-
-            if (e is HandledMouseEventArgs handled) handled.Handled = true;
-
-            _pendingWheelDelta += e.Delta;
-            var steps = _pendingWheelDelta / SystemInformation.MouseWheelScrollDelta;
-            if (steps == 0) return;
-
-            _pendingWheelDelta -= steps * SystemInformation.MouseWheelScrollDelta;
-            SetZoomIndex(_zoomIndex + steps, e.Location);
         }
 
         /// <remarks>基底點節點只觸發事件、不改選取；心智圖左鍵點節點就選取它（畫紅框）。</remarks>

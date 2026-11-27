@@ -17,7 +17,7 @@ namespace CascadeControlTests.Views.Diagram
     public class CascadeDiagramViewPanTests
     {
         [TestMethod]
-        public void PanOffset_ShiftsTransformAndHitTesting_ActualSizeOnly()
+        public void PanOffset_ShiftsTransformAndHitTesting()
         {
             using (var f = new Fixture())
             {
@@ -43,9 +43,6 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreEqual(beforeImagePoint.X, afterImagePoint.X, 0.01f);
                 Assert.AreEqual(beforeImagePoint.Y, afterImagePoint.Y, 0.01f);
 
-                f.View.SizeMode = CascadeDiagramSizeMode.Zoom;
-                var zoomOffset = f.View.CurrentOffset();
-                Assert.AreEqual(0f, zoomOffset.X, 0.01f, "自動縮放模式不套用 PanOffset");
             }
         }
 

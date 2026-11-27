@@ -65,11 +65,11 @@ namespace CascadeControl.Views.Diagram
 
         private void UpdateScrollSize()
         {
-            AutoScrollMinSize = _sizeMode == CascadeDiagramSizeMode.ActualSize && _image != null ? _image.Image.Size : Size.Empty;
+            AutoScrollMinSize = _image != null ? _image.Image.Size : Size.Empty;
         }
 
         /// <summary>
-        /// 原始尺寸模式下的額外畫布平移量（控制項像素）；預設為 <see cref="Point.Empty"/>。
+        /// 額外畫布平移量（控制項像素）；預設為 <see cref="Point.Empty"/>。
         /// </summary>
         protected virtual Point PanOffset => Point.Empty;
 
@@ -87,22 +87,11 @@ namespace CascadeControl.Views.Diagram
                 return;
             }
 
-            if (_sizeMode == CascadeDiagramSizeMode.ActualSize)
-            {
-                scale = 1f;
-                var pan = PanOffset;
-                offset = new PointF(
-                    AutoScrollPosition.X + pan.X,
-                    AutoScrollPosition.Y + VerticalCenterOffset(_image.Image.Height, ClientSize.Height) + pan.Y);
-                return;
-            }
-
-            // 自動縮放只縮小不放大；控制項被縮到 0 時照原始尺寸算，避免除以 0。
-            var size = _image.Image.Size;
-            var client = ClientSize;
-            scale = Math.Min(1f, Math.Min(client.Width / (float)size.Width, client.Height / (float)size.Height));
-            if (scale <= 0f) scale = 1f;
-            offset = new PointF(0f, VerticalCenterOffset(size.Height * scale, client.Height));
+            scale = 1f;
+            var pan = PanOffset;
+            offset = new PointF(
+                AutoScrollPosition.X + pan.X,
+                AutoScrollPosition.Y + VerticalCenterOffset(_image.Image.Height, ClientSize.Height) + pan.Y);
         }
 
         private static float VerticalCenterOffset(float contentHeight, int clientHeight)
@@ -216,13 +205,13 @@ namespace CascadeControl.Views.Diagram
         private const int ENSURE_VISIBLE_MARGIN = 12;
 
         /// <summary>
-        /// 在原始尺寸模式下平移畫面內容（正值往右／往下移動圖面）。
+        /// 平移畫面內容（正值往右／往下移動圖面）。
         /// </summary>
         /// <param name="dx">水平位移量（像素）。</param>
         /// <param name="dy">垂直位移量（像素）。</param>
         protected virtual void ShiftViewport(int dx, int dy)
         {
-            if (_sizeMode != CascadeDiagramSizeMode.ActualSize || (dx == 0 && dy == 0)) return;
+            if (dx == 0 && dy == 0) return;
 
             var target = new Point(Math.Max(0, -AutoScrollPosition.X - dx), Math.Max(0, -AutoScrollPosition.Y - dy));
             if (target == new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y)) return;
@@ -241,12 +230,10 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 原始尺寸模式下，捲動到選取節點的方塊完整露出（外圍多留 <see cref="ENSURE_VISIBLE_MARGIN"/>）；自動縮放時整張都看得到，不用捲。
+        /// 捲動到選取節點的方塊完整露出（外圍多留 <see cref="ENSURE_VISIBLE_MARGIN"/>）。
         /// </summary>
         private void EnsureVisible(MenuNode node)
         {
-            if (_sizeMode != CascadeDiagramSizeMode.ActualSize) return;
-
             var imageNode = FindImageNode(node);
             if (imageNode == null) return;
 

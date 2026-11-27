@@ -67,22 +67,36 @@ namespace CascadeControl.Views.Diagram
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
 
+            SetSubtreesExpanded(new[] { root }, expanded);
+        }
+
+        // 一次把多個節點與它們的子孫展開或收合，只重畫一次；沒有任何內部節點時不重畫。
+        private void SetSubtreesExpanded(IEnumerable<MenuNode> roots, bool expanded)
+        {
             SyncExpandTree();
-            if (root.Children.Count == 0) return;
-
+            var changed = false;
             var stack = new Stack<MenuNode>();
-            stack.Push(root);
-            while (stack.Count > 0)
+            foreach (var root in roots)
             {
-                var current = stack.Pop();
-                if (current.Children.Count == 0) continue;
+                if (root == null || root.Children.Count == 0) continue;
 
-                _expandOverrides[current] = expanded;
-                for (var i = 0; i < current.Children.Count; i++) stack.Push(current.Children[i]);
+                stack.Push(root);
+                while (stack.Count > 0)
+                {
+                    var current = stack.Pop();
+                    if (current.Children.Count == 0) continue;
+
+                    _expandOverrides[current] = expanded;
+                    changed = true;
+                    for (var i = 0; i < current.Children.Count; i++) stack.Push(current.Children[i]);
+                }
             }
 
-            Redraw();
+            if (changed) Redraw();
         }
+
+        // 空白鍵／*／／的對象：有多選時是多選（祖先也被多選的子孫跟著祖先走），否則是 fallback（選取的節點或右鍵點到的節點）。
+        private IReadOnlyList<MenuNode> ExpansionTargets(MenuNode fallback) => _marks.Count > 0 ? TopMostMarks() : Single(fallback);
 
         // 展開選取節點的祖先，讓選取的節點畫得出來；之後選取移開也維持展開，和使用者點過展開鈕一樣。
         private void RevealSelection()

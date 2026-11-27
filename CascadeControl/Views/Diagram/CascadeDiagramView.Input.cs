@@ -167,9 +167,8 @@ namespace CascadeControl.Views.Diagram
 
             if (e.KeyCode == Keys.Divide)
             {
-                var target = _contextMenuNode ?? SelectedMenuNode;
                 ResetDigitJump();
-                CollapseAll(target);
+                SetSubtreesExpanded(ExpansionTargets(_contextMenuNode ?? SelectedMenuNode), expanded: false);
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 return;
@@ -369,19 +368,22 @@ namespace CascadeControl.Views.Diagram
             if (FindImageNode(node) != null) OnNodeActivated(new CascadeNodeEventArgs(node.FullPath, null, PathSeparator));
         }
 
+        // 單選時切換選取的節點；多選時以第一個有子節點的目標為準，全部設成相反的狀態。
         private void ToggleSelected()
         {
-            var node = SelectedMenuNode;
-            if (node != null && node.Children.Count > 0) SetExpanded(node, !IsExpanded(node));
+            var targets = ExpansionTargets(SelectedMenuNode).Where(node => node != null && node.Children.Count > 0).ToList();
+            if (targets.Count == 0) return;
+
+            var expanded = !IsExpanded(targets[0]);
+            foreach (var node in targets) _expandOverrides[node] = expanded;
+            Redraw();
         }
 
         private void ExpandAllSelected()
         {
-            var node = SelectedMenuNode;
-            if (node == null || node.Children.Count == 0) return;
-
-            ExpandAll(node);
-            EnsureVisible(node);
+            var targets = ExpansionTargets(SelectedMenuNode);
+            SetSubtreesExpanded(targets, expanded: true);
+            EnsureVisible(SelectedMenuNode);
         }
 
         #region 數字鍵跳轉

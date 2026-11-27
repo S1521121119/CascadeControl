@@ -38,8 +38,10 @@ namespace CascadeControl.Views.Diagram
             }
 
             var displayMenu = new ToolStripMenuItem("顯示");
-            displayMenu.DropDownItems.Add(CreateChoice("原始尺寸", _sizeMode == CascadeDiagramSizeMode.ActualSize, () => SizeMode = CascadeDiagramSizeMode.ActualSize));
-            displayMenu.DropDownItems.Add(CreateChoice("自動縮放", _sizeMode == CascadeDiagramSizeMode.Zoom, () => SizeMode = CascadeDiagramSizeMode.Zoom));
+            displayMenu.DropDownItems.Add(CreateCommand("符合視窗大小", FitToWindow));
+            displayMenu.DropDownItems.Add(CreateCommand("重設縮放", ResetZoom));
+            displayMenu.DropDownItems.Add(CreateCommand("放大", ZoomIn, ZoomPercent < ZoomSteps[ZoomSteps.Length - 1]));
+            displayMenu.DropDownItems.Add(CreateCommand("縮小", ZoomOut, ZoomPercent > ZoomSteps[0]));
             items.Add(displayMenu);
 
             // 清空項目後 ContextMenuStrip 會預設取消開啟，要明確允許。
@@ -106,13 +108,14 @@ namespace CascadeControl.Views.Diagram
                 ShortcutKeyDisplayString = "*",
                 Enabled = hasChildren,
             };
-            expandAll.Click += (sender, e) => ExpandAll(target);
+            expandAll.Click += (sender, e) => SetSubtreesExpanded(EditTargets(target), expanded: true);
 
             var collapseAll = new ToolStripMenuItem("全部摺疊")
             {
+                ShortcutKeyDisplayString = "/",
                 Enabled = hasChildren,
             };
-            collapseAll.Click += (sender, e) => CollapseAll(target);
+            collapseAll.Click += (sender, e) => SetSubtreesExpanded(EditTargets(target), expanded: false);
 
             items.Add(expandAll);
             items.Add(collapseAll);
@@ -139,6 +142,13 @@ namespace CascadeControl.Views.Diagram
             {
                 if (!IsDisposed) action();
             }));
+        }
+
+        private static ToolStripMenuItem CreateCommand(string text, Action apply, bool enabled = true)
+        {
+            var item = new ToolStripMenuItem(text) { Enabled = enabled };
+            item.Click += (sender, e) => apply();
+            return item;
         }
 
         private static ToolStripMenuItem CreateChoice(string text, bool isChecked, Action apply)

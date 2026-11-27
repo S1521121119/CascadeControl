@@ -557,7 +557,8 @@ standalone.SetTree(menu);
 | `TrySelectNode(node)` / `TrySelectPath(path)` / `StepBack()` / `StepForward()` | 選取節點或路徑，或沿記憶軌跡退回／進入一層 |
 | `PathSeparator` | 層級分隔字串（與共享同一份 `State` 的檢視同步） |
 | `DrawScope` / `UncheckedDisplay` | 畫整棵樹或選取的子樹；沒勾的節點變淡或隱藏（`State` 為 `CascadeCheckableState` 時有效） |
-| `SizeMode` | `ActualSize` 原始尺寸，放不下時出現捲軸；`Zoom` 維持長寬比例縮小到整張看得到（不放大） |
+| `ZoomFactor`／`ZoomPercent` | 畫圖的倍率（1 = 100%）；整張圖以該倍率重畫，文字與線條保持清晰。`ZoomPercent` 為倍率百分比（唯讀） |
+| `ZoomIn()`／`ZoomOut()`／`ResetZoom()`／`FitToWindow()` | 依級距（25%…400%）放大縮小、回到 100%、縮放到整張圖放進視窗。選單操作以可視區中心為錨點；Ctrl+滾輪以游標為錨點 |
 | `StepIntoCollapsed` | 在收合 [+] 的節點上按 → 是否自動展開並進入下一層，預設 `true`；`false` 時要先按空白鍵展開 |
 | `MultiSelectedNodes` / `ClearMultiSelection()` / `MultiSelectionChanged` | 框選或 Ctrl+點選的多選節點（依圖上前序排列）、取消多選、多選改變後觸發；有多選時 `Copy()`／`CopyPath()` 的對象是多選的節點，`Paste()`／`PasteAsChild()` 的位置跟著多選 |
 | `Redraw()` | 重畫；在外部直接修改節點而未呼叫 `RefreshColumns` 或 `State.Refresh` 時呼叫 |
@@ -568,7 +569,7 @@ standalone.SetTree(menu);
 | `NodeMouseClick` / `NodeMouseDoubleClick` | 點了圖上的節點；參數 `CascadeNodeMouseEventArgs`（繼承 `CascadeNodeEventArgs`，含 `Node`、`Path`、`PathText`、`ColumnIndex`、`Button`、`Location`、`Bounds`、`ScreenLocation`） |
 | `NodeActivated` | 在選取的節點上按 Enter；參數與 `CascadeColumnsView.NodeActivated` 同為 `CascadeNodeEventArgs`（含 `Node`、`Path`、`PathText`、`IsLeaf`） |
 | `DrawSettingsChanged` | 三個顯示設定改變後觸發，包含從右鍵功能表切換 |
-| `TreeContextMenu` | 右鍵功能表，含範圍、未勾選節點（`State` 為 `CascadeCheckableState` 時顯示）、顯示（原始尺寸／自動縮放） |
+| `TreeContextMenu` | 右鍵功能表，含範圍、未勾選節點（`State` 為 `CascadeCheckableState` 時顯示）、顯示（符合視窗大小／重設縮放／放大／縮小） |
 
 焦點在樹圖上時可以用鍵盤操作。按鍵改的是 `State` 的選取，所以「進出記住位置」的記憶和共享同一份狀態的其他檢視一致：
 
@@ -581,7 +582,7 @@ standalone.SetTree(menu);
 | Enter | 在選取的節點上觸發 `NodeActivated`（參數 `Node`、`Path`、`PathText`），用途和雙擊相同，由訂閱端決定 |
 | Esc | 有多選時取消多選；沒有多選時交給表單 |
 
-原始尺寸下，移動後會捲動到選取的節點。
+移動後會捲動到選取的節點。
 
 多選和 `CascadeColumnsView` 一樣用系統選取色（藍）：
 

@@ -15,7 +15,7 @@ namespace CascadeControl.Views.Diagram
     /// <remarks>
     /// 取代「可捲動的 Panel 包一個 AutoSize 的 PictureBox」：控制項自己畫圖、自己管捲軸，所以可以直接 Dock = Fill。
     /// 可以直接呼叫 <see cref="SetTree"/> 獨立顯示與導覽，也可以把與 <see cref="Columns.CascadeColumnsView"/> 相同的 <see cref="CascadeState"/> 指派給 <see cref="State"/> 同步顯示。
-    /// 右鍵功能表可以切換 <see cref="DrawScope"/>、<see cref="SizeMode"/>；<see cref="ShowChecks"/> 為 true 且 <see cref="State"/> 是 <see cref="CascadeCheckableState"/> 時
+    /// 右鍵功能表可以切換 <see cref="DrawScope"/>；<see cref="ShowChecks"/> 為 true 且 <see cref="State"/> 是 <see cref="CascadeCheckableState"/> 時
     /// 多一組 <see cref="UncheckedDisplay"/>（沒有勾選資訊時用不到這個設定，所以不列出來）。
     /// 會自動重畫的時機：<see cref="CascadeState.SelectedPathChanged"/>（包含 <see cref="CascadeState.SetTree"/> 與 <see cref="CascadeState.Refresh"/>）、
     /// <see cref="CascadeCheckableState.CheckedChanged"/> 與 <see cref="CascadeCheckableState.CheckSetChanged"/>；在外部直接修改節點而未呼叫 <see cref="CascadeState.Refresh"/> 時，
@@ -57,7 +57,6 @@ namespace CascadeControl.Views.Diagram
         private bool _showChecks;
         private bool _showIndex;
         private bool _showChildCount;
-        private CascadeDiagramSizeMode _sizeMode = CascadeDiagramSizeMode.ActualSize;
         private float _zoomFactor = 1f;
 
         /// <summary>
@@ -278,30 +277,10 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 圖怎麼放進控制項：原始尺寸（放不下時出現捲軸）或維持長寬比例縮小到整張看得到。
-        /// </summary>
-        [Category("Cascade")]
-        [Description("ActualSize：原始尺寸，放不下時出現捲軸；Zoom：維持長寬比例縮小到整張圖看得到。")]
-        [DefaultValue(CascadeDiagramSizeMode.ActualSize)]
-        public CascadeDiagramSizeMode SizeMode
-        {
-            get => _sizeMode;
-            set
-            {
-                if (_sizeMode == value) return;
-                _sizeMode = value;
-                UpdateScrollSize();
-                PositionEditBox();
-                Invalidate();
-                OnDrawSettingsChanged(EventArgs.Empty);
-            }
-        }
-
-        /// <summary>
         /// 畫圖的放大倍率：1 是原始尺寸，2 是兩倍。整張圖以這個倍率重畫（不是拉伸點陣圖），文字與線條保持清晰；就地編輯框的字型一起放大。
         /// </summary>
         /// <remarks>
-        /// <see cref="SizeMode"/> 為 <see cref="CascadeDiagramSizeMode.Zoom"/> 時，放大後的圖仍會縮小到整張看得到。
+        /// 一般縮放請用 <see cref="ZoomIn"/>、<see cref="ZoomOut"/>、<see cref="ResetZoom"/>、<see cref="FitToWindow"/>（以 <see cref="ZoomPercent"/> 表示）。
         /// 圖的任一邊超過點陣圖上限時，實際倍率會再縮小到放得下。
         /// </remarks>
         /// <exception cref="ArgumentOutOfRangeException">設為 0、負數、NaN 或無限大。</exception>
@@ -386,7 +365,7 @@ namespace CascadeControl.Views.Diagram
         public event EventHandler<CascadeNodeEventArgs> NodeActivated;
 
         /// <summary>
-        /// <see cref="DrawScope"/>、<see cref="ShowChecks"/>、<see cref="ShowIndex"/>、<see cref="ShowChildCount"/>、<see cref="UncheckedDisplay"/>、<see cref="SizeMode"/> 或 <see cref="ZoomFactor"/> 改變後觸發，包含從右鍵功能表切換。
+        /// <see cref="DrawScope"/>、<see cref="ShowChecks"/>、<see cref="ShowIndex"/>、<see cref="ShowChildCount"/>、<see cref="UncheckedDisplay"/> 或 <see cref="ZoomFactor"/> 改變後觸發，包含從右鍵功能表切換。
         /// </summary>
         [Category("Cascade")]
         public event EventHandler DrawSettingsChanged;

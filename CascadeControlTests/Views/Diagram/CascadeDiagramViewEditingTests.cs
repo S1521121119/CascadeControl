@@ -529,7 +529,7 @@ namespace CascadeControlTests.Views.Diagram
                 }
 
                 CollectionAssert.AreEqual(
-                    new[] { "復原(Ctrl+Z)", "重做(Ctrl+Y)", "-", "插入", "建立子節點(Ctrl+N)", "重新命名(F2)", "-", "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "剪下(Ctrl+X)", "貼上", "-", "刪除(Del)", "-", "全部展開(*)", "全部摺疊", "-", "範圍", "顯示" },
+                    new[] { "復原(Ctrl+Z)", "重做(Ctrl+Y)", "-", "插入", "建立子節點(Ctrl+N)", "重新命名(F2)", "-", "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "剪下(Ctrl+X)", "貼上", "-", "刪除(Del)", "-", "全部展開(*)", "全部摺疊(/)", "-", "範圍", "顯示" },
                     OpenMenu());
 
                 f.View.TreeContextMenu.Show(f.View, new System.Drawing.Point(10, 10));
@@ -538,7 +538,7 @@ namespace CascadeControlTests.Views.Diagram
                 f.View.TreeContextMenu.Close();
 
                 f.View.ReadOnly = true;
-                CollectionAssert.AreEqual(new[] { "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "-", "全部展開(*)", "全部摺疊", "-", "範圍", "顯示" }, OpenMenu());
+                CollectionAssert.AreEqual(new[] { "複製(Ctrl+C)", "複製(路徑)(Ctrl+Shift+C)", "-", "全部展開(*)", "全部摺疊(/)", "-", "範圍", "顯示" }, OpenMenu());
 
                 f.View.State.ClearSelection();
                 CollectionAssert.AreEqual(new[] { "範圍", "顯示" }, OpenMenu(), "沒有對象時只有顯示設定");

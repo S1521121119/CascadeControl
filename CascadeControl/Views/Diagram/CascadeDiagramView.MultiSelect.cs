@@ -188,7 +188,7 @@ namespace CascadeControl.Views.Diagram
 
         private void ScrollTowards(Point location)
         {
-            if (_sizeMode != CascadeDiagramSizeMode.ActualSize || _image == null) return;
+            if (_image == null) return;
 
             var client = ClientSize;
             var dx = location.X < 0 ? location.X : Math.Max(0, location.X - client.Width);

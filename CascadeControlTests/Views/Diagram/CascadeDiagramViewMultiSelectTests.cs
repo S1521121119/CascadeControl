@@ -532,6 +532,8 @@ namespace CascadeControlTests.Views.Diagram
                 BeginMarkPress(location, control);
             }
 
+            public void PressKey(Keys key) => OnKeyDown(new KeyEventArgs(key));
+
             public void DragTo(Point location) => OnMouseMove(new MouseEventArgs(MouseButtons.Left, 0, location.X, location.Y, 0));
 
             public void PressCtrlKey(bool down)
@@ -599,6 +601,77 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreEqual(normal.Left * 2, zoomed.Left, 2);
                 Assert.AreEqual((normalImageTop * 2) + zoomedOffsetY, zoomed.Top, 2);
                 Assert.AreSame(f.Node("B"), f.View.GetNodeAt(new Point(zoomed.Left + 1, zoomed.Top + 1)));
+            }
+        }
+
+        [TestMethod]
+        public void SpaceStarAndSlash_ApplyToAllMultiSelectedNodes()
+        {
+            using (var f = new Fixture())
+            {
+                f.Tree.ExpandAndAddPaths("B", "B1");
+                f.Tree.ExpandAndAddPaths("C", "C1");
+                f.View.Redraw();
+                f.View.SetExpanded(f.Node("A"), false);
+                f.View.SetExpanded(f.Node("B"), false);
+                f.View.SetExpanded(f.Node("C"), false);
+                f.Select("A");
+                f.CtrlClick("B");
+                f.AssertMarks("A", "B");
+
+                f.View.PressKey(Keys.Space);
+                Assert.IsTrue(f.View.IsExpanded(f.Node("A")));
+                Assert.IsTrue(f.View.IsExpanded(f.Node("B")));
+                Assert.IsFalse(f.View.IsExpanded(f.Node("C")), "沒多選的節點不受影響");
+
+                f.View.PressKey(Keys.Space);
+                Assert.IsFalse(f.View.IsExpanded(f.Node("A")));
+                Assert.IsFalse(f.View.IsExpanded(f.Node("B")));
+
+                f.View.PressKey(Keys.Multiply);
+                Assert.IsTrue(f.View.IsExpanded(f.Node("A")));
+                Assert.IsTrue(f.View.IsExpanded(f.Node("B")));
+                Assert.IsFalse(f.View.IsExpanded(f.Node("C")));
+
+                f.View.PressKey(Keys.Divide);
+                Assert.IsFalse(f.View.IsExpanded(f.Node("A")));
+                Assert.IsFalse(f.View.IsExpanded(f.Node("B")));
+            }
+        }
+
+        [TestMethod]
+        public void ZoomInOut_StepsAndKeepsViewCenterAnchor()
+        {
+            using (var f = new Fixture())
+            {
+                Assert.AreEqual(100, f.View.ZoomPercent);
+                f.View.ZoomIn();
+                Assert.AreEqual(110, f.View.ZoomPercent);
+                f.View.ZoomOut();
+                f.View.ZoomOut();
+                Assert.AreEqual(90, f.View.ZoomPercent);
+                f.View.ResetZoom();
+                Assert.AreEqual(100, f.View.ZoomPercent);
+
+                for (var i = 0; i < 30; i++) f.View.ZoomOut();
+                Assert.AreEqual(25, f.View.ZoomPercent);
+                for (var i = 0; i < 30; i++) f.View.ZoomIn();
+                Assert.AreEqual(400, f.View.ZoomPercent);
+            }
+        }
+
+        [TestMethod]
+        public void FitToWindow_ShrinksLargeImageIntoClient()
+        {
+            using (var f = new Fixture())
+            {
+                f.View.ZoomFactor = 4f;
+                f.View.Size = new Size(300, 120);
+                f.View.FitToWindow();
+
+                Assert.IsTrue(f.View.ZoomPercent < 400);
+                Assert.IsTrue(f.View.Image.Width <= f.View.ClientSize.Width + 1);
+                Assert.IsTrue(f.View.Image.Height <= f.View.ClientSize.Height + 1);
             }
         }
 

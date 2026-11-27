@@ -708,50 +708,6 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
-        public void Zoom_WidthLimitedAndSmallerThanClient_LeftAlignedAndVerticallyCentered()
-        {
-            var tree = new MenuTree();
-            tree.AddPath(new[] { "Level1", "Level2", "Level3", "Level4", "Level5", "Level6" });
-            var level1 = Find(tree, "Level1");
-
-            using (var imageView = new CascadeDiagramView { SizeMode = CascadeDiagramSizeMode.Zoom })
-            {
-                imageView.SetTree(tree);
-                imageView.ExpandAll(level1);
-
-                var imageSize = imageView.Image.Size;
-                imageView.Size = new Size(imageSize.Width / 2, System.Math.Max(300, imageSize.Height * 4));
-
-                var scale = imageView.ClientSize.Width / (float)imageSize.Width;
-                var offsetY = (float)System.Math.Floor((imageView.ClientSize.Height - (imageSize.Height * scale)) / 2f);
-                Assert.IsTrue(scale < 1f && offsetY > 0f);
-
-                var l1Bounds = LayoutNodeOf(imageView, tree, level1).Bounds;
-                var scaledCenter = RoundPoint(new PointF(
-                    (l1Bounds.Left + (l1Bounds.Width / 2f)) * scale,
-                    ((l1Bounds.Top + (l1Bounds.Height / 2f)) * scale) + offsetY));
-                var unshiftedTop = RoundPoint(new PointF(
-                    (l1Bounds.Left + (l1Bounds.Width / 2f)) * scale,
-                    (l1Bounds.Top + (l1Bounds.Height / 2f)) * scale));
-
-                Assert.AreSame(level1, imageView.GetNodeAt(scaledCenter));
-                Assert.IsNull(imageView.GetNodeAt(unshiftedTop), "Zoom 模式高度小於可視區時應垂直置中而非靠上");
-
-                imageView.Size = new Size(imageSize.Width + 300, (imageSize.Height * 3) + 1);
-                var unscaledOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - imageSize.Height) / 2f);
-                var leftAlignedPoint = RoundPoint(new PointF(
-                    l1Bounds.Left + (l1Bounds.Width / 2f),
-                    l1Bounds.Top + (l1Bounds.Height / 2f) + unscaledOffsetY));
-                var horizontallyCenteredPoint = RoundPoint(new PointF(
-                    l1Bounds.Left + (l1Bounds.Width / 2f) + ((imageView.ClientSize.Width - imageSize.Width) / 2f),
-                    l1Bounds.Top + (l1Bounds.Height / 2f) + unscaledOffsetY));
-
-                Assert.AreSame(level1, imageView.GetNodeAt(leftAlignedPoint), "水平仍維持靠左對齊");
-                Assert.AreNotSame(level1, imageView.GetNodeAt(horizontallyCenteredPoint), "不應水平置中");
-            }
-        }
-
-        [TestMethod]
         public void BeginRename_AlignsEditBoxWithVerticallyCenteredNode_AndRepositionsOnResize()
         {
             var tree = new MenuTree();
@@ -788,7 +744,7 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
-        public void ToImagePoint_ReflectsVerticalCenteringInActualSizeAndZoom()
+        public void ToImagePoint_ReflectsVerticalCenteringInActualSize()
         {
             var tree = new MenuTree();
             tree.AddPath(new[] { "L1", "L2", "L3", "L4", "L5" });
@@ -805,15 +761,6 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreEqual(24f, actualPoint.X, 0.01f);
                 Assert.AreEqual(18f, actualPoint.Y, 0.01f);
 
-                imageView.SizeMode = CascadeDiagramSizeMode.Zoom;
-                imageView.Size = new Size(imageSize.Width / 2, System.Math.Max(300, imageSize.Height * 4));
-                var scale = imageView.ClientSize.Width / (float)imageSize.Width;
-                var zoomOffsetY = (int)System.Math.Floor((imageView.ClientSize.Height - (imageSize.Height * scale)) / 2f);
-                Assert.IsTrue(scale < 1f && zoomOffsetY > 0);
-
-                var zoomPoint = imageView.ImagePointOf(new Point(40, zoomOffsetY + 10));
-                Assert.AreEqual(40f / scale, zoomPoint.X, 0.01f);
-                Assert.AreEqual(10f / scale, zoomPoint.Y, 0.01f);
             }
         }
 

@@ -13,15 +13,15 @@
 | 左鍵點擊或雙擊 `[+]`、`[-]` 展開鈕 | 展開或收合該節點的子節點，不改變選取。連點兩下時，第二下視為再切換一次。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`TryToggleExpander`、`OnMouseClick`、`OnMouseDoubleClick`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Expansion.cs`（`SetExpanded`、`IsExpanded`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Rendering.cs`（`GetExpanderAt`）、`CascadeControl/Views/Diagram/TreeImage.cs`（`GetExpanderAt`） |
 | 左鍵點擊空白處 | 取得焦點並取消全部多選。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnMouseDown`、`OnMouseUp`）、`CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`（`BeginMarkPress`、`EndMarkPress`、`ClearMultiSelection`） |
 | `Ctrl` + 左鍵點擊節點（未拖曳即放開） | 切換該節點的多選狀態，不改單選焦點。取消多選時連同已多選子孫一起取消；原本無多選時，會先將目前單選節點納入起點。 | `CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`（`BeginMarkPress`、`ToggleMark`、`SeedMarks`）、`CascadeControl/Views/Diagram/CascadeDiagramView.DragMove.cs`（`TryBeginMovePress`、`EndMovePress`） |
-| 左鍵從空白處拖曳框選 | 超過系統拖曳門檻（`SystemInformation.DragSize`）後畫出半透明藍框，框住的節點取代目前多選。拖到視窗邊緣外時自動捲動（原始尺寸模式）。失去滑鼠擷取時停在目前選取範圍。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnMouseDown`、`OnMouseMove`、`OnMouseUp`、`OnMouseCaptureChanged`）、`CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`（`BeginMarkPress`、`DragMarkPress`、`EndMarkPress`、`ScrollTowards`、`PaintMarks`） |
+| 左鍵從空白處拖曳框選 | 超過系統拖曳門檻（`SystemInformation.DragSize`）後畫出半透明藍框，框住的節點取代目前多選。拖到視窗邊緣外時自動捲動。失去滑鼠擷取時停在目前選取範圍。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnMouseDown`、`OnMouseMove`、`OnMouseUp`、`OnMouseCaptureChanged`）、`CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`（`BeginMarkPress`、`DragMarkPress`、`EndMarkPress`、`ScrollTowards`、`PaintMarks`） |
 | `Ctrl` + 左鍵從空白處拖曳框選 | 在原本多選（或目前單選節點）的基礎上疊加框選到的節點。 | `CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`（`SeedMarks`、`BeginMarkPress`、`DragMarkPress`） |
 | 左鍵按住節點拖曳（搬移） | 搬移單一節點或整個多選群組。移到目標節點上下 20% 邊緣或兄弟間隙、首尾 50% 高度內時插入同層指定位置；移到目標節點中央時放成最後一個子節點。拖曳途中顯示半透明預覽、原處淡化並畫虛線與紅叉、目標高亮相框、不可放處顯示禁止游標（`Cursors.No`）、視窗邊緣自動捲動。失去滑鼠擷取時取消。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnMouseMove`、`OnMouseUp`、`OnMouseCaptureChanged`）、`CascadeControl/Views/Diagram/CascadeDiagramView.DragMove.cs`（`TryBeginMovePress`、`DragMovePress`、`UpdateMoveDropTarget`、`BuildNodeHitDestination`、`TryFindSiblingGapDestination`、`PaintDropTarget`、`SetDropDestination`、`EndMovePress`）、`CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`（`BeginMarkPress`、`ScrollTowards`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Rendering.cs`（`OnPaint`） |
 | `Ctrl` + 左鍵按住節點拖曳（複製） | 落點與預覽規則同拖曳搬移，但改為複製到目標位置且原處維持不變。拖曳過程中按下或放開 `Ctrl` 鍵可即時切換搬移與複製預覽。 | `CascadeControl/Views/Diagram/CascadeDiagramView.DragMove.cs`（`UpdateMoveDropTarget`、`EndMovePress`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnKeyDown`、`OnKeyUp`） |
-| `Shift` + 左鍵拖曳（畫布任何處） | 自由平移畫布（手形抓紙方向，游標切換為 `Cursors.SizeAll`），即使圖面比視窗小或已達捲軸盡頭也能把任意節點移到畫面中央（至少保留 `48px` 圖面可見）。不觸發點選、展開鈕切換、框選或節點搬移；拖曳途中按 `Esc` 還原至拖曳前位置；自動縮放（`Zoom`）模式下不啟用。 | `MindMap/MindMapDiagramView.cs`（`OnMouseDown`、`OnMouseMove`、`OnMouseClick`、`OnMouseDoubleClick`、`OnMouseUp`、`OnMouseCaptureChanged`、`ProcessCmdKey`、`SetScreenOffset`、`ResetPan`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Rendering.cs`（`PanOffset`、`GetTransform`、`ShiftViewport`、`NotifyPanChanged`、`OnImageUpdated`） |
+| `Shift` + 左鍵拖曳（畫布任何處） | 自由平移畫布（手形抓紙方向，游標切換為 `Cursors.SizeAll`），即使圖面比視窗小或已達捲軸盡頭也能把任意節點移到畫面中央（至少保留 `48px` 圖面可見）。不觸發點選、展開鈕切換、框選或節點搬移；拖曳途中按 `Esc` 還原至拖曳前位置。 | `MindMap/MindMapDiagramView.cs`（`OnMouseDown`、`OnMouseMove`、`OnMouseClick`、`OnMouseDoubleClick`、`OnMouseUp`、`OnMouseCaptureChanged`、`ProcessCmdKey`、`SetScreenOffset`、`ResetPan`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Rendering.cs`（`PanOffset`、`GetTransform`、`ShiftViewport`、`NotifyPanChanged`、`OnImageUpdated`） |
 | 編輯中左鍵點擊畫布任何處 | 套用並關閉就地編輯框，同時略過該次點擊的選取與展開動作。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnMouseDown`、`OnMouseClick`、`OnMouseUp`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Editing.cs`（`EndEdit`） |
 | 右鍵點擊節點或空白處 | 開啟右鍵選單。點在節點上以該節點為對象，點在多選節點上以整個多選為對象，點在空白處以目前選取節點為對象。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnMouseDown`）、`CascadeControl/Views/Diagram/CascadeDiagramView.ContextMenu.cs`（`ContextMenu_Opening`、`ContextMenu_Closed`）、`CascadeControl/Views/Diagram/CascadeDiagramView.cs`（`_contextMenu` 建立與綁定） |
 | 滾輪捲動 | 畫布上下捲動（需先取得焦點）。 | `MindMap/MindMapDiagramView.cs`（`OnMouseWheel`）、`CascadeControl/Views/Diagram/CascadeDiagramView.cs`（`AutoScroll`、`ControlStyles.Selectable`） |
-| `Ctrl` + 滾輪 | 以游標所在點為中心分級縮放（25% 到 400% 共 15 階，支援觸控板細步累積），並更新狀態列縮放百分比。 | `MindMap/MindMapDiagramView.cs`（`OnMouseWheel`、`SetZoomIndex`、`ZoomSteps`）、`MindMap/MainForm.cs`（`UpdateZoomStatus`） |
+| `Ctrl` + 滾輪 | 以游標所在點為錨點分級縮放（25% 到 400% 共 15 階，支援觸控板細步累積；縮放前後游標指到的圖上座標不變），並更新狀態列縮放百分比。選單／快捷鍵的放大縮小則以可視區中心為錨點。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Zoom.cs`（`OnMouseWheel`、`SetZoomPercent`、`ZoomSteps`）、`MindMap/MainForm.cs`（`UpdateZoomStatus`） |
 | 從外部拖放 `.csv` 檔案到視窗 | 游標顯示複製圖示，放開後若有未存變更先跳確認框，再開啟第一個 `.csv`。表單與所有動態加入的子控制項（包含就地編輯框）皆接收拖放。 | `MindMap/MainForm.cs`（`EnableFileDrop`、`Form_DragEnter`、`Form_DragDrop`、`TryGetDroppedCsv`） |
 | 點擊視窗關閉鈕 | 若有未存檔變更，跳出 Yes/No/Cancel 存檔確認對話框。 | `MindMap/MainForm.cs`（`OnFormClosing`、`ConfirmDiscardChanges`） |
 
@@ -32,8 +32,8 @@
 | `↑`、`↓` | 在畫面上可見的同一層節點間上下移動（可跨父節點，略過收合與隱藏節點；未選取時選第一個可見節點），並自動捲動至可見範圍。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`IsInputKey`、`OnKeyDown`、`MoveVertical`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Rendering.cs`（`EnsureVisible`） |
 | `←` | 退回上一層（選取父節點）。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`IsInputKey`、`OnKeyDown`） |
 | `→` | 進入下一層子節點。若目前節點收合且 `StepIntoCollapsed` 為 `true`，先展開再進入。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`IsInputKey`、`OnKeyDown`、`StepIn`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Expansion.cs`（`SetExpanded`） |
-| `Space` | 展開或收合目前選取的節點。`WndProc` 會攔截中文輸入法開啟時的 `VK_PROCESSKEY` 並依掃描碼 `0x39` 還原為 `Keys.Space`。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnKeyDown`、`WndProc`、`ToggleSelected`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Expansion.cs`（`SetExpanded`） |
-| `*`（主鍵盤或數字鍵盤乘號） | 展開選取節點與其全部子孫。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnKeyDown`、`OnKeyPress`、`ExpandAllSelected`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Expansion.cs`（`ExpandAll`） |
+| `Space` | 展開或收合目前選取的節點；有多選時對全部多選節點（以第一個為準，統一設成相反狀態）。`WndProc` 會攔截中文輸入法開啟時的 `VK_PROCESSKEY` 並依掃描碼 `0x39` 還原為 `Keys.Space`。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnKeyDown`、`WndProc`、`ToggleSelected`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Expansion.cs`（`SetExpanded`） |
+| `*`（主鍵盤或數字鍵盤乘號） | 展開選取節點（有多選時為全部多選節點）與其全部子孫。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnKeyDown`、`OnKeyPress`、`ExpandAllSelected`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Expansion.cs`（`ExpandAll`） |
 | `0` 到 `9`（主鍵盤與數字鍵盤） | 僅在 **View > Show Index** 開啟時生效。依同層編號跳轉選取並清除多選，支援連續輸入多位數緩衝。 | `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`（`OnKeyDown`、`TryGetDigit`、`JumpByDigit`、`ResetDigitJump`）、`CascadeControl/Views/Diagram/CascadeDiagramView.cs`（`ShowIndex`） |
 | `Tab` | 在選取節點底下最後面開啟就地編輯框插入子項。葉節點直接建立第一個子節點；已有子節點則選最後一個子節點並在其後方插入。 | `MindMap/MindMapDiagramView.cs`（`ProcessCmdKey`、`BeginInsertChild`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Editing.cs`（`BeginCreateChild`、`BeginInsert`） |
 | `Enter` | 在選取節點後方（下方）開啟就地編輯框插入同層節點。 | `MindMap/MindMapDiagramView.cs`（`ProcessCmdKey`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Editing.cs`（`BeginInsert`） |
@@ -55,9 +55,9 @@
 | `Ctrl+O` | 開啟檔案對話框（**File > Open...**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuFileOpen_Click`）、`MindMap/MindMapDiagramView.cs`（`ProcessCmdKey`） |
 | `Ctrl+S` | 存檔（**File > Save**），新文件自動開啟另存對話框。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuFileSave_Click`、`Save`）、`MindMap/MindMapDiagramView.cs`（`ProcessCmdKey`） |
 | `Ctrl+Shift+S` | 另存新檔（**File > Save As...**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuFileSaveAs_Click`、`Save`）、`MindMap/MindMapDiagramView.cs`（`ProcessCmdKey`） |
-| `Ctrl++`（`Ctrl+Oemplus`） | 放大一階（**View > Zoom In**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuViewZoomIn_Click`）、`MindMap/MindMapDiagramView.cs`（`ZoomIn`） |
-| `Ctrl+-`（`Ctrl+OemMinus`） | 縮小一階（**View > Zoom Out**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuViewZoomOut_Click`）、`MindMap/MindMapDiagramView.cs`（`ZoomOut`） |
-| `Ctrl+0`（`Ctrl+D0`） | 重設縮放為 100% 並重設畫布平移位置（**View > Reset Zoom (100%)**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuViewResetZoom_Click`）、`MindMap/MindMapDiagramView.cs`（`ResetZoom`、`ResetPan`） |
+| `Ctrl++`（`Ctrl+Oemplus`） | 放大一階（**View > Zoom In**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuViewZoomIn_Click`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Zoom.cs`（`ZoomIn`） |
+| `Ctrl+-`（`Ctrl+OemMinus`） | 縮小一階（**View > Zoom Out**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuViewZoomOut_Click`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Zoom.cs`（`ZoomOut`） |
+| `Ctrl+0`（`Ctrl+D0`） | 重設縮放為 100% 並重設畫布平移位置（**View > Reset Zoom (100%)**）。 | `MindMap/MainForm.Designer.cs`、`MindMap/MainForm.cs`（`MnuViewResetZoom_Click`）、`CascadeControl/Views/Diagram/CascadeDiagramView.Zoom.cs`（`ResetZoom`）、`MindMap/MindMapDiagramView.cs`（`ResetPan`） |
 | `Alt+F`、`Alt+E`、`Alt+V` 與各項目助記鍵 | 開啟主功能表與子項目（WinForms `MenuStrip` 的 `&` 存取鍵）。 | `MindMap/MainForm.Designer.cs` |
 
 ## 就地編輯框操作（編輯模式）
@@ -92,13 +92,13 @@
 - **刪除**
 - **全部展開**、**全部摺疊**（僅對有子節點的節點啟用）
 - **範圍 > 整棵樹**、**範圍 > 選取的子樹**
-- **顯示 > 原始尺寸**、**顯示 > 自動縮放**
+- **顯示 > 符合視窗大小**、**重設縮放**、**放大**、**縮小**（以可視區中心為錨點）
 
 ## 各 `.cs` 檔案職責總覽
 
 - `MindMap/MainForm.cs`、`MindMap/MainForm.Designer.cs`：主功能表（File、Edit、View）點擊與快捷鍵設定、外部拖放 CSV 開檔、未存檔關閉確認框、狀態列（節點數、層數、選取、縮放百分比）更新。
 - `MindMap/MindMapDiagramView.cs`：MindMap 專屬互動覆寫，包含 `Shift` + 左鍵自由平移畫布、`Ctrl` + 滾輪縮放（維持游標錨點）、左鍵點節點選取、`Tab` 插入子項、`Enter` 下方插入同層、`Ctrl+A` 全選，以及讓主功能表快捷鍵優先於基底編輯快捷鍵。
-- `CascadeControl/Views/Diagram/CascadeDiagramView.cs`：右鍵選單物件建立與事件掛載、檢視模式屬性（`DrawScope`、`SizeMode`、`ZoomFactor`、`ShowIndex`、`ShowChildCount`、`StepIntoCollapsed`）。
+- `CascadeControl/Views/Diagram/CascadeDiagramView.cs`：右鍵選單物件建立與事件掛載、檢視模式屬性（`DrawScope`、`ZoomFactor`、`ShowIndex`、`ShowChildCount`、`StepIntoCollapsed`）。
 - `CascadeControl/Views/Diagram/CascadeDiagramView.Input.cs`：畫布滑鼠事件（Hover、Click、DoubleClick、MouseDown、MouseMove、MouseUp、CaptureChanged）與鍵盤分派（方向鍵、`Space` 與中文輸入法 `WndProc` 修正、`*`、數字鍵跳轉、`Esc`、編輯快捷鍵派發）。
 - `CascadeControl/Views/Diagram/CascadeDiagramView.MultiSelect.cs`：框選多選、`Ctrl` + 點選切換、拖曳時邊緣自動捲動、全選與清除多選、多選與選取框繪製。
 - `CascadeControl/Views/Diagram/CascadeDiagramView.DragMove.cs`：左鍵拖曳搬移、`Ctrl` + 拖曳複製、拖曳中即時切換搬移與複製、落點判定（兄弟間隙、上下 20% 邊緣、目標子節點）、預覽與目標高亮相框繪製。
