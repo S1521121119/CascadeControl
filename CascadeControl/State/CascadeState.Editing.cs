@@ -325,17 +325,7 @@ namespace CascadeControl.State
             ReferenceEquals(ancestor, node) || AncestorsOf(node).Contains(ancestor);
 
         // 節點是否屬於目前的樹；樹根不算。
-        internal bool IsInTree(MenuNode node)
-        {
-            if (node == null || Tree == null || ReferenceEquals(node, Tree.Root)) return false;
-
-            for (var current = node.Parent; current != null; current = current.Parent)
-            {
-                if (ReferenceEquals(current, Tree.Root)) return true;
-            }
-
-            return false;
-        }
+        internal bool IsInTree(MenuNode node) => node != null && Tree != null && node.IsDescendantOf(Tree.Root);
 
         internal bool IsInTreeOrRoot(MenuNode node) => Tree != null && (ReferenceEquals(node, Tree.Root) || IsInTree(node));
 

@@ -235,23 +235,7 @@ namespace CascadeControl.Trees
         /// <summary>
         /// 依加入順序列舉所有葉節點。
         /// </summary>
-        public IEnumerable<MenuNode> GetLeaves()
-        {
-            var stack = new Stack<MenuNode>();
-            for (var i = Root.Children.Count - 1; i >= 0; i--) stack.Push(Root.Children[i]);
-
-            while (stack.Count > 0)
-            {
-                var node = stack.Pop();
-                if (node.IsLeaf)
-                {
-                    yield return node;
-                    continue;
-                }
-
-                for (var i = node.Children.Count - 1; i >= 0; i--) stack.Push(node.Children[i]);
-            }
-        }
+        public IEnumerable<MenuNode> GetLeaves() => Root.Descendants().Where(node => node.IsLeaf);
 
         /// <summary>
         /// 攤平成資料列：每個葉節點一列，欄數補到 <see cref="Height"/>。

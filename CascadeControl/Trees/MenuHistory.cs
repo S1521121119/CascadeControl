@@ -288,15 +288,8 @@ namespace CascadeControl.Trees
         public abstract MenuHistoryResult Apply(bool undo);
 
         // 節點是不是樹根，或掛在樹根底下。
-        protected static bool IsInTreeOrRoot(MenuTree tree, MenuNode node)
-        {
-            for (var current = node; current != null; current = current.Parent)
-            {
-                if (ReferenceEquals(current, tree.Root)) return true;
-            }
-
-            return false;
-        }
+        protected static bool IsInTreeOrRoot(MenuTree tree, MenuNode node) =>
+            ReferenceEquals(node, tree.Root) || (node != null && node.IsDescendantOf(tree.Root));
     }
 
     /// <summary>

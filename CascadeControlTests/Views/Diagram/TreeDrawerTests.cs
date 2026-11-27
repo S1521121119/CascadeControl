@@ -22,11 +22,6 @@ namespace CascadeControlTests.Views.Diagram
             return node;
         }
 
-        private static System.Collections.Generic.IEnumerable<MenuNode> Descendants(MenuNode node)
-        {
-            return node.Children.SelectMany(child => new[] { child }.Concat(Descendants(child)));
-        }
-
         private static PointF Center(RectangleF bounds) => new PointF(bounds.X + bounds.Width / 2f, bounds.Y + bounds.Height / 2f);
 
         #region TreeDrawer
@@ -185,7 +180,7 @@ namespace CascadeControlTests.Views.Diagram
             var tree = TestTrees.Template();
             using (var image = TreeDrawer.RenderImage(tree, SystemFonts.DefaultFont))
             {
-                Assert.AreEqual(Descendants(tree.Root).Count(), image.Nodes.Count);
+                Assert.AreEqual(tree.Root.Descendants().Count(), image.Nodes.Count);
                 Assert.IsTrue(image.Nodes.All(node => node.IsExpanded));
             }
         }
@@ -200,7 +195,7 @@ namespace CascadeControlTests.Views.Diagram
             {
                 var drawn = image.Nodes.Select(node => node.Node).ToList();
                 Assert.IsTrue(drawn.Contains(motor));
-                Assert.IsFalse(Descendants(motor).Any(drawn.Contains), "收合節點的子孫不畫");
+                Assert.IsFalse(motor.Descendants().Any(drawn.Contains), "收合節點的子孫不畫");
                 Assert.IsTrue(drawn.Contains(Find(tree, "System", "Info", "Version")), "其他節點照畫");
 
                 var motorImage = image.Nodes.Single(node => node.Node == motor);

@@ -94,17 +94,7 @@ namespace CascadeControl.Trees
         /// 節點是否屬於 <see cref="Tree"/>；樹根本身不算。
         /// </summary>
         /// <param name="node">要檢查的節點；null 回傳 false。</param>
-        public bool Contains(MenuNode node)
-        {
-            if (node == null || ReferenceEquals(node, Tree.Root)) return false;
-
-            for (var current = node.Parent; current != null; current = current.Parent)
-            {
-                if (ReferenceEquals(current, Tree.Root)) return true;
-            }
-
-            return false;
-        }
+        public bool Contains(MenuNode node) => node != null && node.IsDescendantOf(Tree.Root);
 
         /// <summary>
         /// 節點是否被勾選。
@@ -153,7 +143,7 @@ namespace CascadeControl.Trees
         public bool Uncheck(MenuNode node)
         {
             Validate(node);
-            return Commit(node, NoNodes, Checked(Subtree(node)), MenuCheckChangeReason.User);
+            return Commit(node, NoNodes, Checked(new[] { node }.Concat(node.Descendants())), MenuCheckChangeReason.User);
         }
 
         /// <summary>
@@ -179,7 +169,7 @@ namespace CascadeControl.Trees
         public bool CheckSubtree(MenuNode node)
         {
             Validate(node);
-            return Commit(node, Unchecked(PathTo(node.Parent).Concat(Subtree(node))), NoNodes, MenuCheckChangeReason.User);
+            return Commit(node, Unchecked(PathTo(node.Parent).Concat(new[] { node }).Concat(node.Descendants())), NoNodes, MenuCheckChangeReason.User);
         }
 
         /// <summary>
@@ -206,7 +196,7 @@ namespace CascadeControl.Trees
         public bool CheckSiblingSubtrees(MenuNode node)
         {
             Validate(node);
-            var nodes = PathTo(node.Parent).Concat(node.Parent.Children.SelectMany(Subtree));
+            var nodes = PathTo(node.Parent).Concat(node.Parent.Descendants());
             return Commit(node, Unchecked(nodes), NoNodes, MenuCheckChangeReason.User);
         }
 
@@ -220,7 +210,7 @@ namespace CascadeControl.Trees
         public bool UncheckSiblings(MenuNode node)
         {
             Validate(node);
-            return Commit(node, NoNodes, Checked(node.Parent.Children.SelectMany(Subtree)), MenuCheckChangeReason.User);
+            return Commit(node, NoNodes, Checked(node.Parent.Descendants()), MenuCheckChangeReason.User);
         }
 
         /// <summary>
@@ -229,7 +219,7 @@ namespace CascadeControl.Trees
         /// <returns>勾選狀態有實際改變時為 true。</returns>
         public bool CheckAll()
         {
-            return Commit(null, Unchecked(Tree.Root.Children.SelectMany(Subtree)), NoNodes, MenuCheckChangeReason.User);
+            return Commit(null, Unchecked(Tree.Root.Descendants()), NoNodes, MenuCheckChangeReason.User);
         }
 
         /// <summary>
@@ -302,7 +292,7 @@ namespace CascadeControl.Trees
                     }
                     else
                     {
-                        var skipped = Subtree(wantedChild).Count() - 1;
+                        var skipped = wantedChild.Descendants().Count();
                         messages.Add(
                             $"找不到路徑「{wantedChild.FullPathText}」，已略過"
                             + (skipped > 0 ? $"（連同它底下的 {skipped} 個節點）。" : "。"));
@@ -314,7 +304,7 @@ namespace CascadeControl.Trees
             messages.Reverse();
             warnings = messages;
 
-            var added = Tree.Root.Children.SelectMany(Subtree).Where(node => wanted.Contains(node) && !_checked.Contains(node)).ToList();
+            var added = Tree.Root.Descendants().Where(node => wanted.Contains(node) && !_checked.Contains(node)).ToList();
             var removed = CheckedNodes.Where(node => !wanted.Contains(node)).ToList();
             return Commit(null, added, removed, MenuCheckChangeReason.Apply);
         }
@@ -365,7 +355,7 @@ namespace CascadeControl.Trees
         /// </remarks>
         internal bool UncheckRemoved(IEnumerable<MenuNode> removedRoots)
         {
-            var removed = removedRoots.SelectMany(Subtree).Where(_checked.Contains).ToList();
+            var removed = removedRoots.SelectMany(root => new[] { root }.Concat(root.Descendants())).Where(_checked.Contains).ToList();
             return Commit(null, NoNodes, removed, MenuCheckChangeReason.Reconcile);
         }
 
@@ -417,20 +407,6 @@ namespace CascadeControl.Trees
 
         // 從第一層到 node（含）；node 是樹根時為空。
         private static IEnumerable<MenuNode> PathTo(MenuNode node) => node.FullPath;
-
-        // node 與它的所有子孫，前序。
-        private static IEnumerable<MenuNode> Subtree(MenuNode node)
-        {
-            var stack = new Stack<MenuNode>();
-            stack.Push(node);
-
-            while (stack.Count > 0)
-            {
-                var current = stack.Pop();
-                yield return current;
-                for (var i = current.Children.Count - 1; i >= 0; i--) stack.Push(current.Children[i]);
-            }
-        }
 
         private List<MenuNode> Unchecked(IEnumerable<MenuNode> nodes) => nodes.Where(node => !_checked.Contains(node)).ToList();
 

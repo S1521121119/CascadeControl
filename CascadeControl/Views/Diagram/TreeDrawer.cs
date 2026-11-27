@@ -318,7 +318,7 @@ namespace CascadeControl.Views.Diagram
             Func<MenuNode, bool> isCut = null)
         {
             font = font ?? SystemFonts.DefaultFont;
-            if (tree == null || !BelongsTo(selectedNode, tree)) selectedNode = null;
+            if (tree == null || selectedNode == null || !selectedNode.IsDescendantOf(tree.Root)) selectedNode = null;
 
             var options = new BuildOptions
             {
@@ -556,19 +556,6 @@ namespace CascadeControl.Views.Diagram
             }
 
             foreach (var child in node.Children) Collapse(child, isExpanded);
-        }
-
-        // 節點是不是這棵樹裡的（樹根不算）。
-        private static bool BelongsTo(MenuNode node, MenuTree tree)
-        {
-            if (node == null || ReferenceEquals(node, tree.Root)) return false;
-
-            for (var current = node; current != null; current = current.Parent)
-            {
-                if (ReferenceEquals(current, tree.Root)) return true;
-            }
-
-            return false;
         }
 
         // 前序走訪，父節點在子節點之前。

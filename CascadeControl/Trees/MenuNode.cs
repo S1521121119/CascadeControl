@@ -100,6 +100,41 @@ namespace CascadeControl.Trees
             }
         }
 
+        /// <summary>
+        /// 依加入順序列舉所有子孫節點（前序走訪，父節點在子節點之前），不含本節點。
+        /// </summary>
+        /// <returns>子孫節點序列；葉節點回傳空序列。</returns>
+        public IEnumerable<MenuNode> Descendants()
+        {
+            var stack = new Stack<MenuNode>();
+            for (var i = _children.Count - 1; i >= 0; i--) stack.Push(_children[i]);
+
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+                yield return node;
+
+                for (var i = node._children.Count - 1; i >= 0; i--) stack.Push(node._children[i]);
+            }
+        }
+
+        /// <summary>
+        /// 本節點是否掛在 <paramref name="ancestor"/> 底下（沿父節點往上找），本節點自己不算。
+        /// </summary>
+        /// <param name="ancestor">要找的祖先節點；null 回傳 false。</param>
+        /// <returns><paramref name="ancestor"/> 是本節點的祖先時為 true。</returns>
+        public bool IsDescendantOf(MenuNode ancestor)
+        {
+            if (ancestor == null) return false;
+
+            for (var current = Parent; current != null; current = current.Parent)
+            {
+                if (ReferenceEquals(current, ancestor)) return true;
+            }
+
+            return false;
+        }
+
         private string BuildPath(Func<MenuNode, string> selector)
         {
             return string.Join(DEFAULT_PATH_SEPARATOR, FullPath.Select(selector));

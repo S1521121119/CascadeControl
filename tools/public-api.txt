@@ -5,14 +5,14 @@ CascadeControl.Common.CascadeNode :: public property System.Object Tag { get; }
 CascadeControl.Common.CascadeNode :: public property System.String DisplayText { get; }
 CascadeControl.Common.CascadeNode :: public property System.String Name { get; }
 CascadeControl.Common.CascadeNode :: type public sealed class : CascadeControl.Common.ICascadeNode
+CascadeControl.Common.CellExpansion :: public const field System.Char NAME_SEPARATOR = |
+CascadeControl.Common.CellExpansion :: public const field System.Int32 MAX_EXPANDED_ROWS = 65535
+CascadeControl.Common.CellExpansion :: public static method System.String JoinNames(System.Collections.Generic.IEnumerable<System.String> names)
+CascadeControl.Common.CellExpansion :: type public static class
 CascadeControl.Common.ICascadeNode :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Common.ICascadeNode> Children { get; }
 CascadeControl.Common.ICascadeNode :: public property System.String DisplayText { get; }
 CascadeControl.Common.ICascadeNode :: public property System.String Name { get; }
 CascadeControl.Common.ICascadeNode :: type public interface
-CascadeControl.Common.MultiNameCellSyntax :: public const field System.Char NAME_SEPARATOR = |
-CascadeControl.Common.MultiNameCellSyntax :: public const field System.Int32 MAX_EXPANDED_ROWS = 65535
-CascadeControl.Common.MultiNameCellSyntax :: public static method System.String JoinNames(System.Collections.Generic.IEnumerable<System.String> names)
-CascadeControl.Common.MultiNameCellSyntax :: type public static class
 CascadeControl.Graphs.Csv.MenuGraphCsvFile :: public static method CascadeControl.Graphs.MenuGraph Load(System.String filePath, out System.Collections.Generic.IList<System.String> warnings)
 CascadeControl.Graphs.Csv.MenuGraphCsvFile :: public static method System.Void Save(CascadeControl.Graphs.MenuGraph graph, System.String filePath, CascadeControl.Graphs.MenuGraphRowStyle style = CascadeControl.Graphs.MenuGraphRowStyle.Expanded)
 CascadeControl.Graphs.Csv.MenuGraphCsvFile :: type public static class
@@ -221,6 +221,7 @@ CascadeControl.Trees.MenuHistory :: public property System.Int32 RedoCount { get
 CascadeControl.Trees.MenuHistory :: public property System.Int32 UndoCount { get; }
 CascadeControl.Trees.MenuHistory :: type public sealed class
 CascadeControl.Trees.MenuHistoryResult :: public property CascadeControl.Trees.MenuNode Focus { get; }
+CascadeControl.Trees.MenuHistoryResult :: public property System.Boolean ClearsSelection { get; }
 CascadeControl.Trees.MenuHistoryResult :: public property System.Boolean TreeChanged { get; }
 CascadeControl.Trees.MenuHistoryResult :: public property System.Collections.Generic.IReadOnlyList<CascadeControl.Trees.MenuNode> Nodes { get; }
 CascadeControl.Trees.MenuHistoryResult :: type public sealed class
@@ -232,8 +233,10 @@ CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode Ins
 CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode InsertSiblingBefore(CascadeControl.Trees.MenuNode source, System.String newName = null)
 CascadeControl.Trees.MenuNode :: public method CascadeControl.Trees.MenuNode Rename(System.String newName)
 CascadeControl.Trees.MenuNode :: public method System.Boolean ContainsChild(System.String name)
+CascadeControl.Trees.MenuNode :: public method System.Boolean IsDescendantOf(CascadeControl.Trees.MenuNode ancestor)
 CascadeControl.Trees.MenuNode :: public method System.Boolean RemoveFromParent()
 CascadeControl.Trees.MenuNode :: public method System.Boolean TryGetChild(System.String name, out CascadeControl.Trees.MenuNode child)
+CascadeControl.Trees.MenuNode :: public method System.Collections.Generic.IEnumerable<CascadeControl.Trees.MenuNode> Descendants()
 CascadeControl.Trees.MenuNode :: public method System.String GetUniqueChildName(System.String baseName)
 CascadeControl.Trees.MenuNode :: public method System.Void MergeSubtreeFrom(CascadeControl.Trees.MenuNode source)
 CascadeControl.Trees.MenuNode :: public override method System.String ToString()
@@ -393,6 +396,7 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method Sys
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void Dispose(System.Boolean disposing)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnClientSizeChanged(System.EventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnFontChanged(System.EventArgs e)
+CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnGotFocus(System.EventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyDown(System.Windows.Forms.KeyEventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyPress(System.Windows.Forms.KeyPressEventArgs e)
 CascadeControl.Views.Diagram.CascadeDiagramView :: protected override method System.Void OnKeyUp(System.Windows.Forms.KeyEventArgs e)

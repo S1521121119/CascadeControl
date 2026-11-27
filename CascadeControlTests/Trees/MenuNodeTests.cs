@@ -134,5 +134,48 @@ namespace CascadeControlTests.Trees
             Assert.IsTrue(leaf.IsLeaf);
             Assert.IsFalse(leaf.Parent.IsLeaf);
         }
+
+        [TestMethod]
+        public void Descendants_PreOrderInInsertionOrder_ExcludesSelf()
+        {
+            var tree = new MenuTree();
+            tree.AddPath("B", "B1");
+            tree.AddPath("A", "A1", "A11");
+            tree.AddPath("A", "A2");
+            tree.AddPath("B", "B2");
+
+            CollectionAssert.AreEqual(
+                new[] { "B", "B1", "B2", "A", "A1", "A11", "A2" },
+                tree.Root.Descendants().Select(n => n.Name).ToArray());
+
+            var a = tree.Root.Children[1];
+            CollectionAssert.AreEqual(new[] { "A1", "A11", "A2" }, a.Descendants().Select(n => n.Name).ToArray());
+            Assert.IsFalse(a.Children[1].Descendants().Any(), "葉節點沒有子孫");
+        }
+
+        [TestMethod]
+        public void IsDescendantOf_SelfAncestorUnrelatedDetachedAndNull()
+        {
+            var tree = new MenuTree();
+            var a11 = tree.AddPath("A", "A1", "A11");
+            var a1 = a11.Parent;
+            var a = a1.Parent;
+            var b = tree.AddPath("B");
+
+            Assert.IsTrue(a11.IsDescendantOf(a1));
+            Assert.IsTrue(a11.IsDescendantOf(a));
+            Assert.IsTrue(a11.IsDescendantOf(tree.Root));
+            Assert.IsFalse(a11.IsDescendantOf(a11), "自己不算");
+            Assert.IsFalse(tree.Root.IsDescendantOf(tree.Root), "樹根自己也不算");
+            Assert.IsFalse(a.IsDescendantOf(a11), "子孫不是祖先");
+            Assert.IsFalse(a11.IsDescendantOf(b), "無關的節點");
+            Assert.IsFalse(a11.IsDescendantOf(null));
+
+            a1.RemoveFromParent();
+
+            Assert.IsTrue(a11.IsDescendantOf(a1), "脫離的子樹內部關係不變");
+            Assert.IsFalse(a11.IsDescendantOf(tree.Root), "脫離之後不在樹裡");
+            Assert.IsFalse(a1.IsDescendantOf(a));
+        }
     }
 }

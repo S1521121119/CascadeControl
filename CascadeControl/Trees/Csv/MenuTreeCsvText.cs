@@ -101,7 +101,7 @@ namespace CascadeControl.Trees.Csv
             if (tree == null) throw new ArgumentNullException(nameof(tree));
 
             var leaves = 0;
-            foreach (var node in Descendants(tree.Root))
+            foreach (var node in tree.Root.Descendants())
             {
                 if (node.Name.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0)
                 {
@@ -181,25 +181,6 @@ namespace CascadeControl.Trees.Csv
         private static bool IsHeader(string[] row)
         {
             return row.Length > 0 && string.Equals(row[0], HEADER_COLUMN_PREFIX + 1, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// 依第一次加入的順序列舉樹根底下的所有節點（前序走訪）。
-        /// </summary>
-        /// <param name="root">起點節點，本身不包含在結果中。</param>
-        /// <returns>節點序列。</returns>
-        private static IEnumerable<MenuNode> Descendants(MenuNode root)
-        {
-            var stack = new Stack<MenuNode>();
-            for (var i = root.Children.Count - 1; i >= 0; i--) stack.Push(root.Children[i]);
-
-            while (stack.Count > 0)
-            {
-                var node = stack.Pop();
-                yield return node;
-
-                for (var i = node.Children.Count - 1; i >= 0; i--) stack.Push(node.Children[i]);
-            }
         }
     }
 }
