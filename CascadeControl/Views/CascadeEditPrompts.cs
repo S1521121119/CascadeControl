@@ -28,16 +28,16 @@ namespace CascadeControl.Views
         }
 
         /// <summary>
-        /// 名稱含有保留字元 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 時為 true；這種名稱不能套用。
+        /// 名稱含有保留字元 <see cref="CellExpansion.NAME_SEPARATOR"/> 時為 true；這種名稱不能套用。
         /// </summary>
-        internal static bool HasReservedCharacter(string name) => name.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0;
+        internal static bool HasReservedCharacter(string name) => name.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0;
 
         /// <summary>
         /// 告訴使用者名稱不可含有保留字元；標題是 <paramref name="action"/> 的名稱。
         /// </summary>
         internal static void WarnReservedCharacter(IWin32Window owner, CascadeEditAction action)
         {
-            MessageBox.Show(owner, $"節點名稱不可含有 '{MultiNameCellSyntax.NAME_SEPARATOR}' 字元。", CaptionOf(action), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(owner, $"節點名稱不可含有 '{CellExpansion.NAME_SEPARATOR}' 字元。", CaptionOf(action), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         private static string CaptionOf(CascadeEditAction action)

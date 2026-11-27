@@ -67,7 +67,7 @@ namespace CascadeControlTests.Trees
         /// </summary>
         public static string Alternatives(string prefix, int count)
         {
-            return MultiNameCellSyntax.JoinNames(Enumerable.Range(1, count).Select(i => prefix + i));
+            return CellExpansion.JoinNames(Enumerable.Range(1, count).Select(i => prefix + i));
         }
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace CascadeControlTests.Trees
         public static long ExpansionOf(string[] row)
         {
             return row.Where(cell => cell.Length > 0)
-                      .Aggregate(1L, (total, cell) => total * cell.Split(MultiNameCellSyntax.NAME_SEPARATOR).Length);
+                      .Aggregate(1L, (total, cell) => total * cell.Split(CellExpansion.NAME_SEPARATOR).Length);
         }
     }
 }

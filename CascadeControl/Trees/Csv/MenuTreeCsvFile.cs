@@ -13,7 +13,7 @@ namespace CascadeControl.Trees.Csv
     /// 這裡只負責檔案：編碼、目錄與範本檔。文字與樹之間的轉換都交給 <see cref="MenuTreeCsvText"/>，
     /// 所以檔案內容與 <see cref="MenuTreeCsvText.Parse(string, out IList{string})"/>／<see cref="MenuTreeCsvText.Format(MenuTree, MenuRowStyle)"/> 的文字完全相同。
     /// 深度沒有上限：讀取時 CSV 有幾欄就是幾層，寫出時依最深的路徑決定欄數。
-    /// 同一格可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個兄弟節點，整列會依各欄的笛卡兒積展開成多條路徑。
+    /// 同一格可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉多個兄弟節點，整列會依各欄的笛卡兒積展開成多條路徑。
     /// </remarks>
     public static class MenuTreeCsvFile
     {

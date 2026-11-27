@@ -391,8 +391,8 @@ namespace CascadeControl.Trees
                 throw new ArgumentException("節點名稱不可為空白。", nameof(name));
 
             var trimmed = name.Trim();
-            if (trimmed.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0)
-                throw new ArgumentException($"節點名稱不可含有保留字元 '{MultiNameCellSyntax.NAME_SEPARATOR}'。", nameof(name));
+            if (trimmed.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0)
+                throw new ArgumentException($"節點名稱不可含有保留字元 '{CellExpansion.NAME_SEPARATOR}'。", nameof(name));
 
             return trimmed;
         }

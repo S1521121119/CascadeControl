@@ -13,7 +13,7 @@ namespace CascadeControl.Graphs
     /// 採鄰接串列表示；不允許重邊，允許自我迴圈與環。
     /// 和 <see cref="MenuTree"/> 一樣只處理頂點與邊，不管資料存成什麼格式：匯入匯出一律透過
     /// <see cref="FromRows(IEnumerable{string[]}, out IList{string})"/> 與 <see cref="ToRows(MenuGraphRowStyle)"/> 的二維字串陣列，
-    /// 每一列固定兩欄 <c>From,To</c>，格子內可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個頂點。
+    /// 每一列固定兩欄 <c>From,To</c>，格子內可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉多個頂點。
     /// 這個類別不相依 System.Windows.Forms 與檔案系統；所有走訪都用明確的佇列或堆疊，不用遞迴。
     /// </remarks>
     public sealed class MenuGraph
@@ -22,10 +22,10 @@ namespace CascadeControl.Graphs
         /// 單列展開的邊數與整份資料的總邊數上限；邊數超過這個數量的圖也無法寫出。
         /// </summary>
         /// <remarks>
-        /// 與 <see cref="MultiNameCellSyntax.MAX_EXPANDED_ROWS"/> 相同。一個頂點的後繼數不會超過總邊數，
+        /// 與 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/> 相同。一個頂點的後繼數不會超過總邊數，
         /// 所以限制總邊數就保證顯示時任何一欄都在 ListBox 的 16 位元索引範圍內。
         /// </remarks>
-        public const int MAX_EDGES = MultiNameCellSyntax.MAX_EXPANDED_ROWS;
+        public const int MAX_EDGES = CellExpansion.MAX_EXPANDED_ROWS;
 
         private readonly List<MenuVertex> _vertices = new List<MenuVertex>();
         private readonly Dictionary<string, MenuVertex> _index = new Dictionary<string, MenuVertex>(StringComparer.Ordinal);
@@ -81,7 +81,7 @@ namespace CascadeControl.Graphs
         /// </summary>
         /// <param name="name">頂點名稱。以 <see cref="StringComparer.Ordinal"/> 原樣比對，不會 trim。</param>
         /// <returns>既有或新建的頂點。</returns>
-        /// <exception cref="ArgumentException"><paramref name="name"/> 為 null、空白，或含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。</exception>
+        /// <exception cref="ArgumentException"><paramref name="name"/> 為 null、空白，或含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。</exception>
         public MenuVertex GetOrAddVertex(string name)
         {
             ValidateName(name, nameof(name));
@@ -202,7 +202,7 @@ namespace CascadeControl.Graphs
         /// <param name="fromName">起點名稱，原樣比對、不 trim。</param>
         /// <param name="toName">終點名稱，原樣比對、不 trim。</param>
         /// <returns>這條邊。</returns>
-        /// <exception cref="ArgumentException">任一名稱為 null、空白，或含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。</exception>
+        /// <exception cref="ArgumentException">任一名稱為 null、空白，或含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。</exception>
         public MenuEdge AddEdge(string fromName, string toName)
         {
             ValidateName(fromName, nameof(fromName));
@@ -227,7 +227,7 @@ namespace CascadeControl.Graphs
         }
 
         /// <summary>
-        /// 加入一整列：兩格都可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個頂點，
+        /// 加入一整列：兩格都可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉多個頂點，
         /// 左格的每個頂點都連向右格的每個頂點。
         /// </summary>
         /// <param name="fromCell">起點格，例如 <c>"Info|Status"</c>。</param>
@@ -238,7 +238,7 @@ namespace CascadeControl.Graphs
         /// 頂點依「先左格、再右格，各自由左至右」的順序加入。整列先全部檢查完才動圖，有任何一格不合法就整列都不加。
         /// </remarks>
         /// <exception cref="ArgumentException">
-        /// 任一格為 null 或空白；<see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 用法錯誤；或展開後超過 <see cref="MAX_EDGES"/> 條邊。
+        /// 任一格為 null 或空白；<see cref="CellExpansion.NAME_SEPARATOR"/> 用法錯誤；或展開後超過 <see cref="MAX_EDGES"/> 條邊。
         /// </exception>
         public IReadOnlyList<MenuEdge> ExpandAndAddEdges(string fromCell, string toCell)
         {
@@ -256,8 +256,8 @@ namespace CascadeControl.Graphs
         {
             if (string.IsNullOrWhiteSpace(cell)) throw new ArgumentException("名稱是空的。", paramName);
 
-            if (!MultiNameCellSyntax.TrySplitNames(cell.Trim(), out string[] names))
-                throw new ArgumentException($"'{cell}' 的 '{MultiNameCellSyntax.NAME_SEPARATOR}' 用法有誤（{MultiNameCellSyntax.UsageHint}）。", paramName);
+            if (!CellExpansion.TrySplitNames(cell.Trim(), out string[] names))
+                throw new ArgumentException($"'{cell}' 的 '{CellExpansion.NAME_SEPARATOR}' 用法有誤（{CellExpansion.UsageHint}）。", paramName);
 
             return names;
         }
@@ -367,11 +367,11 @@ namespace CascadeControl.Graphs
         /// <remarks>
         /// 規則：
         /// <list type="number">
-        /// <item><description>每格先去除前後空白；兩格都可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個頂點，左格每個頂點都連向右格每個頂點。</description></item>
+        /// <item><description>每格先去除前後空白；兩格都可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉多個頂點，左格每個頂點都連向右格每個頂點。</description></item>
         /// <item><description>頂點依第一次出現的順序加入（同一列先 From 再 To）；後繼依第一次連上的順序；重複的邊直接合併，不發警告。</description></item>
         /// <item><description>To 為空的列只宣告頂點（孤立頂點的寫法）；From 為空而 To 有值的列缺少起點，跳過整列。</description></item>
         /// <item><description>第 3 欄以後不代表任何意義，有資料時略過並警告，不會解讀成路徑。</description></item>
-        /// <item><description><see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 用法錯誤、或單列展開超過 <see cref="MAX_EDGES"/> 條邊時，跳過整列。</description></item>
+        /// <item><description><see cref="CellExpansion.NAME_SEPARATOR"/> 用法錯誤、或單列展開超過 <see cref="MAX_EDGES"/> 條邊時，跳過整列。</description></item>
         /// <item><description>展開後的邊數累計超過 <see cref="MAX_EDGES"/> 時放棄全部，回傳空圖。</description></item>
         /// </list>
         /// 這是 <see cref="ToRows(MenuGraphRowStyle)"/> 的反向操作，<see cref="MenuGraphRowStyle"/> 的每一種寫法都能讀回同一張圖。
@@ -456,10 +456,10 @@ namespace CascadeControl.Graphs
 
         private static bool TrySplitRowCell(string cell, int column, int lineNumber, IList<string> messages, out string[] names)
         {
-            if (MultiNameCellSyntax.TrySplitNames(cell, out names)) return true;
+            if (CellExpansion.TrySplitNames(cell, out names)) return true;
 
-            messages.Add($"第 {lineNumber} 列：第 {column} 欄 '{cell}' 的 '{MultiNameCellSyntax.NAME_SEPARATOR}' 用法有誤"
-                + $"（{MultiNameCellSyntax.UsageHint}），整列已跳過。");
+            messages.Add($"第 {lineNumber} 列：第 {column} 欄 '{cell}' 的 '{CellExpansion.NAME_SEPARATOR}' 用法有誤"
+                + $"（{CellExpansion.UsageHint}），整列已跳過。");
             return false;
         }
 
@@ -486,7 +486,7 @@ namespace CascadeControl.Graphs
         /// 這兩項檢查在 <see cref="Csv.MenuGraphCsvText.Format(MenuGraph, MenuGraphRowStyle)"/> 寫出文字時才做，這裡不檢查。
         /// </remarks>
         /// <exception cref="ArgumentException">
-        /// <paramref name="style"/> 不是 <see cref="MenuGraphRowStyle.Expanded"/>，且有頂點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。
+        /// <paramref name="style"/> 不是 <see cref="MenuGraphRowStyle.Expanded"/>，且有頂點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。
         /// </exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="style"/> 不是已定義的值。</exception>
         public string[][] ToRows(MenuGraphRowStyle style)
@@ -522,7 +522,7 @@ namespace CascadeControl.Graphs
         /// 每個名稱在樹中只出現一次時，<see cref="ToTree(out IList{string})"/> 會還原成原本的樹。
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="tree"/> 為 null。</exception>
-        /// <exception cref="ArgumentException">樹中有空白或含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 的節點名稱。</exception>
+        /// <exception cref="ArgumentException">樹中有空白或含有 <see cref="CellExpansion.NAME_SEPARATOR"/> 的節點名稱。</exception>
         public static MenuGraph FromTree(MenuTree tree)
         {
             if (tree == null) throw new ArgumentNullException(nameof(tree));
@@ -576,7 +576,7 @@ namespace CascadeControl.Graphs
         /// <list type="bullet">
         /// <item><description>迴圈（含自我迴圈）：後繼已在目前路徑上時，不展開這條邊並發出警告。</description></item>
         /// <item><description>
-        /// 爆量：無環圖展開後的路徑數可能呈指數成長，葉節點總數超過 <see cref="MultiNameCellSyntax.MAX_EXPANDED_ROWS"/> 時放棄全部，回傳空樹。
+        /// 爆量：無環圖展開後的路徑數可能呈指數成長，葉節點總數超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/> 時放棄全部，回傳空樹。
         /// </description></item>
         /// </list>
         /// </remarks>
@@ -614,9 +614,9 @@ namespace CascadeControl.Graphs
                         stack.Pop();
                         onPath.Remove(frame.Vertex);
 
-                        if (frame.Node.IsLeaf && ++leaves > MultiNameCellSyntax.MAX_EXPANDED_ROWS)
+                        if (frame.Node.IsLeaf && ++leaves > CellExpansion.MAX_EXPANDED_ROWS)
                         {
-                            messages.Add($"展開後的路徑數超過上限 {MultiNameCellSyntax.MAX_EXPANDED_ROWS}，已放棄整份內容。");
+                            messages.Add($"展開後的路徑數超過上限 {CellExpansion.MAX_EXPANDED_ROWS}，已放棄整份內容。");
                             return new MenuTree();
                         }
                         continue;
@@ -683,8 +683,8 @@ namespace CascadeControl.Graphs
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("頂點名稱不可為空白。", paramName);
 
-            if (name.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0)
-                throw new ArgumentException($"頂點名稱 '{name}' 含有保留字元 '{MultiNameCellSyntax.NAME_SEPARATOR}'。", paramName);
+            if (name.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0)
+                throw new ArgumentException($"頂點名稱 '{name}' 含有保留字元 '{CellExpansion.NAME_SEPARATOR}'。", paramName);
         }
 
         private static IList<string> DropDuplicates(IEnumerable<string> messages)

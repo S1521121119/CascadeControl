@@ -16,7 +16,7 @@ namespace CascadeControl.Graphs
     public enum MenuGraphRowStyle
     {
         /// <summary>
-        /// 展開：每條邊一列，不使用 <see cref="Common.MultiNameCellSyntax.NAME_SEPARATOR"/>。
+        /// 展開：每條邊一列，不使用 <see cref="Common.CellExpansion.NAME_SEPARATOR"/>。
         /// </summary>
         Expanded,
 

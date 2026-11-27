@@ -9,7 +9,7 @@ namespace CascadeControl.Trees
     /// 把樹寫成 <see cref="MenuRowStyle.Compact"/> 與 <see cref="MenuRowStyle.Outline"/> 寫法的資料列。
     /// </summary>
     /// <remarks>
-    /// 兩種寫法都用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 把兄弟節點合併成一格，
+    /// 兩種寫法都用 <see cref="CellExpansion.NAME_SEPARATOR"/> 把兄弟節點合併成一格，
     /// 由 <see cref="MenuTree.FromRows(IEnumerable{string[]}, out IList{string})"/> 讀回都是同一棵樹。
     /// <see cref="MenuRowStyle.Expanded"/> 不需要合併，直接由 <see cref="MenuTree"/> 產生。
     /// </remarks>
@@ -35,7 +35,7 @@ namespace CascadeControl.Trees
         /// 依第一次出現排出的順序，會和原本的樹完全相同。
         /// 走訪一律用明確的堆疊而不是遞迴，因為深度沒有上限。
         /// </remarks>
-        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。</exception>
+        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。</exception>
         internal static string[][] Compact(MenuTree tree)
         {
             var width = Math.Max(1, tree.Height);
@@ -62,7 +62,7 @@ namespace CascadeControl.Trees
 
                 var names = new string[end - start];
                 for (var i = start; i < end; i++) names[i - start] = siblings[i].Name;
-                cells[cursor.Depth] = MultiNameCellSyntax.JoinNames(names);
+                cells[cursor.Depth] = CellExpansion.JoinNames(names);
 
                 var representative = siblings[start];
                 if (representative.IsLeaf)
@@ -102,10 +102,10 @@ namespace CascadeControl.Trees
         /// </list>
         /// 結果是：同一棵樹只有一種寫法、每個中間節點組剛好一列，第一層相鄰的葉節點另外合成一列。
         /// 列與列會重疊（中間節點同時出現在父節點那一列和自己那一列），所以展開後的路徑數比葉節點多，
-        /// 大約是節點總數；寫出前要另外檢查是否超過 <see cref="MultiNameCellSyntax.MAX_EXPANDED_ROWS"/>。
+        /// 大約是節點總數；寫出前要另外檢查是否超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/>。
         /// 走訪一律用明確的堆疊而不是遞迴，因為深度沒有上限。
         /// </remarks>
-        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。</exception>
+        /// <exception cref="ArgumentException">樹中有節點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。</exception>
         internal static string[][] Outline(MenuTree tree)
         {
             var width = Math.Max(1, tree.Height);
@@ -124,7 +124,7 @@ namespace CascadeControl.Trees
 
                 var names = new string[end - start];
                 for (var i = start; i < end; i++) names[i - start] = top[i].Name;
-                topGroups.Add(new OutlineGroup(new[] { MultiNameCellSyntax.JoinNames(names) }, top[start]));
+                topGroups.Add(new OutlineGroup(new[] { CellExpansion.JoinNames(names) }, top[start]));
 
                 start = end;
             }
@@ -145,7 +145,7 @@ namespace CascadeControl.Trees
                 var children = node.Children;
                 var childNames = new string[children.Count];
                 for (var i = 0; i < children.Count; i++) childNames[i] = children[i].Name;
-                rows.Add(Pad(Append(group.Cells, MultiNameCellSyntax.JoinNames(childNames)), width));
+                rows.Add(Pad(Append(group.Cells, CellExpansion.JoinNames(childNames)), width));
 
                 // 有下一層的子節點依形狀分組，組的順序取第一次出現的位置。
                 var members = new Dictionary<int, List<MenuNode>>();
@@ -168,7 +168,7 @@ namespace CascadeControl.Trees
                 foreach (var shape in order)
                 {
                     var list = members[shape];
-                    var cell = MultiNameCellSyntax.JoinNames(list.Select(member => member.Name));
+                    var cell = CellExpansion.JoinNames(list.Select(member => member.Name));
                     childGroups.Add(new OutlineGroup(Append(group.Cells, cell), list[0]));
                 }
                 PushReversed(stack, childGroups);

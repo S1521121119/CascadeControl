@@ -116,7 +116,7 @@ MenuTreeCsvFile.Save(menu, "menu.csv");   // 需要的話存成檔案
 
 ```csharp
 menu.ExpandAndAddPaths("Motor", "Axis X|Axis Y", "Jog", "Forward|Backward");   // 加入 4 條路徑
-menu.ExpandAndAddPaths("IO", "Input", MultiNameCellSyntax.JoinNames(inputNames)); // 名稱清單來自程式時
+menu.ExpandAndAddPaths("IO", "Input", CellExpansion.JoinNames(inputNames)); // 名稱清單來自程式時
 ```
 
 和 `AddPath` 不同，`ExpandAndAddPaths` 會先去除每個名稱前後的空白；有任何一格不合法時丟 `ArgumentException`，整列都不會加入。
@@ -275,7 +275,7 @@ cascadeView1.DrawNode += (s, e) =>
 - **表頭**：第一列是 `Level1,Level2,…`（不分大小寫）。讀檔時如果第一列不是表頭，會被當成資料並發出警告；`MenuTreeCsvText.Parse` 則不要求表頭。
 - **一列一條路徑**：由左至右是第 1 層、第 2 層…，深度不足的尾欄留空。深度沒有上限。
 - **用 `|` 列舉同層項目**：`Axis X|Axis Y` 代表兩個兄弟節點；同一列有好幾格這樣寫時，會依笛卡兒積展開成多條路徑（越右邊的欄位變化越快）。
-  程式中組這種字串可以用 `MultiNameCellSyntax.JoinNames`（`CascadeControl.Common`）。
+  程式中組這種字串可以用 `CellExpansion.JoinNames`（`CascadeControl.Common`）。
 - **名稱**：前後空白會自動去除；**區分大小寫**，所以 `Reboot` 和 `reboot` 是兩個不同的項目。
 - **重複與延伸**：完全相同的路徑會合併。`A,B` 和 `A,B,C` 同時存在時，`B` 會變成中間節點，不算錯誤。
 - **顯示文字**：`MenuNode.DisplayText` 在畫面上顯示成 `<01>Name`，有子節點時再加上 ` [+]`；序號（`SiblingNumber`，由 1 起算）是它在同一層中第一次出現的順序。顯示文字只用在欄位上，路徑與記錄一律使用 `Name`。
@@ -284,7 +284,7 @@ cascadeView1.DrawNode += (s, e) =>
 
 - 中間缺一層，例如 `A,,C`：空欄之後的欄位會被忽略。
 - `|` 用法錯誤，例如 `A||B`、`|A`、`A|`，或某一段只有空白：整列跳過。
-- 單列展開超過 65,535 條（`MultiNameCellSyntax.MAX_EXPANDED_ROWS`）：整列跳過。
+- 單列展開超過 65,535 條（`CellExpansion.MAX_EXPANDED_ROWS`）：整列跳過。
 - 整份展開累計超過 65,535 條：整份放棄，回傳空樹。
 
 警告訊息中的「第 N 列」是檔案（或文字）中的實際行號。
@@ -657,7 +657,7 @@ standalone.SetTree(menu);
 | `Capacity` / `DEFAULT_CAPACITY` | 保留的步驟數（預設 50），調小時立刻丟掉最舊的 |
 | `Clear()` | 清除歷史，勾選與樹都不變 |
 
-**`MenuTree` / `MenuNode`**（`CascadeControl.Trees`）與 **`MultiNameCellSyntax`**（`CascadeControl.Common`）
+**`MenuTree` / `MenuNode`**（`CascadeControl.Trees`）與 **`CellExpansion`**（`CascadeControl.Common`）
 
 | 成員 | 說明 |
 |---|---|
@@ -667,8 +667,8 @@ standalone.SetTree(menu);
 | `MenuTree.ExpandAndAddPaths(cells)` | 加入一整列（格子可含 `|`），回傳各條路徑的終點節點 |
 | `MenuTree.GetLeaves()` / `Height` / `IsEmpty` | 查詢葉節點、高度與是否為空 |
 | `MenuTree.FromRows(rows, out warnings)` / `ToRows(style)` | 與二維字串陣列互轉 |
-| `MultiNameCellSyntax.NAME_SEPARATOR` / `MAX_EXPANDED_ROWS` | `|` 與展開上限 65,535 |
-| `MultiNameCellSyntax.JoinNames(names)` | 把多個名稱串成一格 |
+| `CellExpansion.NAME_SEPARATOR` / `MAX_EXPANDED_ROWS` | `|` 與展開上限 65,535 |
+| `CellExpansion.JoinNames(names)` | 把多個名稱串成一格 |
 | `MenuNode.Name` / `DisplayText` | 原始名稱與欄位顯示文字 |
 | `MenuNode.FullPath` / `FullPathText` | 由第一層到本節點的節點序列與路徑字串 |
 | `MenuNode.Parent` / `Depth` / `SiblingNumber` / `IsLeaf` | 位置資訊 |

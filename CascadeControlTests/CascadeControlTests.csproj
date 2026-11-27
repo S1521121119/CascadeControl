@@ -58,7 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\CsvFileTests.cs" />
-    <Compile Include="Common\MultiNameCellSyntaxTests.cs" />
+    <Compile Include="Common\CellExpansionTests.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramViewEditingTests.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramViewMultiSelectTests.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramViewFreePanTests.cs" />

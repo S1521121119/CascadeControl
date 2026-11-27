@@ -66,7 +66,7 @@ namespace CascadeControlViewer
         }
 
         /// <summary>
-        /// 載入 CSV 並換上新的選單樹。<see cref="MenuTreeCsvFile.Load"/> 會把每格的 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 展開成兄弟節點。
+        /// 載入 CSV 並換上新的選單樹。<see cref="MenuTreeCsvFile.Load"/> 會把每格的 <see cref="CellExpansion.NAME_SEPARATOR"/> 展開成兄弟節點。
         /// </summary>
         private void LoadMenu(string filePath)
         {

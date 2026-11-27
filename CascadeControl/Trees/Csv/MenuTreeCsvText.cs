@@ -17,7 +17,7 @@ namespace CascadeControl.Trees.Csv
     ///     Motor,  Axis X|Axis Y, Home
     /// ", out IList&lt;string&gt; warnings);
     /// </code>
-    /// 格式與 <see cref="MenuTreeCsvFile"/> 讀寫的檔案相同（RFC 4180），同一格可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉兄弟節點。
+    /// 格式與 <see cref="MenuTreeCsvFile"/> 讀寫的檔案相同（RFC 4180），同一格可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點。
     /// 表頭可有可無；空白行、每格前後的空白與縮排都會被忽略；警告中的「第 N 列」是文字中的實際行號。
     /// </remarks>
     public static class MenuTreeCsvText
@@ -90,8 +90,8 @@ namespace CascadeControl.Trees.Csv
         /// <remarks>寫出的文字如果讀回來會變成另一棵樹，就直接丟例外，不會產生任何輸出。</remarks>
         /// <exception cref="ArgumentNullException"><paramref name="tree"/> 為 null。</exception>
         /// <exception cref="ArgumentException">
-        /// 有節點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>（讀回時會被拆成多個兄弟節點）、
-        /// 名稱前後有空白（讀回時會被去掉），或寫出的資料列展開後超過 <see cref="MultiNameCellSyntax.MAX_EXPANDED_ROWS"/> 條路徑（讀回時會整份放棄）。
+        /// 有節點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>（讀回時會被拆成多個兄弟節點）、
+        /// 名稱前後有空白（讀回時會被去掉），或寫出的資料列展開後超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/> 條路徑（讀回時會整份放棄）。
         /// 展開後的路徑數在 <see cref="MenuRowStyle.Expanded"/> 與 <see cref="MenuRowStyle.Compact"/> 等於葉節點數，
         /// 在 <see cref="MenuRowStyle.Outline"/> 會多出中間節點那幾條，所以同一棵樹可能只有 <see cref="MenuRowStyle.Outline"/> 寫不出來。
         /// </exception>
@@ -103,10 +103,10 @@ namespace CascadeControl.Trees.Csv
             var leaves = 0;
             foreach (var node in Descendants(tree.Root))
             {
-                if (node.Name.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0)
+                if (node.Name.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0)
                 {
                     throw new ArgumentException(
-                        $"節點名稱含有保留字元 '{MultiNameCellSyntax.NAME_SEPARATOR}'，無法寫出：{node.FullPathText}", nameof(tree));
+                        $"節點名稱含有保留字元 '{CellExpansion.NAME_SEPARATOR}'，無法寫出：{node.FullPathText}", nameof(tree));
                 }
 
                 if (node.Name.Length != node.Name.Trim().Length)
@@ -116,10 +116,10 @@ namespace CascadeControl.Trees.Csv
             }
 
             // 任何寫法展開後都至少有葉節點數那麼多條路徑，先擋下來，免得白白組出一大堆資料列。
-            if (leaves > MultiNameCellSyntax.MAX_EXPANDED_ROWS)
+            if (leaves > CellExpansion.MAX_EXPANDED_ROWS)
             {
                 throw new ArgumentException(
-                    $"共有 {leaves} 條路徑，超過上限 {MultiNameCellSyntax.MAX_EXPANDED_ROWS}，寫出後無法讀回。", nameof(tree));
+                    $"共有 {leaves} 條路徑，超過上限 {CellExpansion.MAX_EXPANDED_ROWS}，寫出後無法讀回。", nameof(tree));
             }
 
             var rows = tree.ToRows(style);
@@ -127,13 +127,13 @@ namespace CascadeControl.Trees.Csv
             // 大綱的列與列會重疊，展開後的路徑數比葉節點多，要照實際寫出的列再算一次。
             if (style == MenuRowStyle.Outline)
             {
-                var expanded = rows.Sum(row => MultiNameCellSyntax.CountCombinations(
-                    row.Select(cell => cell.Split(MultiNameCellSyntax.NAME_SEPARATOR))));
+                var expanded = rows.Sum(row => CellExpansion.CountCombinations(
+                    row.Select(cell => cell.Split(CellExpansion.NAME_SEPARATOR))));
 
-                if (expanded > MultiNameCellSyntax.MAX_EXPANDED_ROWS)
+                if (expanded > CellExpansion.MAX_EXPANDED_ROWS)
                 {
                     throw new ArgumentException(
-                        $"大綱寫法展開後有 {expanded} 條路徑（含中間節點），超過上限 {MultiNameCellSyntax.MAX_EXPANDED_ROWS}，寫出後無法讀回；"
+                        $"大綱寫法展開後有 {expanded} 條路徑（含中間節點），超過上限 {CellExpansion.MAX_EXPANDED_ROWS}，寫出後無法讀回；"
                         + $"請改用 {nameof(MenuRowStyle.Compact)}。", nameof(tree));
                 }
             }
@@ -144,7 +144,7 @@ namespace CascadeControl.Trees.Csv
         /// <summary>
         /// 重新整理資料列：每一層都依第一次出現的順序分組排列，並一律展開。
         /// </summary>
-        /// <param name="rows">資料列，格子內可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉兄弟節點。</param>
+        /// <param name="rows">資料列，格子內可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點。</param>
         /// <param name="warnings">整理時發現的問題，重複的訊息只保留一筆。</param>
         /// <returns>整理後的資料列。</returns>
         /// <remarks>整理規則見 <see cref="NormalizeRows(IEnumerable{string[]}, MenuRowStyle, out IList{string})"/>。</remarks>
@@ -156,7 +156,7 @@ namespace CascadeControl.Trees.Csv
         /// <summary>
         /// 重新整理資料列：每一層都依第一次出現的順序分組排列。
         /// </summary>
-        /// <param name="rows">資料列，格子內可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉兄弟節點，會先展開再排序。</param>
+        /// <param name="rows">資料列，格子內可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點，會先展開再排序。</param>
         /// <param name="style">整理後的寫法，見 <see cref="MenuTree.ToRows(MenuRowStyle)"/>。</param>
         /// <param name="warnings">整理時發現的問題，重複的訊息只保留一筆。</param>
         /// <returns>整理後的資料列。</returns>
@@ -169,7 +169,7 @@ namespace CascadeControl.Trees.Csv
         /// 結果再整理一次不會改變。由於沒有來源行號，警告訊息中的「第 N 列」是依輸入順序從 1 起算的流水號。
         /// </remarks>
         /// <exception cref="ArgumentException">
-        /// <paramref name="style"/> 不是 <see cref="MenuRowStyle.Expanded"/>，且有節點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。
+        /// <paramref name="style"/> 不是 <see cref="MenuRowStyle.Expanded"/>，且有節點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。
         /// </exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="style"/> 不是已定義的值。</exception>
         public static string[][] NormalizeRows(IEnumerable<string[]> rows, MenuRowStyle style, out IList<string> warnings)

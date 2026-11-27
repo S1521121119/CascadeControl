@@ -56,7 +56,7 @@ namespace CascadeControlTests.Trees
 
             var tree = MenuTree.FromRows(rows, out var warnings);
 
-            Assert.AreEqual(MultiNameCellSyntax.MAX_EXPANDED_ROWS, tree.GetLeaves().Count());
+            Assert.AreEqual(CellExpansion.MAX_EXPANDED_ROWS, tree.GetLeaves().Count());
             Assert.AreEqual(0, warnings.Count);
         }
 
@@ -193,7 +193,7 @@ namespace CascadeControlTests.Trees
             {
                 var tree = TestTrees.Random(seed);
                 var rows = tree.ToRows(MenuRowStyle.Compact);
-                if (rows.Any(row => row.Any(cell => cell.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0))) merged++;
+                if (rows.Any(row => row.Any(cell => cell.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0))) merged++;
 
                 var back = MenuTree.FromRows(rows, out var warnings);
 

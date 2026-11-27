@@ -34,7 +34,7 @@ namespace CascadeControl.Graphs
         /// <summary>
         /// 每個有出邊的頂點一列，列出它的全部後繼。
         /// </summary>
-        /// <exception cref="System.ArgumentException">有頂點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。</exception>
+        /// <exception cref="System.ArgumentException">有頂點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。</exception>
         internal static string[][] Outline(MenuGraph graph)
         {
             var rows = new List<string[]>();
@@ -64,7 +64,7 @@ namespace CascadeControl.Graphs
         /// </description></item>
         /// </list>
         /// </remarks>
-        /// <exception cref="System.ArgumentException">有頂點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。</exception>
+        /// <exception cref="System.ArgumentException">有頂點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。</exception>
         internal static string[][] Compact(MenuGraph graph)
         {
             var order = Traverse(graph, out Dictionary<MenuVertex, int> startOf);
@@ -97,7 +97,7 @@ namespace CascadeControl.Graphs
             {
                 if (!groupOf.TryGetValue(vertex, out List<MenuVertex> members) || !written.Add(members)) continue;
 
-                var fromCell = MultiNameCellSyntax.JoinNames(members.Select(member => member.Name));
+                var fromCell = CellExpansion.JoinNames(members.Select(member => member.Name));
                 rows.Add(new[] { fromCell, vertex.OutDegree > 0 ? JoinSuccessors(vertex) : string.Empty });
             }
 
@@ -153,7 +153,7 @@ namespace CascadeControl.Graphs
 
         private static string JoinSuccessors(MenuVertex vertex)
         {
-            return MultiNameCellSyntax.JoinNames(vertex.Successors.Select(successor => successor.Name));
+            return CellExpansion.JoinNames(vertex.Successors.Select(successor => successor.Name));
         }
     }
 }

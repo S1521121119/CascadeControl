@@ -148,8 +148,8 @@ namespace CascadeControlTests.Trees
                 TestTrees.Alternatives("p", 3), TestTrees.Alternatives("q", 5),
                 TestTrees.Alternatives("r", 17), TestTrees.Alternatives("s", 257));
 
-            Assert.AreEqual(MultiNameCellSyntax.MAX_EXPANDED_ROWS, ends.Count);
-            Assert.AreEqual(MultiNameCellSyntax.MAX_EXPANDED_ROWS, tree.GetLeaves().Count());
+            Assert.AreEqual(CellExpansion.MAX_EXPANDED_ROWS, ends.Count);
+            Assert.AreEqual(CellExpansion.MAX_EXPANDED_ROWS, tree.GetLeaves().Count());
         }
 
         #endregion ExpandAndAddPaths

@@ -17,7 +17,7 @@ namespace CascadeControl.Graphs.Csv
     ///     Info|Status, Version|Uptime
     /// ", out IList&lt;string&gt; warnings);
     /// </code>
-    /// 格式與 <see cref="MenuGraphCsvFile"/> 讀寫的檔案相同（RFC 4180），兩格都可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個頂點。
+    /// 格式與 <see cref="MenuGraphCsvFile"/> 讀寫的檔案相同（RFC 4180），兩格都可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉多個頂點。
     /// 表頭可有可無；空白行、每格前後的空白與縮排都會被忽略；警告中的「第 N 列」是文字中的實際行號。
     /// 解析規則見 <see cref="MenuGraph.FromRows(IEnumerable{string[]}, IReadOnlyList{int}, out IList{string})"/>。
     /// </remarks>
@@ -94,7 +94,7 @@ namespace CascadeControl.Graphs.Csv
         /// <remarks>寫出的文字如果讀回來會變成另一張圖，就直接丟例外，不會產生任何輸出。</remarks>
         /// <exception cref="ArgumentNullException"><paramref name="graph"/> 為 null。</exception>
         /// <exception cref="ArgumentException">
-        /// 有頂點名稱含有 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>（讀回時會被拆成多個頂點）、
+        /// 有頂點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>（讀回時會被拆成多個頂點）、
         /// 名稱前後有空白（讀回時會被去掉），或邊數超過 <see cref="MenuGraph.MAX_EDGES"/>（讀回時會整份放棄）。
         /// 三種寫法的列與列都不重疊，展開後的邊數一律等於 <see cref="MenuGraph.EdgeCount"/>。
         /// </exception>
@@ -105,10 +105,10 @@ namespace CascadeControl.Graphs.Csv
 
             foreach (var vertex in graph.Vertices)
             {
-                if (vertex.Name.IndexOf(MultiNameCellSyntax.NAME_SEPARATOR) >= 0)
+                if (vertex.Name.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0)
                 {
                     throw new ArgumentException(
-                        $"頂點名稱含有保留字元 '{MultiNameCellSyntax.NAME_SEPARATOR}'，無法寫出：{vertex.Name}", nameof(graph));
+                        $"頂點名稱含有保留字元 '{CellExpansion.NAME_SEPARATOR}'，無法寫出：{vertex.Name}", nameof(graph));
                 }
 
                 if (vertex.Name.Length != vertex.Name.Trim().Length)
@@ -127,7 +127,7 @@ namespace CascadeControl.Graphs.Csv
         /// <summary>
         /// 重新整理資料列：合併重複的邊，並改寫成每條邊一列。
         /// </summary>
-        /// <param name="rows"><c>From,To</c> 資料列，格子內可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個頂點。</param>
+        /// <param name="rows"><c>From,To</c> 資料列，格子內可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉多個頂點。</param>
         /// <param name="warnings">整理時發現的問題，重複的訊息只保留一筆。</param>
         /// <returns>整理後的資料列。</returns>
         public static string[][] NormalizeRows(IEnumerable<string[]> rows, out IList<string> warnings)
@@ -138,7 +138,7 @@ namespace CascadeControl.Graphs.Csv
         /// <summary>
         /// 重新整理資料列：合併重複的邊，並依 <paramref name="style"/> 的列順序與寫法重寫。
         /// </summary>
-        /// <param name="rows"><c>From,To</c> 資料列，格子內可以用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/> 列舉多個頂點。</param>
+        /// <param name="rows"><c>From,To</c> 資料列，格子內可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉多個頂點。</param>
         /// <param name="style">整理後的寫法，見 <see cref="MenuGraphRowStyle"/>。</param>
         /// <param name="warnings">整理時發現的問題，重複的訊息只保留一筆。</param>
         /// <returns>整理後的資料列。由於沒有來源行號，警告訊息中的「第 N 列」是依輸入順序從 1 起算的流水號。</returns>

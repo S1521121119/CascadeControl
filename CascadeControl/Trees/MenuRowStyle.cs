@@ -17,7 +17,7 @@ namespace CascadeControl.Trees
     public enum MenuRowStyle
     {
         /// <summary>
-        /// 展開：每個葉節點一列，不使用 <see cref="MultiNameCellSyntax.NAME_SEPARATOR"/>。
+        /// 展開：每個葉節點一列，不使用 <see cref="CellExpansion.NAME_SEPARATOR"/>。
         /// </summary>
         Expanded,
 
