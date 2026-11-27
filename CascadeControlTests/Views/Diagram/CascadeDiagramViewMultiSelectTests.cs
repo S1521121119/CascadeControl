@@ -118,6 +118,59 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
+        public void Escape_DeselectsNode_UndoReselects_RedoDeselectsAgain()
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("B");
+                Assert.IsTrue(f.Key(Keys.Escape), "有選取時 Esc 取消選取");
+                Assert.IsNull(f.View.SelectedNode);
+                Assert.IsTrue(f.View.CanUndo);
+
+                Assert.IsTrue(f.View.Undo());
+                Assert.AreSame(f.Node("B"), f.View.SelectedNode, "復原選回節點");
+
+                Assert.IsTrue(f.View.Redo());
+                Assert.IsNull(f.View.SelectedNode, "重做再取消選取");
+                Assert.IsFalse(f.Key(Keys.Escape), "已無選取、無多選時 Esc 交給表單");
+            }
+        }
+
+        [TestMethod]
+        public void ClickOnBlank_DeselectsNode_UndoReselects()
+        {
+            using (var f = new Fixture())
+            {
+                f.Select("B");
+                f.Click(f.BlankRightOf("A > A1", "A > A2"));
+                Assert.IsNull(f.View.SelectedNode);
+
+                Assert.IsTrue(f.View.Undo());
+                Assert.AreSame(f.Node("B"), f.View.SelectedNode);
+            }
+        }
+
+        [TestMethod]
+        public void CtrlPlusAndMinus_ZoomMainAndNumpadKeys()
+        {
+            using (var f = new Fixture())
+            {
+                var start = f.View.ZoomPercent;
+
+                Assert.IsTrue(f.Key(Keys.Control | Keys.Oemplus));
+                var zoomedIn = f.View.ZoomPercent;
+                Assert.IsTrue(zoomedIn > start);
+
+                Assert.IsTrue(f.Key(Keys.Control | Keys.Add));
+                Assert.IsTrue(f.View.ZoomPercent > zoomedIn);
+
+                Assert.IsTrue(f.Key(Keys.Control | Keys.OemMinus));
+                Assert.IsTrue(f.Key(Keys.Control | Keys.Subtract));
+                Assert.AreEqual(start, f.View.ZoomPercent);
+            }
+        }
+
+        [TestMethod]
         public void CollapsingHidesMarkedChildren_TheyLeaveTheMarks()
         {
             using (var f = new Fixture())

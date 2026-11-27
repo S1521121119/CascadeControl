@@ -9,7 +9,7 @@ using System.Windows.Forms;
 namespace MindMap
 {
     /// <summary>
-    /// 心智圖用的 <see cref="CascadeDiagramView"/>：Tab 插入子項、Enter 在下方插入、Ctrl+A 全選、Shift+左鍵拖曳自由平移畫布，表單功能表的快捷鍵優先於圖的編輯快捷鍵。
+    /// 心智圖用的 <see cref="CascadeDiagramView"/>：Tab 插入子項、Enter 在下方插入、Ctrl+A 全選、Shift（可同時按 Ctrl，Ctrl+滾輪照常縮放）+左鍵拖曳自由平移畫布，表單功能表的快捷鍵優先於圖的編輯快捷鍵。
     /// </summary>
     internal sealed class MindMapDiagramView : CascadeDiagramView
     {
@@ -26,7 +26,7 @@ namespace MindMap
         // 測試可指定 Shift 狀態；正式執行時為 null，直接讀 ModifierKeys。
         internal bool? ShiftKeyOverride { get; set; }
 
-        private bool IsPanModifierOnly => ShiftKeyOverride ?? ((ModifierKeys & (Keys.Shift | Keys.Control | Keys.Alt)) == Keys.Shift);
+        private bool IsPanModifierOnly => ShiftKeyOverride ?? ((ModifierKeys & (Keys.Shift | Keys.Alt)) == Keys.Shift);
 
         /// <inheritdoc />
         protected override Point PanOffset => _panOffset;

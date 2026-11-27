@@ -169,6 +169,14 @@ namespace CascadeControl.Trees
             if (!string.Equals(oldName, node.Name, StringComparison.Ordinal)) Record(new RenameStep(tree, node, oldName, node.Name));
         }
 
+        /// <summary>
+        /// 記下「取消了 <paramref name="node"/> 的選取」；復原時選回那個節點，重做時再取消選取。
+        /// </summary>
+        internal void RecordDeselect(MenuTree tree, MenuNode node)
+        {
+            if (node != null) Record(new DeselectStep(tree, node));
+        }
+
         private void EndGroup()
         {
             if (_groupDepth == 0) return;
@@ -235,12 +243,18 @@ namespace CascadeControl.Trees
     /// </summary>
     public sealed class MenuHistoryResult
     {
-        internal MenuHistoryResult(MenuNode focus, IReadOnlyList<MenuNode> nodes, bool treeChanged)
+        internal MenuHistoryResult(MenuNode focus, IReadOnlyList<MenuNode> nodes, bool treeChanged, bool clearsSelection = false)
         {
             Focus = focus;
             Nodes = nodes ?? Array.Empty<MenuNode>();
             TreeChanged = treeChanged;
+            ClearsSelection = clearsSelection;
         }
+
+        /// <summary>
+        /// 這一步的結果是取消選取（重做「取消選取」）；此時 <see cref="Focus"/> 為 null。
+        /// </summary>
+        public bool ClearsSelection { get; }
 
         /// <summary>
         /// 之後要選取的節點：勾選的步驟是那一步針對的節點（針對整棵樹時為 null）；
@@ -315,6 +329,31 @@ namespace CascadeControl.Trees
 
             return new MenuHistoryResult(_target, null, treeChanged: false);
         }
+    }
+
+    /// <summary>
+    /// 取消選取的一步：復原時選回被取消的節點，重做時再取消選取。
+    /// </summary>
+    internal sealed class DeselectStep : MenuHistoryStep
+    {
+        private readonly MenuTree _tree;
+        private readonly MenuNode _node;
+
+        public DeselectStep(MenuTree tree, MenuNode node)
+        {
+            _tree = tree;
+            _node = node;
+        }
+
+        public override bool ChangesTree => false;
+
+        // 選取不改樹；只要節點還在樹裡就選得回去（前後的結構步驟都已退回或重做好）。
+        public override bool CanApply(bool undo) => !undo || (_node.Parent != null && IsInTreeOrRoot(_tree, _node));
+
+        public override MenuHistoryResult Apply(bool undo) =>
+            undo
+                ? new MenuHistoryResult(_node, null, treeChanged: false)
+                : new MenuHistoryResult(null, null, treeChanged: false, clearsSelection: true);
     }
 
     /// <summary>

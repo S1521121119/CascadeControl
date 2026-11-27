@@ -10,7 +10,7 @@ namespace CascadeControl.Views.Diagram
         /// <summary>
         /// 縮放的級距（百分比）：<see cref="ZoomIn"/>、<see cref="ZoomOut"/> 與 Ctrl+滾輪在相鄰級距間移動。
         /// </summary>
-        protected static readonly int[] ZoomSteps = { 25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400 };
+        protected static readonly int[] ZoomSteps = { 20, 25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500 };
 
         // 還沒湊滿一格（WHEEL_DELTA）的滾輪量；觸控板一次只送一小段。
         private int _pendingWheelDelta;

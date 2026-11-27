@@ -278,6 +278,8 @@ namespace MindMap
 
         private void MnuViewResetZoom_Click(object sender, EventArgs e) => diagramView1.ResetZoom();
 
+        private void MnuFitToWindow_Click(object sender, EventArgs e) => diagramView1.FitToWindow();
+
         private void MnuViewShowIndex_Click(object sender, EventArgs e) => diagramView1.ShowIndex = !diagramView1.ShowIndex;
 
         private void MnuViewShowChildCount_Click(object sender, EventArgs e) => diagramView1.ShowChildCount = !diagramView1.ShowChildCount;

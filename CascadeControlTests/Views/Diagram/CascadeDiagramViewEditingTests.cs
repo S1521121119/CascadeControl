@@ -52,8 +52,8 @@ namespace CascadeControlTests.Views.Diagram
             {
                 f.Select("B");
 
-                // Esc、Ctrl+A、Ctrl+Space 是 Columns 的多選與勾選。
-                foreach (var keys in new[] { Keys.Escape, Keys.Control | Keys.A, Keys.Control | Keys.Space })
+                // Ctrl+A、Ctrl+Space 是 Columns 的多選與勾選（Esc 取消選取，見 MultiSelectTests）。
+                foreach (var keys in new[] { Keys.Control | Keys.A, Keys.Control | Keys.Space })
                 {
                     Assert.IsFalse(f.Key(keys), keys.ToString());
                 }

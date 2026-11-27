@@ -40,6 +40,7 @@ namespace CascadeControl.Views.Diagram
             var displayMenu = new ToolStripMenuItem("顯示");
             displayMenu.DropDownItems.Add(CreateCommand("符合視窗大小", FitToWindow));
             displayMenu.DropDownItems.Add(CreateCommand("重設縮放", ResetZoom));
+            displayMenu.DropDownItems.Add(new ToolStripSeparator());
             displayMenu.DropDownItems.Add(CreateCommand("放大", ZoomIn, ZoomPercent < ZoomSteps[ZoomSteps.Length - 1]));
             displayMenu.DropDownItems.Add(CreateCommand("縮小", ZoomOut, ZoomPercent > ZoomSteps[0]));
             items.Add(displayMenu);

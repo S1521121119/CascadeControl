@@ -244,7 +244,8 @@ namespace CascadeControl.Views.Diagram
         /// 其他時候編輯快捷鍵查 <see cref="CascadeEditShortcuts"/>，對象是 <see cref="SelectedNode"/>；唯讀時不攔會改樹的指令。
         /// </summary>
         /// <remarks>
-        /// 有多選時 Esc 取消多選；沒有多選時不攔，Ctrl+A 與勾選也不攔（屬於 <see cref="Columns.CascadeColumnsView"/>）。
+        /// Esc 取消多選與選取的節點（取消選取記進復原歷史，Ctrl+Z 選回）；都沒有時不攔，Ctrl+A 與勾選也不攔（屬於 <see cref="Columns.CascadeColumnsView"/>）。
+        /// Ctrl+加號／Ctrl+減號（主鍵盤與數字鍵盤）放大與縮小。
         /// 不攔的按鍵照常交給表單（例如選單快捷鍵、Esc 的 CancelButton）。
         /// </remarks>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -265,6 +266,30 @@ namespace CascadeControl.Views.Diagram
                 return base.ProcessCmdKey(ref msg, keyData);
             }
 
+            switch (keyData)
+            {
+                case Keys.Control | Keys.Alt | Keys.D0:
+                case Keys.Control | Keys.Alt | Keys.NumPad0:
+                    FitToWindow();
+                    return true;
+
+                case Keys.Control | Keys.Oemplus:
+                case Keys.Control | Keys.Shift | Keys.Oemplus:
+                case Keys.Control | Keys.Add:
+                    ZoomIn();
+                    return true;
+
+                case Keys.Control | Keys.OemMinus:
+                case Keys.Control | Keys.Subtract:
+                    ZoomOut();
+                    return true;
+
+                case Keys.Control | Keys.NumPad0:
+                case Keys.Control | Keys.D0:
+                    ResetZoom();
+                    return true;
+            }
+
             if (keyData == Keys.Escape)
             {
                 ResetDigitJump();
@@ -276,11 +301,10 @@ namespace CascadeControl.Views.Diagram
                     return true;
                 }
 
-                if (_marks.Count > 0)
-                {
-                    ClearMultiSelection();
-                    return true;
-                }
+                // 取消多選與取消選取（記進復原歷史）；兩者都沒有時交給表單。
+                var hadMarks = _marks.Count > 0;
+                ClearMultiSelection();
+                if (_state.DeselectWithHistory() || hadMarks) return true;
             }
 
             if (CascadeEditShortcuts.TryGetCommand(keyData, out var command)

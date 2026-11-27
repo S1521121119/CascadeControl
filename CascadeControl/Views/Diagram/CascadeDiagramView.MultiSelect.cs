@@ -209,7 +209,7 @@ namespace CascadeControl.Views.Diagram
             if (shiftX != 0 || shiftY != 0) ShiftViewport(shiftX, shiftY);
         }
 
-        // 放開左鍵：拖曳過的多選已經在拖曳中算好；沒拖曳時 Ctrl+點節點切換它，沒按 Ctrl 點空白處取消多選。
+        // 放開左鍵：拖曳過的多選已經在拖曳中算好；沒拖曳時 Ctrl+點節點切換它，沒按 Ctrl 點空白處取消多選與選取。
         private void EndMarkPress()
         {
             var press = _press;
@@ -218,7 +218,13 @@ namespace CascadeControl.Views.Diagram
 
             if (press.Dragged) Invalidate();
             else if (press.Control && press.StartNode != null) ToggleMark(press.StartNode);
-            else if (!press.Control) ClearMultiSelection();
+            else if (!press.Control)
+            {
+                ClearMultiSelection();
+
+                // 點在空白處同時取消選取的節點（記進復原歷史）。
+                if (press.StartNode == null) _state.DeselectWithHistory();
+            }
         }
 
         // 多選的節點蓋一層半透明的選取色、外框是實心的選取色；拖曳中的框選範圍同樣配色，底色更淡。

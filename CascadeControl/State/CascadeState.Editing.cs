@@ -274,6 +274,21 @@ namespace CascadeControl.State
         public MenuHistoryResult Redo() => Replay(History.Redo(), CascadeEditAction.Redo);
 
         /// <summary>
+        /// 取消選取並記進 <see cref="History"/>：復原會選回那個節點，重做再取消選取。
+        /// </summary>
+        /// <returns>原本有選取時為 true。</returns>
+        internal bool DeselectWithHistory()
+        {
+            var selected = SelectedNode as MenuNode;
+            var recorded = IsInTree(selected);
+
+            if (!ClearSelection()) return false;
+
+            if (recorded) History.RecordDeselect(Tree, selected);
+            return true;
+        }
+
+        /// <summary>
         /// 觸發 <see cref="TreeEdited"/>。
         /// </summary>
         protected virtual void OnTreeEdited(CascadeTreeEditedEventArgs e) => TreeEdited?.Invoke(this, e);
@@ -374,7 +389,11 @@ namespace CascadeControl.State
         {
             if (result == null) return null;
 
-            if (result.TreeChanged)
+            if (result.ClearsSelection)
+            {
+                ClearSelection();
+            }
+            else if (result.TreeChanged)
             {
                 FinishEdit(action, result.Nodes, result.Focus);
             }
