@@ -317,6 +317,14 @@ namespace CascadeControl.Views.Columns
         {
             if (!CanEdit || !_state.IsInTreeOrRoot(parent)) return false;
 
+            var handled = false;
+            var pasted = KeepFocus(() =>
+            {
+                handled = CascadeClipboard.TryCompletePendingCutPaste(State, parent, position, out var result);
+                return result;
+            });
+            if (handled) return pasted;
+
             var sources = CascadeClipboard.ReadNodes();
             if (sources.Count == 0) return false;
 

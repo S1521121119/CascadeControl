@@ -153,6 +153,7 @@ namespace CascadeControl.Views.Diagram
             public MenuNode SelectedNode { get; set; }
             public Placeholder Placeholder { get; set; }
             public MovePreview Preview { get; set; }
+            public Func<MenuNode, bool> IsCut { get; set; }
         }
 
         private sealed class LayoutNode
@@ -167,8 +168,14 @@ namespace CascadeControl.Views.Diagram
             // 拖曳移動的預覽：接到新位置的節點（連同子孫），畫成半透明。
             public bool IsGhost { get; set; }
 
-            // 拖曳移動的預覽：留在原處、放開後會被移走的節點（連同子孫），調淡並畫灰色虛線外框。
+            // 拖曳移動的預覽：留在原處、放開後會被移走的節點（連同子孫），調淡並畫灰色虛線外框與紅叉。
             public bool IsLeaving { get; set; }
+
+            // 待剪下（尚未貼上）的節點（連同子孫）：畫成半透明，不畫紅叉。
+            public bool IsCut { get; set; }
+
+            // 需要畫在半透明圖層上的節點：拖曳預覽的新位置（IsGhost）或待剪下的節點（IsCut）。
+            public bool IsTranslucent => IsGhost || IsCut;
 
             // 預覽移動時重新算的編號（1-based）；0 表示照原樹的 SiblingNumber。
             public int Number { get; set; }
@@ -307,7 +314,8 @@ namespace CascadeControl.Views.Diagram
             MovePreview preview = null,
             float zoom = 1f,
             bool showIndex = false,
-            bool showChildCount = false)
+            bool showChildCount = false,
+            Func<MenuNode, bool> isCut = null)
         {
             font = font ?? SystemFonts.DefaultFont;
             if (tree == null || !BelongsTo(selectedNode, tree)) selectedNode = null;
@@ -321,6 +329,7 @@ namespace CascadeControl.Views.Diagram
                 SelectedNode = selectedNode,
                 Placeholder = placeholder,
                 Preview = preview,
+                IsCut = isCut,
             };
 
             var roots = tree == null || tree.IsEmpty ? new List<LayoutNode>() : BuildLayout(tree, scope, options);
@@ -358,10 +367,10 @@ namespace CascadeControl.Views.Diagram
                     g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                     if (scale != 1f) g.ScaleTransform(scale, scale);
 
-                    DrawLinks(g, nodes, showChecks, ghost: false);
-                    foreach (var node in nodes.Where(node => !node.IsGhost)) DrawNode(g, font, format, node, showChecks, showIndex, showChildCount);
+                    DrawLinks(g, nodes, showChecks, translucent: false);
+                    foreach (var node in nodes.Where(node => !node.IsTranslucent)) DrawNode(g, font, format, node, showChecks, showIndex, showChildCount);
 
-                    if (nodes.Any(node => node.IsGhost)) DrawGhosts(g, bitmap.Size, scale, font, format, nodes, showChecks, showIndex, showChildCount);
+                    if (nodes.Any(node => node.IsTranslucent)) DrawTranslucent(g, bitmap.Size, scale, font, format, nodes, showChecks, showIndex, showChildCount);
                 }
 
                 var hitNodes = nodes
@@ -414,7 +423,7 @@ namespace CascadeControl.Views.Diagram
             {
                 // 起點就是選取的節點，不另外框起來。
                 options.SelectedNode = null;
-                var start = BuildNode(selectedNode, 0, selectedNode.Depth, false, false, options);
+                var start = BuildNode(selectedNode, 0, selectedNode.Depth, ghost: false, leaving: false, cut: false, options: options);
                 return start == null ? new List<LayoutNode>() : new List<LayoutNode> { start };
             }
 
@@ -426,7 +435,7 @@ namespace CascadeControl.Views.Diagram
 
         // 回傳 null 表示這個節點不畫（隱藏沒勾的節點時）。
         // depth 決定色系：一般就是原樹的深度；預覽移動時接到新位置的節點跟著新的父節點。
-        private static LayoutNode BuildNode(MenuNode source, int level, int depth, bool ghost, bool leaving, BuildOptions options)
+        private static LayoutNode BuildNode(MenuNode source, int level, int depth, bool ghost, bool leaving, bool cut, BuildOptions options)
         {
             var isNodeChecked = options.IsChecked == null || options.IsChecked(source);
             if (!isNodeChecked && options.HideUnchecked) return null;
@@ -446,6 +455,7 @@ namespace CascadeControl.Views.Diagram
                     isSelected = !ghost && !leaving && ReferenceEquals(source, selected);
             }
 
+            var isCut = !ghost && !leaving && (cut || (options.IsCut != null && options.IsCut(source)));
             var node = new LayoutNode
             {
                 Source = source,
@@ -455,6 +465,7 @@ namespace CascadeControl.Views.Diagram
                 IsSelected = isSelected,
                 IsGhost = ghost,
                 IsLeaving = leaving,
+                IsCut = isCut,
             };
             AddChildren(node, options);
             node.IsFullyChecked &= isNodeChecked;
@@ -481,7 +492,7 @@ namespace CascadeControl.Views.Diagram
                 foreach (var moved in preview.Nodes)
                 {
                     number++;
-                    var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, ghost: true, leaving: false, options: options);
+                    var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, ghost: true, leaving: false, cut: false, options: options);
                     if (ghost == null) continue;
 
                     ghost.Number = number;
@@ -498,7 +509,7 @@ namespace CascadeControl.Views.Diagram
                 var leaving = parent.IsLeaving || (preview != null && !preview.IsCopy && !parent.IsGhost && preview.IsMoved(children[i]));
                 if (!leaving) number++;
 
-                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, leaving, options);
+                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, leaving, parent.IsCut, options);
                 if (child != null)
                 {
                     if (preview != null && !leaving && !parent.IsGhost) child.Number = number;
@@ -699,7 +710,7 @@ namespace CascadeControl.Views.Diagram
         /// 曲線一律黑色；有勾選資訊時（<paramref name="showChecks"/>），通往沒勾子節點的曲線畫成淺灰，
         /// 通往勾選子節點的畫在最上層，才不會被淺灰的蓋住。
         /// </remarks>
-        private static void DrawLinks(Graphics g, List<LayoutNode> nodes, bool showChecks, bool ghost)
+        private static void DrawLinks(Graphics g, List<LayoutNode> nodes, bool showChecks, bool translucent)
         {
             using (var normalPen = new Pen(showChecks ? DIMMED_LINE : Color.Black, 1.2f))
             using (var checkedPen = new Pen(Color.Black, 1.8f))
@@ -714,7 +725,7 @@ namespace CascadeControl.Views.Diagram
 
                         foreach (var child in parent.Children)
                         {
-                            if (child.IsGhost != ghost || (showChecks && child.IsChecked != drawChecked)) continue;
+                            if (child.IsTranslucent != translucent || (showChecks && child.IsChecked != drawChecked)) continue;
 
                             var to = new PointF(child.Bounds.Left, child.CenterY);
                             var middle = (from.X + to.X) / 2f;
@@ -836,13 +847,13 @@ namespace CascadeControl.Views.Diagram
             color.G + (int)((255 - color.G) * ratio),
             color.B + (int)((255 - color.B) * ratio));
 
-        // 預覽移動時接到新位置的節點與連線的不透明度。
+        // 拖曳預覽的新位置與待剪下節點的不透明度。
         private const float GHOST_OPACITY = 0.45f;
 
         /// <summary>
-        /// 預覽移動的節點與通往它們的連線先畫在一張透明圖上，再以 <see cref="GHOST_OPACITY"/> 疊上去：整組一起變淡，重疊的地方不會更深。
+        /// 半透明節點（拖曳預覽的新位置與待剪下的節點）以及通往它們的連線先畫在一張透明圖上，再以 <see cref="GHOST_OPACITY"/> 疊上去：整組一起變淡，重疊的地方不會更深。
         /// </summary>
-        private static void DrawGhosts(Graphics g, Size size, float scale, Font font, StringFormat format, List<LayoutNode> nodes, bool showChecks, bool showIndex, bool showChildCount)
+        private static void DrawTranslucent(Graphics g, Size size, float scale, Font font, StringFormat format, List<LayoutNode> nodes, bool showChecks, bool showIndex, bool showChildCount)
         {
             using (var layer = new Bitmap(size.Width, size.Height))
             {
@@ -852,8 +863,8 @@ namespace CascadeControl.Views.Diagram
                     lg.TextRenderingHint = g.TextRenderingHint;
                     if (scale != 1f) lg.ScaleTransform(scale, scale);
 
-                    DrawLinks(lg, nodes, showChecks, ghost: true);
-                    foreach (var node in nodes.Where(node => node.IsGhost)) DrawNode(lg, font, format, node, showChecks, showIndex, showChildCount, drawSelectionFrame: false);
+                    DrawLinks(lg, nodes, showChecks, translucent: true);
+                    foreach (var node in nodes.Where(node => node.IsTranslucent)) DrawNode(lg, font, format, node, showChecks, showIndex, showChildCount, drawSelectionFrame: false);
                 }
 
                 using (var attributes = new ImageAttributes())
@@ -866,7 +877,7 @@ namespace CascadeControl.Views.Diagram
                 }
             }
 
-            foreach (var node in nodes.Where(node => node.IsGhost && node.IsSelected))
+            foreach (var node in nodes.Where(node => node.IsTranslucent && node.IsSelected))
             {
                 DrawSelectionFrame(g, node.Bounds, BorderWidthOf(node, showChecks));
             }

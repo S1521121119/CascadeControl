@@ -120,7 +120,7 @@ namespace CascadeControlTests.Views.Diagram
         });
 
         [TestMethod]
-        public void CutInDiagram_UpdatesColumns_UndoInColumnsRestores() => RunOnSta(() =>
+        public void CutInDiagram_UpdatesColumnsOnPaste_UndoInColumnsRestores() => RunOnSta(() =>
         {
             using (var host = new ViewHost<CascadeColumnsView>())
             using (var f = new Fixture(state: host.View.State))
@@ -128,23 +128,203 @@ namespace CascadeControlTests.Views.Diagram
                 host.View.ReadOnly = false;
                 var a = f.Node("A");
                 f.Select("A");
+                var opaqueBack = f.SampleBackColor(a);
 
                 Assert.IsTrue(f.Key(Keys.Control | Keys.X));
-                f.RequireClipboard(f.Edits.Count == 1, "Cut");
-                f.AssertShape("B", "C");
-                f.AssertEdits(CascadeEditAction.Cut, a);
-                Assert.AreSame(f.Node("B"), host.View.SelectedNode, "Columns 也選取下一個兄弟");
-                CollectionAssert.AreEqual(new[] { "B", "C" }, host.Columns[0].Items.Cast<ICascadeNode>().Select(node => node.Name).ToArray(), "Columns 第一欄重建");
+                f.RequireClipboard(CascadeClipboard.ContainsNodes(), "Cut");
 
-                Assert.IsTrue(host.View.Undo(), "Columns 復原 Diagram 的剪下");
+                // 剪下當下不刪除、不改歷史，原節點呈半透明且不畫紅叉。
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                Assert.AreEqual(0, f.Edits.Count);
+                Assert.AreEqual(0, f.View.State.History.UndoCount);
+                var cutBack = f.SampleBackColor(a);
+                Assert.IsTrue(cutBack.R > opaqueBack.R || cutBack.G > opaqueBack.G || cutBack.B > opaqueBack.B, "剪下後節點應變半透明");
+                Assert.IsFalse(f.HasRedPixelInside(a), "待剪下節點不應畫紅叉");
+                CollectionAssert.AreEqual(new[] { "A", "B", "C" }, host.Columns[0].Items.Cast<ICascadeNode>().Select(node => node.Name).ToArray(), "尚未貼上時 Columns 不刪除");
+
+                // 真正貼上時才搬移（移除原位並接到新位置），恢復不透明。
+                f.Select("C");
+                Assert.IsTrue(f.Key(Keys.Control | Keys.V));
+                f.AssertShape("B", "C", "A", "A > A1", "A > A2");
+                Assert.AreSame(a, f.Node("A"), "同樹貼上保留原節點與原名稱");
+                Assert.AreSame(a, host.View.SelectedNode);
+                f.AssertEdits(CascadeEditAction.Move, a);
+                Assert.AreEqual(opaqueBack.ToArgb(), f.SampleBackColor(a).ToArgb(), "貼上後恢復原本不透明");
+                CollectionAssert.AreEqual(new[] { "B", "C", "A" }, host.Columns[0].Items.Cast<ICascadeNode>().Select(node => node.Name).ToArray(), "Columns 第一欄同步更新");
+
+                Assert.IsFalse(f.View.Paste(before: false), "剪下貼上完成後剪貼簿已清空，不重複貼上");
+
+                Assert.IsTrue(host.View.Undo(), "Columns 單步復原 Diagram 的剪下貼上");
                 f.AssertShape("A", "A > A1", "A > A2", "B", "C");
                 Assert.AreSame(a, f.Node("A"), "回來的是同一個節點");
                 Assert.AreSame(a, f.View.SelectedNode);
                 f.AssertLastEdit(CascadeEditAction.Undo, a);
 
                 Assert.IsTrue(f.Key(Keys.Control | Keys.Y), "Diagram 重做");
-                f.AssertShape("B", "C");
+                f.AssertShape("B", "C", "A", "A > A1", "A > A2");
                 f.AssertLastEdit(CascadeEditAction.Redo, a);
+            }
+        });
+
+        [TestMethod]
+        public void Cut_EscapeCancelsBeforeDeselecting_AndClearsClipboard() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                var b = f.Node("B");
+                f.Select("B");
+                var opaqueBack = f.SampleBackColor(b);
+
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                Assert.AreNotEqual(opaqueBack.ToArgb(), f.SampleBackColor(b).ToArgb(), "剪下後變半透明");
+
+                Assert.IsTrue(f.Key(Keys.Escape), "第一次 Esc 取消待剪下");
+                Assert.AreSame(b, f.View.SelectedNode, "第一次 Esc 保留選取");
+                Assert.AreEqual(opaqueBack.ToArgb(), f.SampleBackColor(b).ToArgb(), "取消待剪下後恢復不透明");
+                Assert.IsFalse(CascadeClipboard.ContainsNodes(), "取消待剪下後剪貼簿已清空");
+                Assert.IsFalse(f.View.Paste(before: false));
+
+                Assert.IsTrue(f.Key(Keys.Escape), "第二次 Esc 才取消選取");
+                Assert.IsNull(f.View.SelectedNode);
+            }
+        });
+
+        [TestMethod]
+        public void Cut_PasteAsChild_MovesSubtreeAndRemovesOriginal() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                var a = f.Node("A");
+                f.Select("A");
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+
+                f.Select("B");
+                Assert.IsTrue(f.View.PasteAsChild());
+                f.AssertShape("B", "B > A", "B > A > A1", "B > A > A2", "C");
+                Assert.AreSame(a, f.Node("B > A"));
+                Assert.AreSame(a, f.View.SelectedNode);
+                Assert.AreEqual(1, f.View.State.History.UndoCount);
+            }
+        });
+
+        [TestMethod]
+        public void Cut_PasteIntoSelfOrDescendantRefused_SameSlotCancelsCut() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                var a = f.Node("A");
+                f.Select("A");
+                var opaqueA = f.SampleBackColor(a);
+
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                var cutA = f.SampleBackColor(a);
+                Assert.AreNotEqual(opaqueA.ToArgb(), cutA.ToArgb());
+
+                // 貼到自身子孫前面／後面或作為子節點皆拒絕，且維持待剪下狀態。
+                f.Select("A > A1");
+                Assert.IsFalse(f.View.Paste(before: false));
+                Assert.IsFalse(f.View.PasteAsChild());
+                Assert.AreEqual(cutA.ToArgb(), f.SampleBackColor(a).ToArgb(), "無效目標仍保留待剪下狀態");
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+
+                // 貼回完全相同的原位置（A 之後）：取消待剪下並恢復不透明，不改樹也不寫歷史。
+                f.Select("A");
+                Assert.IsFalse(f.View.Paste(before: false));
+                Assert.AreEqual(opaqueA.ToArgb(), f.SampleBackColor(a).ToArgb(), "原位貼上取消待剪下");
+                Assert.AreEqual(0, f.Edits.Count);
+                Assert.AreEqual(0, f.View.State.History.UndoCount);
+            }
+        });
+
+        [TestMethod]
+        public void Cut_CancelledByCopyTreeEditReadOnlyOrExternalClipboardChange() => RunOnSta(() =>
+        {
+            using (var f = new Fixture())
+            {
+                var b = f.Node("B");
+                var c = f.Node("C");
+                var opaqueB = f.SampleBackColor(b);
+
+                // Copy 取消待剪下。
+                f.Select("B");
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                Assert.AreNotEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb());
+                f.Select("C");
+                f.RequireClipboard(f.View.Copy(), "Copy");
+                Assert.AreEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb(), "Copy 解除先前待剪下");
+
+                // 樹編輯（改名）取消待剪下。
+                f.Select("B");
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                Assert.AreNotEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb());
+                Assert.IsNotNull(f.View.State.RenameNode(c, "C2"));
+                Assert.AreEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb(), "改樹解除待剪下");
+
+                // 切換 ReadOnly 取消待剪下。
+                f.Select("B");
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                Assert.AreNotEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb());
+                f.View.ReadOnly = true;
+                Assert.AreEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb(), "切為唯讀解除待剪下");
+                f.View.ReadOnly = false;
+
+                // 外部覆寫剪貼簿後，Paste 不刪除原節點且恢復不透明。
+                f.Select("B");
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                Assert.AreNotEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb());
+                f.RequireClipboard(TrySetExternalClipboardText("external text"), "SetExternalText");
+                f.Select("C2");
+                Assert.IsFalse(f.View.Paste(before: false));
+                Assert.AreEqual(opaqueB.ToArgb(), f.SampleBackColor(b).ToArgb(), "外部改寫剪貼簿解除待剪下");
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C2");
+            }
+        });
+
+        private static bool TrySetExternalClipboardText(string text)
+        {
+            try
+            {
+                Clipboard.SetDataObject(new DataObject(DataFormats.UnicodeText, text), true, 10, 100);
+                return true;
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                return false;
+            }
+        }
+
+        [TestMethod]
+        public void CutInDiagram_PasteInSharedColumnsOrOtherDiagram_CompletesRemoval() => RunOnSta(() =>
+        {
+            // 共享 State：Diagram 剪下 → Columns 貼上。
+            using (var host = new ViewHost<CascadeColumnsView>())
+            using (var f = new Fixture(state: host.View.State))
+            {
+                host.View.ReadOnly = false;
+                var b = f.Node("B");
+                f.Select("B");
+                f.RequireClipboard(f.View.Cut(), "Cut");
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+
+                host.View.TrySelectNode(f.Node("C"));
+                Assert.IsTrue(host.View.PasteAsChild());
+                f.AssertShape("A", "A > A1", "A > A2", "C", "C > B");
+                Assert.AreSame(b, f.Node("C > B"));
+            }
+
+            // 跨樹：Diagram 1 剪下 → Diagram 2 貼上後，Diagram 1 才移除原節點。
+            using (var source = new Fixture())
+            using (var target = new Fixture())
+            {
+                source.Select("B");
+                source.RequireClipboard(source.View.Cut(), "Cut");
+                source.AssertShape("A", "A > A1", "A > A2", "B", "C");
+
+                target.Select("C");
+                Assert.IsTrue(target.View.PasteAsChild());
+                target.AssertShape("A", "A > A1", "A > A2", "B", "C", "C > B");
+                source.AssertShape("A", "A > A1", "A > A2", "C");
             }
         });
 
@@ -183,12 +363,11 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
-        public void CanUndo_ReadOnlyBlocksTreeStepsOnly() => RunOnSta(() =>
+        public void CanUndo_ReadOnlyBlocksTreeStepsOnly()
         {
             using (var f = new Fixture())
             {
-                f.Select("C");
-                f.RequireClipboard(f.View.Cut(), "Cut");
+                Assert.IsTrue(f.View.State.DeleteNodes(new[] { f.Node("C") }));
                 Assert.IsTrue(f.View.CanUndo);
 
                 f.View.ReadOnly = true;
@@ -203,7 +382,7 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.IsFalse(((CascadeCheckableState)f.View.State).CheckSet.IsChecked(f.Node("B")));
                 Assert.IsFalse(f.View.CanUndo);
             }
-        });
+        }
 
         [TestMethod]
         public void F2_OpensBoxOverSelectedNode_CommitRenamesThroughState_ColumnsFollow()
@@ -322,14 +501,14 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreEqual(0, f.View.Controls.OfType<TextBox>().Count());
                 f.AssertShape("A", "A > A1", "A > A2", "B");
 
-                // Columns 開著編輯框時，Diagram 改了樹（剪下選取的 B，也就是 Columns 正在改名的節點）。
+                // Columns 開著編輯框時，Diagram 改了樹（貼上剛剛 Columns 剪下的 C 到 B 後面）。
                 host.View.TrySelectNode(f.Node("B"));
                 Assert.IsTrue(host.View.BeginRename());
-                Assert.IsTrue(f.Key(Keys.Control | Keys.X));
-                f.RequireClipboard(f.Edits.Count == 2, "Diagram Cut");
+                Assert.IsTrue(f.Key(Keys.Control | Keys.V));
+                Assert.AreEqual(2, f.Edits.Count);
                 Assert.IsFalse(host.View.IsEditing);
-                f.AssertShape("A", "A > A1", "A > A2");
-                Assert.AreEqual(CascadeEditAction.Cut, f.Edits.Last().Action);
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                Assert.AreEqual(CascadeEditAction.Paste, f.Edits.Last().Action);
                 Assert.IsFalse(f.Edits.Any(e => e.Action == CascadeEditAction.Rename), "兩個編輯框都沒有套用");
             }
         });
@@ -660,6 +839,36 @@ namespace CascadeControlTests.Views.Diagram
                 var last = Edits.Last();
                 Assert.AreEqual(action, last.Action);
                 CollectionAssert.AreEqual(nodes, last.Nodes.ToArray());
+            }
+
+            public System.Drawing.Color SampleBackColor(MenuNode node)
+            {
+                var b = ImageBounds(node);
+                return ((System.Drawing.Bitmap)View.Image).GetPixel(b.Left + 4, b.Top + 3);
+            }
+
+            public bool HasRedPixelInside(MenuNode node)
+            {
+                var b = ImageBounds(node);
+                var bitmap = (System.Drawing.Bitmap)View.Image;
+                for (var y = b.Top + 2; y <= b.Bottom - 2; y++)
+                {
+                    for (var x = b.Left + 2; x <= b.Right - 2; x++)
+                    {
+                        var pixel = bitmap.GetPixel(x, y);
+                        if (pixel.R > 210 && pixel.G < 80 && pixel.B < 80) return true;
+                    }
+                }
+
+                return false;
+            }
+
+            private System.Drawing.Rectangle ImageBounds(MenuNode node)
+            {
+                var client = Bounds(node);
+                Assert.IsFalse(client.IsEmpty, $"找不到節點 {node.FullPathText} 的範圍");
+                var offsetY = Math.Max(0, (int)Math.Floor((View.ClientSize.Height - View.Image.Height) / 2f));
+                return new System.Drawing.Rectangle(client.Left, client.Top - offsetY, client.Width, client.Height);
             }
 
             public void Dispose() => View.Dispose();

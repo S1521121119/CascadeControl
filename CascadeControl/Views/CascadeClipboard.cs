@@ -1,3 +1,4 @@
+using CascadeControl.State;
 using CascadeControl.Trees;
 using CascadeControl.Trees.Csv;
 using System;
@@ -30,6 +31,34 @@ namespace CascadeControl.Views
 
         private static readonly IReadOnlyList<MenuNode> NoMenuNodes = new MenuNode[0];
 
+        // 延遲剪下（例如 CascadeDiagramView 剪下後尚未貼上）：同時間只會有一個有效的待剪下來源。
+        private static PendingCut _pendingCut;
+
+        [DllImport("user32.dll")]
+        private static extern uint GetClipboardSequenceNumber();
+
+        /// <summary>
+        /// 尚未貼上的待剪下狀態：剪貼簿序號、來源 <see cref="CascadeState"/>、待移走的頂層節點，以及狀態被清除時的通知。
+        /// </summary>
+        internal sealed class PendingCut
+        {
+            public PendingCut(uint sequenceNumber, CascadeState state, IReadOnlyList<MenuNode> nodes, Action onCleared)
+            {
+                SequenceNumber = sequenceNumber;
+                State = state;
+                Nodes = nodes;
+                OnCleared = onCleared;
+            }
+
+            public uint SequenceNumber { get; }
+
+            public CascadeState State { get; }
+
+            public IReadOnlyList<MenuNode> Nodes { get; }
+
+            public Action OnCleared { get; }
+        }
+
         // 每個節點各自當成第一層，連同子孫以 CSV 放到剪貼簿；讀回時第一層的順序就是複製時的順序。
         // 沒有對象、子樹大到寫出去讀不回來，或剪貼簿被其他程式佔用時為 false。
         internal static bool CopyNodes(IReadOnlyList<MenuNode> nodes)
@@ -54,7 +83,9 @@ namespace CascadeControl.Views
             data.SetData(CLIPBOARD_FORMAT, new MemoryStream(Encoding.UTF8.GetBytes(text)));
             data.SetText(text);
 
-            return SetClipboard(data);
+            var copied = SetClipboard(data);
+            if (copied) ClearPendingCut();
+            return copied;
         }
 
         // 每個節點從第一層到它的路徑寫成一列 CSV 純文字（不含子孫），順序與傳入時相同。
@@ -77,7 +108,134 @@ namespace CascadeControl.Views
                 return false;
             }
 
-            return SetClipboard(new DataObject(DataFormats.UnicodeText, text));
+            var copied = SetClipboard(new DataObject(DataFormats.UnicodeText, text));
+            if (copied) ClearPendingCut();
+            return copied;
+        }
+
+        /// <summary>
+        /// 將 <paramref name="nodes"/> 寫入剪貼簿並登記為待剪下狀態，直到貼上完成、剪貼簿被覆寫或取消為止。
+        /// </summary>
+        internal static PendingCut StageCut(CascadeState state, IReadOnlyList<MenuNode> nodes, Action onCleared)
+        {
+            if (state == null || !CopyNodes(nodes)) return null;
+
+            var pending = new PendingCut(GetClipboardSequenceNumber(), state, nodes.ToList(), onCleared);
+            _pendingCut = pending;
+            return pending;
+        }
+
+        /// <summary>
+        /// 取得目前仍然有效的待剪下狀態；若剪貼簿已被覆寫或來源節點已不在樹中，會自動清除並回傳 null。
+        /// </summary>
+        internal static PendingCut GetActivePendingCut()
+        {
+            var pending = _pendingCut;
+            if (pending == null) return null;
+
+            var stale = (pending.SequenceNumber != 0 && GetClipboardSequenceNumber() != pending.SequenceNumber)
+                || !pending.Nodes.All(pending.State.IsInTree);
+            if (stale)
+            {
+                ClearPendingCut(pending);
+                return null;
+            }
+
+            return pending;
+        }
+
+        /// <summary>
+        /// 清除待剪下狀態並通知來源檢視；指定 <paramref name="expected"/> 時只在相符時才清除。
+        /// </summary>
+        internal static void ClearPendingCut(PendingCut expected = null, bool clearClipboard = false)
+        {
+            var pending = _pendingCut;
+            if (pending == null || (expected != null && !ReferenceEquals(pending, expected))) return;
+
+            _pendingCut = null;
+            if (clearClipboard) ClearClipboardIfSequence(pending.SequenceNumber);
+            pending.OnCleared?.Invoke();
+        }
+
+        /// <summary>
+        /// 若目前有有效的待剪下狀態，依目標樹決定同樹搬移或跨樹貼上後刪除原節點。
+        /// </summary>
+        /// <returns>true 表示已由待剪下流程處理（不論成功貼上、原位取消或因目標不合法拒絕）；false 表示沒有待剪下，請走一般剪貼簿貼上。</returns>
+        internal static bool TryCompletePendingCutPaste(CascadeState targetState, MenuNode parent, int position, out bool pasted)
+        {
+            pasted = false;
+            var pending = GetActivePendingCut();
+            if (pending == null) return false;
+
+            if (ReferenceEquals(pending.State, targetState))
+            {
+                if (pending.Nodes.Any(root => IsSelfOrAncestor(root, parent))) return true;
+
+                if (CascadeState.IsNoOpMove(pending.Nodes, parent, position))
+                {
+                    ClearPendingCut(pending, clearClipboard: true);
+                    return true;
+                }
+
+                var sequence = pending.SequenceNumber;
+                var moved = targetState.MoveNodes(pending.Nodes, parent, position);
+                if (moved.Count == 0) return true;
+
+                ClearPendingCut(pending, clearClipboard: false);
+                ClearClipboardIfSequence(sequence);
+                pasted = true;
+                return true;
+            }
+
+            var sources = ReadNodes();
+            if (sources.Count == 0)
+            {
+                ClearPendingCut(pending);
+                return true;
+            }
+
+            var inserted = targetState.PasteNodes(parent, position, sources);
+            if (inserted.Count == 0) return true;
+
+            var cutSequence = pending.SequenceNumber;
+            pending.State.CutNodes(pending.Nodes);
+            ClearPendingCut(pending, clearClipboard: false);
+            ClearClipboardIfSequence(cutSequence);
+            pasted = true;
+            return true;
+        }
+
+        private static bool IsSelfOrAncestor(MenuNode ancestor, MenuNode node)
+        {
+            for (var current = node; current != null; current = current.Parent)
+            {
+                if (ReferenceEquals(current, ancestor)) return true;
+            }
+
+            return false;
+        }
+
+        private static void ClearClipboardIfSequence(uint sequenceNumber)
+        {
+            if (sequenceNumber != 0 && GetClipboardSequenceNumber() != sequenceNumber) return;
+
+            for (var attempt = 1; attempt <= RETRY_TIMES; attempt++)
+            {
+                try
+                {
+                    if (sequenceNumber != 0 && GetClipboardSequenceNumber() != sequenceNumber) return;
+                    Clipboard.Clear();
+                    return;
+                }
+                catch (ExternalException) when (attempt < RETRY_TIMES)
+                {
+                    Thread.Sleep(RETRY_DELAY);
+                }
+                catch (Exception ex) when (ex is ExternalException || ex is ThreadStateException)
+                {
+                    return;
+                }
+            }
         }
 
         // 剪貼簿上的節點（第一層，依複製時的順序）；沒有本格式或讀不到時為空集合。

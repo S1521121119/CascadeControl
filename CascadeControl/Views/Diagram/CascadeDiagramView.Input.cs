@@ -345,6 +345,8 @@ namespace CascadeControl.Views.Diagram
                     return true;
                 }
 
+                if (CancelActivePendingCut()) return true;
+
                 // 取消多選與取消選取（記進復原歷史）；兩者都沒有時交給表單。
                 var hadMarks = _marks.Count > 0;
                 ClearMultiSelection();

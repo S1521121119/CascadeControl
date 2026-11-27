@@ -139,6 +139,47 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
+        public void RenderImage_CutNodes_DrawsSubtreeTranslucentWithoutRedCross()
+        {
+            var tree = new MenuTree();
+            tree.ExpandAndAddPaths("A", "A1|A2");
+            tree.AddPath(new[] { "B" });
+            var a = Find(tree, "A");
+            var a1 = Find(tree, "A", "A1");
+            var b = Find(tree, "B");
+
+            Color SampleBack(TreeImage image, MenuNode node)
+            {
+                var bounds = image.Nodes.Single(n => ReferenceEquals(n.Node, node) && !n.IsGhost).Bounds;
+                return image.Image.GetPixel((int)(bounds.Left + 4f), (int)(bounds.Top + 3f));
+            }
+
+            using (var plain = TreeDrawer.RenderImage(tree, SystemFonts.DefaultFont, selectedNode: a))
+            using (var cut = TreeDrawer.RenderImageWithPlaceholder(tree, SystemFonts.DefaultFont, null, CascadeDiagramDrawScope.WholeTree,
+                CascadeDiagramUncheckedDisplay.Dimmed, a, null, null, isCut: node => ReferenceEquals(node, a)))
+            {
+                Assert.IsFalse(cut.Nodes.Any(n => n.IsGhost || n.IsLeaving), "待剪下節點不是拖曳預覽的 ghost 或 leaving");
+
+                var plainA = SampleBack(plain, a);
+                var cutA = SampleBack(cut, a);
+                var plainA1 = SampleBack(plain, a1);
+                var cutA1 = SampleBack(cut, a1);
+
+                Assert.IsTrue(cutA.R > plainA.R || cutA.G > plainA.G || cutA.B > plainA.B, "待剪下節點底色應變淡（半透明）");
+                Assert.IsTrue(cutA1.R > plainA1.R || cutA1.G > plainA1.G || cutA1.B > plainA1.B, "待剪下節點的子孫應一起變半透明");
+                Assert.AreEqual(SampleBack(plain, b).ToArgb(), SampleBack(cut, b).ToArgb(), "未剪下的節點維持原本顏色");
+
+                var aBounds = cut.Nodes.Single(n => ReferenceEquals(n.Node, a)).Bounds;
+                var a1Bounds = cut.Nodes.Single(n => ReferenceEquals(n.Node, a1)).Bounds;
+                Assert.IsFalse(HasRedPixel(cut.Image, aBounds), "待剪下節點內部不可畫紅叉");
+                Assert.IsFalse(HasRedPixel(cut.Image, a1Bounds), "待剪下節點的子孫內部不可畫紅叉");
+
+                var topBorderBand = new RectangleF(aBounds.Left, aBounds.Top - 5f, aBounds.Width, 4f);
+                Assert.IsTrue(HasRedPixel(cut.Image, topBorderBand), "選取的待剪下節點外圍仍保留紅色選取框");
+            }
+        }
+
+        [TestMethod]
         public void RenderImage_WithoutIsExpanded_DrawsEveryNodeExpanded()
         {
             var tree = TestTrees.Template();

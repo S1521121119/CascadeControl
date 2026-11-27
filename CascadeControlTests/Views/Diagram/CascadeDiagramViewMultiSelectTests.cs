@@ -378,17 +378,26 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
-        public void Cut_WithMarksFromDifferentParents_RemovesAll() => RunOnSta(() =>
+        public void Cut_WithMarksFromDifferentParents_StagesUntilPasted_ThenMovesAll() => RunOnSta(() =>
         {
             using (var f = new Fixture())
             {
                 f.CtrlClick("A > A1");
                 f.CtrlClick("B");
 
-                if (!f.Key(Keys.Control | Keys.X) || f.Tree.Root.Children.Count == 3) Assert.Inconclusive("剪貼簿被其他程式佔用。");
+                Assert.IsTrue(f.Key(Keys.Control | Keys.X));
+                f.RequireClipboard(CascadeClipboard.ContainsNodes());
 
-                f.AssertShape("A", "A > A2", "C");
+                // 剪下當下不先刪除，清空多選並放進剪貼簿。
+                f.AssertShape("A", "A > A1", "A > A2", "B", "C");
+                f.AssertMarks();
                 CollectionAssert.AreEqual(new[] { "A1", "B" }, CascadeClipboard.ReadNodes().Select(node => node.Name).ToArray());
+
+                // 真正貼上時才從各自原父節點移除並搬移到目標。
+                f.Select("C");
+                Assert.IsTrue(f.Key(Keys.Control | Keys.Alt | Keys.V));
+                f.AssertShape("A", "A > A2", "C", "C > A1", "C > B");
+                f.AssertMarks("C > A1", "C > B");
             }
         });
 

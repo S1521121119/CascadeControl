@@ -22,6 +22,11 @@ namespace CascadeControl.Views.Diagram
         // 編輯中在圖上按了滑鼠：那一下只用來結束編輯，對應的點擊也要略過。
         private bool _swallowClick;
 
+        // 尚未貼上的待剪下狀態（節點先留在樹上並畫成半透明，真正貼上時才移走）。
+        private CascadeClipboard.PendingCut _pendingCut;
+        private HashSet<MenuNode> _cutRoots;
+        private bool _suppressPendingCutRedraw;
+
         #region 屬性
 
         /// <summary>
@@ -42,7 +47,11 @@ namespace CascadeControl.Views.Diagram
             set
             {
                 _readOnly = value;
-                if (value) AbortEdit();
+                if (value)
+                {
+                    AbortEdit();
+                    CancelPendingCut(redraw: true);
+                }
             }
         }
 
@@ -79,7 +88,7 @@ namespace CascadeControl.Views.Diagram
         public bool Copy()
         {
             CommitPendingEdit();
-            return CascadeClipboard.CopyNodes(EditTargets());
+            return CopyNodes(EditTargets());
         }
 
         /// <summary>
@@ -90,13 +99,14 @@ namespace CascadeControl.Views.Diagram
         public bool CopyPath()
         {
             CommitPendingEdit();
-            return CascadeClipboard.CopyNodePaths(_marks.Count > 0 ? MultiSelectedNodes : Single(SelectedMenuNode));
+            return CopyNodePaths(_marks.Count > 0 ? MultiSelectedNodes : Single(SelectedMenuNode));
         }
 
         /// <summary>
-        /// 把 <see cref="SelectedNode"/> 複製到 Windows 剪貼簿，然後從樹中移除；有多選時改成多選的節點（祖先也被多選的子孫跟著祖先走）。
+        /// 把 <see cref="SelectedNode"/> 複製到 Windows 剪貼簿並標示為半透明待剪下，直到真正貼上時才從原位置移除；
+        /// 有多選時改成多選的節點（祖先也被多選的子孫跟著祖先走）。
         /// </summary>
-        /// <returns>有剪下時為 true；唯讀、沒有對象或剪貼簿被佔用（這時不會移除）時為 false。</returns>
+        /// <returns>有標示為剪下時為 true；唯讀、沒有對象或剪貼簿被佔用時為 false。</returns>
         public bool Cut()
         {
             CommitPendingEdit();
@@ -226,11 +236,119 @@ namespace CascadeControl.Views.Diagram
 
         private bool CanEditNodes(IReadOnlyList<MenuNode> nodes) => CanEdit && nodes.Count > 0 && nodes.All(_state.IsInTree);
 
+        private bool CopyNodes(IReadOnlyList<MenuNode> nodes) => CascadeClipboard.CopyNodes(nodes);
+
+        private bool CopyNodePaths(IReadOnlyList<MenuNode> nodes) => CascadeClipboard.CopyNodePaths(nodes);
+
         private bool CutNodes(IReadOnlyList<MenuNode> nodes)
         {
-            if (!CanEditNodes(nodes) || !CascadeClipboard.CopyNodes(nodes)) return false;
+            if (!CanEditNodes(nodes)) return false;
 
-            return _state.CutNodes(nodes);
+            var roots = TopMostNodes(nodes);
+            CascadeClipboard.PendingCut staged;
+            var previousSuppress = _suppressPendingCutRedraw;
+            _suppressPendingCutRedraw = true;
+            try
+            {
+                CascadeClipboard.PendingCut created = null;
+                created = CascadeClipboard.StageCut(_state, roots, () => OnPendingCutCleared(created));
+                staged = created;
+            }
+            finally
+            {
+                _suppressPendingCutRedraw = previousSuppress;
+            }
+
+            if (staged == null) return false;
+
+            _pendingCut = staged;
+            _cutRoots = new HashSet<MenuNode>(roots);
+            ClearMultiSelection();
+            Redraw();
+            return true;
+        }
+
+        private static List<MenuNode> TopMostNodes(IReadOnlyList<MenuNode> nodes)
+        {
+            var set = new HashSet<MenuNode>(nodes);
+            return nodes.Distinct().Where(node => !set.Any(other => !ReferenceEquals(other, node) && IsSelfOrAncestor(other, node))).ToList();
+        }
+
+        private void OnPendingCutCleared(CascadeClipboard.PendingCut cut)
+        {
+            if (!ReferenceEquals(_pendingCut, cut)) return;
+
+            _pendingCut = null;
+            _cutRoots = null;
+            if (!_suppressPendingCutRedraw && !IsDisposed) Redraw();
+        }
+
+        private bool SyncPendingCut(bool redrawOnClear)
+        {
+            if (_pendingCut == null) return false;
+
+            var previousSuppress = _suppressPendingCutRedraw;
+            if (!redrawOnClear) _suppressPendingCutRedraw = true;
+            try
+            {
+                if (ReferenceEquals(CascadeClipboard.GetActivePendingCut(), _pendingCut)) return true;
+
+                _pendingCut = null;
+                _cutRoots = null;
+                return false;
+            }
+            finally
+            {
+                _suppressPendingCutRedraw = previousSuppress;
+            }
+        }
+
+        private bool CancelPendingCut(bool redraw, bool clearClipboard = false)
+        {
+            var cut = _pendingCut;
+            if (cut == null) return false;
+
+            _pendingCut = null;
+            _cutRoots = null;
+
+            var previousSuppress = _suppressPendingCutRedraw;
+            _suppressPendingCutRedraw = true;
+            try
+            {
+                CascadeClipboard.ClearPendingCut(cut, clearClipboard);
+            }
+            finally
+            {
+                _suppressPendingCutRedraw = previousSuppress;
+            }
+
+            if (redraw && !IsDisposed) Redraw();
+            return true;
+        }
+
+        private bool CancelActivePendingCut()
+        {
+            if (!SyncPendingCut(redrawOnClear: true)) return false;
+
+            return CancelPendingCut(redraw: true, clearClipboard: true);
+        }
+
+        private bool IsInPendingCut(MenuNode node)
+        {
+            if (_cutRoots == null || _cutRoots.Count == 0) return false;
+
+            for (var current = node; current != null; current = current.Parent)
+            {
+                if (_cutRoots.Contains(current)) return true;
+            }
+
+            return false;
+        }
+
+        private bool IsSameStatePendingCutTarget(MenuNode parent)
+        {
+            var pending = CascadeClipboard.GetActivePendingCut();
+            return pending != null && ReferenceEquals(pending.State, _state) && pending.Nodes.Any(root => IsSelfOrAncestor(root, parent));
         }
 
         private bool DeleteNodes(IReadOnlyList<MenuNode> nodes)
@@ -260,6 +378,8 @@ namespace CascadeControl.Views.Diagram
         private bool PasteInto(MenuNode parent, int position)
         {
             if (!CanEdit || !_state.IsInTreeOrRoot(parent)) return false;
+
+            if (CascadeClipboard.TryCompletePendingCutPaste(_state, parent, position, out var pasted)) return pasted;
 
             var sources = CascadeClipboard.ReadNodes();
             if (sources.Count == 0) return false;

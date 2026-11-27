@@ -36,8 +36,9 @@ namespace CascadeControl.Views.Diagram
 
             var checkSet = DisplayedCheckSet;
             var isChecked = checkSet == null ? (Func<MenuNode, bool>)null : checkSet.IsChecked;
+            var isCut = SyncPendingCut(redrawOnClear: false) ? (Func<MenuNode, bool>)IsInPendingCut : null;
 
-            return TreeDrawer.RenderImageWithPlaceholder(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded, _edit?.Placeholder, preview, _zoomFactor, _showIndex, _showChildCount);
+            return TreeDrawer.RenderImageWithPlaceholder(tree, Font, isChecked, _drawScope, _uncheckedDisplay, selected, IsExpanded, _edit?.Placeholder, preview, _zoomFactor, _showIndex, _showChildCount, isCut);
         }
 
         // ShowChecks 關閉時當成沒有勾選資訊。

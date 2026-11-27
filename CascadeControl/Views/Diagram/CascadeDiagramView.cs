@@ -416,6 +416,7 @@ namespace CascadeControl.Views.Diagram
             if (state == null) return;
 
             AbortEdit();
+            CancelPendingCut(redraw: false);
             state.Invalidated -= State_Invalidated;
             state.SelectedPathChanged -= State_SelectedPathChanged;
             state.TreeEdited -= State_TreeEdited;
@@ -426,11 +427,22 @@ namespace CascadeControl.Views.Diagram
             }
         }
 
-        // 換樹或樹被改過（任何綁同一份 State 的檢視編輯、復原、重做）：編輯框的對象可能已經不在或改了名，直接關掉、不套用。
-        // 只是選取改變時保留編輯框，重畫後再對齊（見 PositionEditBox）。
+        // 換樹或樹被改過（任何綁同一份 State 的檢視編輯、復原、重做）：編輯框的對象可能已經不在或改了名，直接關掉、不套用；待剪下狀態一併清除。
+        // 只是選取改變時保留編輯框與待剪下狀態，重畫後再對齊（見 PositionEditBox）。
         private void State_Invalidated(CascadeStateInvalidation kind)
         {
-            if (kind == CascadeStateInvalidation.Reset || kind == CascadeStateInvalidation.Refreshed) AbortEdit();
+            if (kind == CascadeStateInvalidation.Reset || kind == CascadeStateInvalidation.Refreshed)
+            {
+                AbortEdit();
+                CancelPendingCut(redraw: false);
+            }
+        }
+
+        /// <inheritdoc />
+        protected override void OnGotFocus(EventArgs e)
+        {
+            base.OnGotFocus(e);
+            SyncPendingCut(redrawOnClear: true);
         }
 
         private void State_SelectedPathChanged(object sender, CascadeNodeEventArgs e)

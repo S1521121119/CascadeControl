@@ -17,6 +17,8 @@ namespace CascadeControl.Views.Diagram
         // 每次開啟前重建：編輯項目依 ReadOnly 與對象決定；沒開 ShowChecks 或 State 沒有勾選能力時不列出「未勾選節點」。
         private void ContextMenu_Opening(object sender, CancelEventArgs e)
         {
+            SyncPendingCut(redrawOnClear: true);
+
             var items = _contextMenu.Items;
             items.Clear();
 
@@ -80,18 +82,20 @@ namespace CascadeControl.Views.Diagram
                     items.Add(new ToolStripSeparator());
                 }
 
-                items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CascadeClipboard.CopyNodes(EditTargets(target))));
-                items.Add(CreateCommand("複製(路徑)", CascadeEditCommand.CopyPath, true, () => CascadeClipboard.CopyNodePaths(CopyPathTargets(target))));
+                items.Add(CreateCommand("複製", CascadeEditCommand.Copy, true, () => CopyNodes(EditTargets(target))));
+                items.Add(CreateCommand("複製(路徑)", CascadeEditCommand.CopyPath, true, () => CopyNodePaths(CopyPathTargets(target))));
 
                 if (CanEdit)
                 {
                     items.Add(CreateCommand("剪下", CascadeEditCommand.Cut, true, () => CutNodes(EditTargets(target))));
 
                     // 「作為子節點」只對葉節點有作用：已經有子節點時，請在子節點旁邊貼上。
-                    var pasteMenu = new ToolStripMenuItem("貼上") { Enabled = CascadeClipboard.ContainsNodes() };
-                    pasteMenu.DropDownItems.Add(CreateCommand("之前", CascadeEditCommand.PasteBefore, true, () => PasteBeside(target, before: true)));
-                    pasteMenu.DropDownItems.Add(CreateCommand("之後", CascadeEditCommand.Paste, true, () => PasteBeside(target, before: false)));
-                    pasteMenu.DropDownItems.Add(CreateCommand("作為子節點", CascadeEditCommand.PasteAsChild, target.IsLeaf, () => PasteIntoLeaf(target)));
+                    var canPasteBeside = !IsSameStatePendingCutTarget(target.Parent);
+                    var canPasteAsChild = target.IsLeaf && !IsSameStatePendingCutTarget(target);
+                    var pasteMenu = new ToolStripMenuItem("貼上") { Enabled = CascadeClipboard.ContainsNodes() && (canPasteBeside || canPasteAsChild) };
+                    pasteMenu.DropDownItems.Add(CreateCommand("之前", CascadeEditCommand.PasteBefore, canPasteBeside, () => PasteBeside(target, before: true)));
+                    pasteMenu.DropDownItems.Add(CreateCommand("之後", CascadeEditCommand.Paste, canPasteBeside, () => PasteBeside(target, before: false)));
+                    pasteMenu.DropDownItems.Add(CreateCommand("作為子節點", CascadeEditCommand.PasteAsChild, canPasteAsChild, () => PasteIntoLeaf(target)));
                     items.Add(pasteMenu);
                     items.Add(new ToolStripSeparator());
 
