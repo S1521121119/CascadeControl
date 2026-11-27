@@ -6,16 +6,11 @@ using System.Linq;
 namespace CascadeControl.Trees
 {
     /// <summary>
-    /// 多層選單樹。每一條從第一層到葉節點的路徑，就是一個可執行的項目。
+    /// 多層樹，深度不限。
     /// </summary>
     /// <remarks>
-    /// 樹只處理節點與路徑，不管資料存成什麼格式：匯入匯出一律透過 <see cref="FromRows(IEnumerable{string[]}, out IList{string})"/> 與
-    /// <see cref="ToRows(MenuRowStyle)"/> 的二維字串陣列，文字與檔案的轉換交給 Services 層。
-    /// 資料列的格子可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點（見 <see cref="CellExpansion"/>）。
-    /// 要在程式中直接組樹，就用 <see cref="AddPath(string[])"/> 一次加入一條路徑，
-    /// 或用 <see cref="ExpandAndAddPaths(string[])"/> 一次加入一整列 <c>A|B</c> 寫法展開後的路徑。
-    /// 深度沒有上限，資料有幾欄就有幾層。
-    /// 這個類別不相依 System.Windows.Forms 與檔案系統，之後要搬進測試專案也不用修改。
+    /// 匯入匯出透過 <see cref="FromRows(IEnumerable{string[]}, out IList{string})"/> 與 <see cref="ToRows(MenuRowStyle)"/> 的二維字串陣列，
+    /// 不相依任何檔案格式或 UI。程式中組樹用 <see cref="AddPath(string[])"/> 或 <see cref="ExpandAndAddPaths(string[])"/>。
     /// </remarks>
     public sealed class MenuTree
     {
@@ -25,7 +20,7 @@ namespace CascadeControl.Trees
         public MenuNode Root { get; } = new MenuNode(string.Empty);
 
         /// <summary>
-        /// 第一層節點集合，也就是 Miller Columns 最左邊那一欄的內容。
+        /// 第一層節點。
         /// </summary>
         public IReadOnlyList<MenuNode> TopLevelNodes => Root.Children;
 
@@ -40,7 +35,7 @@ namespace CascadeControl.Trees
         public int Height => GetLeaves().Select(leaf => leaf.Depth).DefaultIfEmpty(0).Max();
 
         /// <summary>
-        /// 建立空的選單樹。
+        /// 建立空樹。
         /// </summary>
         public MenuTree()
         {
@@ -65,39 +60,27 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 由資料列建立選單樹。各列長度可以不同；遇到有問題的資料只會寫進警告，不會丟例外。
+        /// 由資料列建樹；資料有問題只寫進警告，不丟例外。
         /// </summary>
         /// <param name="rows">
-        /// 資料列，每列由左至右代表第 1 層、第 2 層…，深度不足的尾欄留空。
-        /// 格子內可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點，會依笛卡兒積展開。
+        /// 每列由左至右為第 1 層、第 2 層…，尾欄可留空；格子可用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點。
         /// </param>
-        /// <param name="warnings">解析時發現的問題，重複的訊息只保留一筆。</param>
-        /// <returns>建好的選單樹。</returns>
+        /// <param name="warnings">警告，重複的只留一筆。</param>
         public static MenuTree FromRows(IEnumerable<string[]> rows, out IList<string> warnings)
         {
             return FromRows(rows, null, out warnings);
         }
 
-        /// <summary>
-        /// 由資料列建立選單樹，並指定每一列在來源檔中的行號，讓警告訊息能對應回原始檔案。
-        /// </summary>
+        /// <inheritdoc cref="FromRows(IEnumerable{string[]}, out IList{string})"/>
         /// <param name="rows">
-        /// 資料列，每列由左至右代表第 1 層、第 2 層…，深度不足的尾欄留空。
-        /// 格子內可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點，會依笛卡兒積展開。
+        /// 每列由左至右為第 1 層、第 2 層…，尾欄可留空；格子可用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點。
         /// </param>
-        /// <param name="sourceLineNumbers">
-        /// 與 <paramref name="rows"/> 等長的行號，警告訊息中的「第 N 列」取自這裡；
-        /// 傳 null 表示沒有來源行號，改用從 1 起算的流水號。
-        /// </param>
-        /// <param name="warnings">解析時發現的問題，重複的訊息只保留一筆。</param>
-        /// <returns>建好的選單樹。</returns>
+        /// <param name="sourceLineNumbers">警告訊息用的行號，與 <paramref name="rows"/> 等長；null 時用 1 起算的流水號。</param>
+        /// <param name="warnings">警告，重複的只留一筆。</param>
         /// <remarks>
-        /// 行號只用在警告訊息裡，樹本身仍然不知道資料來自哪裡，也不相依任何檔案格式。
-        /// 以下三種寫法都合法，會直接合併、不發警告：重複的路徑、先寫成葉節點後來又往下延伸、
-        /// 已經有下一層後來又單獨寫成葉節點。資料有問題的情況只有：中間缺一層（捨棄空欄之後的部分）、
-        /// <see cref="CellExpansion.NAME_SEPARATOR"/> 用法錯誤或單列展開超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/>（跳過整列）、
-        /// 路徑總數超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/>（放棄全部，回傳空樹）。
-        /// 這是 <see cref="ToRows(MenuRowStyle)"/> 的反向操作，<see cref="MenuRowStyle"/> 的每一種寫法都能讀回同一棵樹。
+        /// 重複路徑、葉節點再往下延伸都直接合併。中間缺層時捨棄缺口之後的部分；
+        /// <see cref="CellExpansion.NAME_SEPARATOR"/> 用法錯誤或單列展開過多時跳過該列；總數超過上限時回傳空樹。
+        /// 與 <see cref="ToRows(MenuRowStyle)"/> 互為反向。
         /// </remarks>
         /// <exception cref="ArgumentException">
         /// <paramref name="sourceLineNumbers"/> 不為 null，且長度與 <paramref name="rows"/> 不符。
@@ -143,8 +126,7 @@ namespace CascadeControl.Trees
 
                     if (cell.Length == 0)
                     {
-                        // 空欄後面還有資料，表示這一列中間缺了一層。
-                        // 不自動補位：偷偷改寫使用者的資料比丟掉還糟，所以捨棄後半段並發出警告。
+                        // 空欄後還有資料表示中間缺層；不自動補位，捨棄後半段並警告。
                         for (var rest = level + 1; rest < row.Length; rest++)
                         {
                             if (!string.IsNullOrWhiteSpace(row[rest])) { gapAt = level; break; }
@@ -158,30 +140,25 @@ namespace CascadeControl.Trees
                 if (gapAt >= 0)
                     messages.Add($"第 {rowNumber} 列：第 {gapAt + 1} 層是空的，但後面還有資料；空欄之後的欄位已略過。");
 
-                // 重複路徑、葉節點後來又往下延伸，AddPath 都會沿用既有節點，自然就合併了，不必另外處理。
+                // AddPath 沿用既有節點，重複路徑自然合併。
                 if (names.Count > 0) tree.AddPath(names);
             }
 
-            // 同一列展開成多條路徑之後，可能對每一條各發一次一模一樣的警告。
+            // 同一列展開的多條路徑可能發出相同警告。
             warnings = DropDuplicates(messages);
             return tree;
         }
 
         /// <summary>
-        /// 從第一層開始，依 <paramref name="nodeNames"/> 逐層往下建立節點；同名節點已存在就直接沿用。
+        /// 從第一層逐層加入路徑，已存在的節點直接沿用。
         /// </summary>
         /// <param name="nodeNames">
-        /// 由淺到深的節點名稱。以 <see cref="StringComparer.Ordinal"/> 原樣比對，不會 trim；
-        /// 不可含有 <see cref="CellExpansion.NAME_SEPARATOR"/>，要列舉兄弟節點請用 <see cref="ExpandAndAddPaths(string[])"/>。
+        /// 由淺到深的名稱，原樣比對（不 trim），不可含 <see cref="CellExpansion.NAME_SEPARATOR"/>。
         /// </param>
         /// <returns>路徑終點的節點。</returns>
-        /// <remarks>
-        /// 子節點依第一次加入的順序排列，所以呼叫的順序就是畫面上的順序。
-        /// 同一條路徑加入多次不會產生重複節點；以既有的葉節點為開頭繼續往下加，它就會變成中間節點。
-        /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="nodeNames"/> 為 null。</exception>
         /// <exception cref="ArgumentException">
-        /// <paramref name="nodeNames"/> 為空，或其中有 null、空白或含有 <see cref="CellExpansion.NAME_SEPARATOR"/> 的名稱。
+        /// <paramref name="nodeNames"/> 為空，或有名稱為空白或含 <see cref="CellExpansion.NAME_SEPARATOR"/>。
         /// </exception>
         public MenuNode AddPath(params string[] nodeNames)
         {
@@ -196,11 +173,11 @@ namespace CascadeControl.Trees
             var steps = nodeNames.ToList();
             if (steps.Count == 0) throw new ArgumentException("路徑至少要有一層。", nameof(nodeNames));
 
-            // 先整條檢查完才動樹，寧可不加也不要留下半條路徑。
+            // 先整條檢查完才動樹，避免留下半條路徑。
             var blankAt = steps.FindIndex(string.IsNullOrWhiteSpace);
             if (blankAt >= 0) throw new ArgumentException($"第 {blankAt + 1} 層的名稱是空的。", nameof(nodeNames));
 
-            // 含 | 的名稱寫出後讀回會被拆成多個兄弟節點，存不了檔；多半是想用 ExpandAndAddPaths 卻呼叫了 AddPath。
+            // 含 | 的名稱讀回時會被拆開。
             var separatorAt = steps.FindIndex(n => n.IndexOf(CellExpansion.NAME_SEPARATOR) >= 0);
             if (separatorAt >= 0)
                 throw new ArgumentException(
@@ -213,19 +190,15 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 加入一整列路徑：每一格都可以用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點，依笛卡兒積展開後逐條呼叫 <see cref="AddPath(string[])"/>。
+        /// 加入一整列：每格可用 <see cref="CellExpansion.NAME_SEPARATOR"/> 列舉兄弟節點，依笛卡兒積展開後逐條加入。
         /// </summary>
         /// <param name="cells">由淺到深的格子，例如 <c>"Motor", "Axis X|Axis Y", "Home"</c>。</param>
-        /// <returns>每一條路徑的終點節點，依展開順序排列（越右邊的格子變化越快）。</returns>
-        /// <remarks>
-        /// 規則和讀取文字或檔案時相同，所以每個名稱都會先去除前後空白；這點和原樣比對的 <see cref="AddPath(string[])"/> 不同。
-        /// 沒有用到 <see cref="CellExpansion.NAME_SEPARATOR"/> 的一列，結果就等於先 trim 再呼叫 <see cref="AddPath(string[])"/>。
-        /// 整列先全部檢查完才動樹，有任何一格不合法就整列都不加。
-        /// </remarks>
+        /// <returns>各路徑的終點節點，依展開順序。</returns>
+        /// <remarks>名稱會先 trim（<see cref="AddPath(string[])"/> 不會）；任一格不合法就整列不加。</remarks>
         /// <exception cref="ArgumentNullException"><paramref name="cells"/> 為 null。</exception>
         /// <exception cref="ArgumentException">
-        /// <paramref name="cells"/> 為空；某一格是 null 或空白；<see cref="CellExpansion.NAME_SEPARATOR"/> 用法錯誤；
-        /// 或展開後超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/> 條路徑。
+        /// <paramref name="cells"/> 為空、有格子為空白、<see cref="CellExpansion.NAME_SEPARATOR"/> 用法錯誤，
+        /// 或展開超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/> 條。
         /// </exception>
         public IReadOnlyList<MenuNode> ExpandAndAddPaths(params string[] cells)
         {
@@ -260,9 +233,8 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 依第一次加入的順序列舉所有葉節點。
+        /// 依加入順序列舉所有葉節點。
         /// </summary>
-        /// <returns>葉節點序列。</returns>
         public IEnumerable<MenuNode> GetLeaves()
         {
             var stack = new Stack<MenuNode>();
@@ -282,25 +254,20 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 攤平成資料列：每個葉節點一列，欄數一律補到 <see cref="Height"/>。
+        /// 攤平成資料列：每個葉節點一列，欄數補到 <see cref="Height"/>。
         /// </summary>
-        /// <returns>資料列。</returns>
         public string[][] ToRows()
         {
             return ToRows(MenuRowStyle.Expanded);
         }
 
         /// <summary>
-        /// 攤平成資料列，欄數一律補到 <see cref="Height"/>。
+        /// 攤平成資料列，欄數補到 <see cref="Height"/>。
         /// </summary>
-        /// <param name="style">
-        /// 寫法，見 <see cref="MenuRowStyle"/>。<see cref="MenuRowStyle.Compact"/> 的規則見 <see cref="MenuTreeRowWriter.Compact"/>，
-        /// <see cref="MenuRowStyle.Outline"/> 的規則見 <see cref="MenuTreeRowWriter.Outline"/>；兩者都是同一棵樹只有一種寫法。
-        /// </param>
+        /// <param name="style">寫法，見 <see cref="MenuRowStyle"/>。</param>
         /// <returns>資料列；交給 <see cref="FromRows(IEnumerable{string[]}, out IList{string})"/> 會還原成同一棵樹。</returns>
         /// <remarks>
-        /// 要能完整讀回，展開後的路徑數不能超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/>，節點名稱也不能有前後空白；
-        /// 這兩項檢查在 Services 層寫出文字時才做，這裡不檢查。
+        /// 路徑數超過 <see cref="CellExpansion.MAX_EXPANDED_ROWS"/> 或名稱有前後空白時無法完整讀回；這裡不檢查。
         /// </remarks>
         /// <exception cref="ArgumentException">
         /// <paramref name="style"/> 不是 <see cref="MenuRowStyle.Expanded"/>，且有節點名稱含有 <see cref="CellExpansion.NAME_SEPARATOR"/>。

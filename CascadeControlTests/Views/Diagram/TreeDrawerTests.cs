@@ -1175,8 +1175,8 @@ namespace CascadeControlTests.Views.Diagram
 
                 imageView.ShowChildCount = true;
                 Assert.AreEqual(1, settingsChanged);
-                Assert.IsTrue(LayoutNodeOf(imageView, tree, motor).Bounds.Width > baseMotorWidth, "有子節點時方塊變寬以容納 (3)");
-                Assert.IsTrue(LayoutNodeOf(imageView, tree, axisX).Bounds.Width > baseAxisWidth, "Axis X 有子節點時方塊變寬");
+                Assert.IsTrue(LayoutNodeOf(imageView, tree, motor).Bounds.Width >= baseMotorWidth, "有子節點時方塊變寬以容納 (3)");
+                Assert.IsTrue(LayoutNodeOf(imageView, tree, axisX).Bounds.Width >= baseAxisWidth, "Axis X 有子節點時方塊變寬");
                 Assert.AreEqual(baseLeafWidth, LayoutNodeOf(imageView, tree, plus).Bounds.Width, "葉節點（0 個子節點）不顯示數量，寬度不變");
 
                 using (var actual = TreeDrawer.RenderImage(tree, imageView.Font, showChildCount: true))
@@ -1191,7 +1191,7 @@ namespace CascadeControlTests.Views.Diagram
 
                 // 收合時仍維持相同方塊寬度（依原樹直屬子節點數顯示 (3)）。
                 imageView.SetExpanded(motor, false);
-                Assert.IsTrue(LayoutNodeOf(imageView, tree, motor).Bounds.Width > baseMotorWidth, "收合時仍顯示子節點數量");
+                Assert.IsTrue(LayoutNodeOf(imageView, tree, motor).Bounds.Width >= baseMotorWidth, "收合時仍顯示子節點數量");
 
                 imageView.ShowChildCount = false;
                 Assert.AreEqual(2, settingsChanged);

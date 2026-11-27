@@ -716,9 +716,9 @@ namespace CascadeControlTests.Views.Diagram
                 Assert.AreEqual(100, f.View.ZoomPercent);
 
                 for (var i = 0; i < 30; i++) f.View.ZoomOut();
-                Assert.AreEqual(25, f.View.ZoomPercent);
+                Assert.AreEqual(20, f.View.ZoomPercent);
                 for (var i = 0; i < 30; i++) f.View.ZoomIn();
-                Assert.AreEqual(400, f.View.ZoomPercent);
+                Assert.AreEqual(500, f.View.ZoomPercent);
             }
         }
 

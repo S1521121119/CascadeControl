@@ -6,15 +6,11 @@ using System.Linq;
 namespace CascadeControl.Trees
 {
     /// <summary>
-    /// 選單樹中的一個節點。子節點依第一次加入的順序排列，同名的子節點只會有一個。
+    /// 樹的節點。子節點依加入順序排列，名稱不重複（<see cref="StringComparer.Ordinal"/>，區分大小寫）。
     /// </summary>
-    /// <remarks>
-    /// 名稱以 <see cref="StringComparer.Ordinal"/> 比對，區分大小寫。
-    /// 如果改成不分大小寫，來源資料中的 Reboot 和 reboot 會在沒有任何提示的情況下合併成一項，
-    /// 對 debug 選單來說等於少了一個選項。
-    /// </remarks>
     public sealed class MenuNode : ICascadeNode
     {
+        private const string DEFAULT_PATH_SEPARATOR = " > ";
         private readonly List<MenuNode> _children = new List<MenuNode>();
         private readonly Dictionary<string, MenuNode> _index = new Dictionary<string, MenuNode>(StringComparer.Ordinal);
 
@@ -38,17 +34,13 @@ namespace CascadeControl.Trees
         public MenuNode Parent { get; private set; }
 
         /// <summary>
-        /// 節點深度。樹根為 0，第一層（Level1）為 1。
+        /// 節點深度。樹根為 0，第一層為 1。
         /// </summary>
         public int Depth { get; private set; }
 
         /// <summary>
-        /// 在同一個父節點底下的兄弟顯示序號，由 1 起算；樹根為 0。
+        /// 在兄弟節點間的序號，依子節點順序由 1 起算；樹根為 0。
         /// </summary>
-        /// <remarks>
-        /// 序號只在同一層的兄弟節點之間計算，不是全樹的流水號，每一層都從 1 開始。
-        /// 數字取決於子節點排列順序，不是來源資料裡的欄位。
-        /// </remarks>
         public int SiblingNumber { get; private set; }
 
         /// <summary>
@@ -57,18 +49,15 @@ namespace CascadeControl.Trees
         public IReadOnlyList<MenuNode> Children => _children;
 
         /// <summary>
-        /// 是否為葉節點（沒有任何子節點）。
+        /// 是否為葉節點。
         /// </summary>
         public bool IsLeaf => _children.Count == 0;
 
         private string _displayText;
 
         /// <summary>
-        /// 畫面上的顯示文字，格式為 &lt;序號&gt;名稱，有子節點時再加上 " [+]"，例如 &lt;01&gt;A [+]、&lt;01&gt;A11。樹根為空字串。
+        /// 顯示文字：&lt;序號&gt;名稱，有子節點時加 " [+]"，例如 &lt;01&gt;A [+]。樹根為空字串。
         /// </summary>
-        /// <remarks>
-        /// 第一次讀取時才組字串並快取；子節點或名稱、序號改變時清除快取。
-        /// </remarks>
         public string DisplayText
         {
             get
@@ -92,17 +81,13 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 從第一層到本節點的完整路徑字串，只含名稱、不含序號，例如 A &gt; A1 &gt; A11。
+        /// 從第一層到本節點的名稱路徑，例如 A &gt; A1 &gt; A11。
         /// </summary>
-        /// <remarks>內容和來源資料寫的一樣，所以用在警告訊息裡，使用者可以直接拿去找出有問題的那一筆。</remarks>
         public string FullPathText => BuildPath(node => node.Name);
 
         /// <summary>
-        /// 從第一層到本節點經過的所有節點，由淺到深排列，不含樹根；樹根本身回傳空集合。
+        /// 從第一層到本節點的節點，由淺到深，不含樹根；樹根回傳空集合。
         /// </summary>
-        /// <remarks>
-        /// 呼叫端拿到節點就能直接用 foreach 逐層處理，不必自己沿著 <see cref="Parent"/> 往上找再反轉順序。
-        /// </remarks>
         public IReadOnlyList<MenuNode> FullPath
         {
             get
@@ -117,11 +102,11 @@ namespace CascadeControl.Trees
 
         private string BuildPath(Func<MenuNode, string> selector)
         {
-            return string.Join(" > ", FullPath.Select(selector));
+            return string.Join(DEFAULT_PATH_SEPARATOR, FullPath.Select(selector));
         }
 
         /// <summary>
-        /// 取得指定名稱的子節點，不存在就新增一個。同一個名稱重複呼叫，拿到的都是同一個節點。
+        /// 取得指定名稱的子節點，不存在就新增。
         /// </summary>
         /// <param name="name">子節點名稱。</param>
         /// <returns>既有或新建的子節點。</returns>
@@ -150,7 +135,7 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 檢查底下是否已存在指定名稱的子節點。
+        /// 是否有指定名稱的子節點。
         /// </summary>
         /// <param name="name">子節點名稱。</param>
         /// <returns>已存在時為 true。</returns>
@@ -160,11 +145,9 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 取得底下不重複的子節點名稱：若 <paramref name="baseName"/> 尚未使用則原樣回傳；
-        /// 若已存在，則在後綴依序加上 <c>" - 2"</c>、<c>" - 3"</c>… 直到不重複為止。
+        /// 取得不和現有子節點重複的名稱；重複時依序加上 <c>" - 2"</c>、<c>" - 3"</c>…。
         /// </summary>
         /// <param name="baseName">原始名稱。</param>
-        /// <returns>在本節點底下不重複的名稱。</returns>
         public string GetUniqueChildName(string baseName)
         {
             var key = baseName ?? string.Empty;
@@ -180,10 +163,9 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 深層複製本節點及其整棵子樹（脫離原本的父節點）。
+        /// 深層複製本節點與子樹，複本沒有父節點。
         /// </summary>
-        /// <param name="newName">複本的新名稱；傳 null 則沿用本節點名稱。</param>
-        /// <returns>獨立的節點子樹複本。</returns>
+        /// <param name="newName">複本名稱；null 時沿用本節點名稱。</param>
         public MenuNode CopySubtree(string newName = null)
         {
             var copy = new MenuNode(newName ?? Name);
@@ -192,7 +174,7 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 將 <paramref name="source"/> 底下的所有子孫節點遞迴合併（往下疊）至本節點底下。
+        /// 把 <paramref name="source"/> 的子孫合併到本節點底下，同名節點沿用既有的。
         /// </summary>
         /// <param name="source">來源節點。</param>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> 為 null。</exception>
@@ -200,7 +182,7 @@ namespace CascadeControl.Trees
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
 
-            // 先對來源做快照，即使把節點合併進自己或祖先節點也不會造成無窮迴圈。
+            // 先快照來源，合併進自己或祖先時才不會無窮迴圈。
             var stack = new Stack<KeyValuePair<IReadOnlyList<MenuNode>, MenuNode>>();
             stack.Push(new KeyValuePair<IReadOnlyList<MenuNode>, MenuNode>(source._children.ToList(), this));
 
@@ -223,11 +205,10 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 在同層本節點上方（前一個位置）插入 <paramref name="source"/> 的深層複本；
-        /// 若同層已有同名節點，則將 <paramref name="source"/> 的子孫節點往下疊合併至該既有節點。
+        /// 在本節點之前插入 <paramref name="source"/> 的複本，規則同 <see cref="InsertChildAt"/>。
         /// </summary>
-        /// <param name="source">要插入的來源節點。</param>
-        /// <param name="newName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
+        /// <param name="source">來源節點。</param>
+        /// <param name="newName">插入時的名稱；null 時沿用 <paramref name="source"/> 的名稱。</param>
         /// <returns>插入或合併後的節點。</returns>
         public MenuNode InsertSiblingBefore(MenuNode source, string newName = null)
         {
@@ -239,11 +220,10 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 在同層本節點下方（後一個位置）插入 <paramref name="source"/> 的深層複本；
-        /// 若同層已有同名節點，則將 <paramref name="source"/> 的子孫節點往下疊合併至該既有節點。
+        /// 在本節點之後插入 <paramref name="source"/> 的複本，規則同 <see cref="InsertChildAt"/>。
         /// </summary>
-        /// <param name="source">要插入的來源節點。</param>
-        /// <param name="newName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
+        /// <param name="source">來源節點。</param>
+        /// <param name="newName">插入時的名稱；null 時沿用 <paramref name="source"/> 的名稱。</param>
         /// <returns>插入或合併後的節點。</returns>
         public MenuNode InsertSiblingAfter(MenuNode source, string newName = null)
         {
@@ -255,12 +235,12 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 在本節點底下第 <paramref name="position"/> 個位置插入 <paramref name="source"/> 的深層複本；
-        /// 若已有同名子節點，則將 <paramref name="source"/> 的子孫節點往下疊合併至該既有節點，位置不變。
+        /// 在第 <paramref name="position"/> 個位置插入 <paramref name="source"/> 的複本；
+        /// 已有同名子節點時改為合併進該節點，位置不變。
         /// </summary>
-        /// <param name="position">插入位置（0-based）；超出範圍時夾到最前或最後，所以傳 <see cref="Children"/> 的數量就是加在最後。</param>
-        /// <param name="source">要插入的來源節點。</param>
-        /// <param name="newName">指定插入時使用的名稱；傳 null 則使用 <paramref name="source"/> 的名稱。</param>
+        /// <param name="position">插入位置（0-based），超出範圍時夾到頭尾。</param>
+        /// <param name="source">來源節點。</param>
+        /// <param name="newName">插入時的名稱；null 時沿用 <paramref name="source"/> 的名稱。</param>
         /// <returns>插入或合併後的節點。</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> 為 null。</exception>
         /// <exception cref="ArgumentException">名稱為空白或含有保留字元。</exception>
@@ -288,14 +268,11 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 把一個已經脫離樹的節點（連同它的子樹）原封不動接回本節點底下第 <paramref name="position"/> 個位置；不複製、不合併。
+        /// 把已脫離樹的節點原封不動接回第 <paramref name="position"/> 個位置，不複製、不合併。
         /// </summary>
-        /// <param name="position">插入位置（0-based）；超出範圍時夾到最前或最後。</param>
-        /// <param name="child">要接回的節點，通常是先前 <see cref="RemoveFromParent"/> 拿下來的那一個。</param>
-        /// <remarks>
-        /// 給復原／重做用：接回的是同一個物件，勾選、選取這些以節點為鍵的狀態才對得上。
-        /// 呼叫前請先用 <see cref="CanAttachChild"/> 確認。
-        /// </remarks>
+        /// <param name="position">插入位置（0-based），超出範圍時夾到頭尾。</param>
+        /// <param name="child">要接回的節點，通常來自 <see cref="RemoveFromParent"/>。</param>
+        /// <remarks>給復原／重做用：接回同一個物件，以節點為鍵的狀態才對得上。先用 <see cref="CanAttachChild"/> 確認。</remarks>
         /// <exception cref="InvalidOperationException"><paramref name="child"/> 還有父節點，或本節點底下已有同名的子節點。</exception>
         internal void AttachChildAt(int position, MenuNode child)
         {
@@ -312,7 +289,7 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// <paramref name="child"/> 能不能用 <see cref="AttachChildAt"/> 接回本節點底下：它沒有父節點、不是本節點或本節點的祖先，而且沒有同名的子節點。
+        /// <paramref name="child"/> 能否用 <see cref="AttachChildAt"/> 接回：沒有父節點、不是本節點或祖先、沒有同名子節點。
         /// </summary>
         internal bool CanAttachChild(MenuNode child)
         {
@@ -327,9 +304,9 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 將本節點從父節點底下移除，並重新計算同層兄弟節點的序號。
+        /// 從父節點移除本節點，並重排兄弟的序號。
         /// </summary>
-        /// <returns>成功移除時為 true；本節點為樹根或不在父節點底下時為 false。</returns>
+        /// <returns>是否移除；樹根為 false。</returns>
         public bool RemoveFromParent()
         {
             if (Parent == null) return false;
@@ -344,7 +321,7 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 改掉已經從父節點拿下來的節點名稱，接到新的父節點之前用（移動時避開同名）。
+        /// 改名已脫離樹的節點，移動時用來避開同名。
         /// </summary>
         /// <exception cref="InvalidOperationException">節點還接在父節點底下。</exception>
         internal void RenameDetached(string newName)
@@ -356,12 +333,11 @@ namespace CascadeControl.Trees
         }
 
         /// <summary>
-        /// 修改本節點名稱。若同層尚無同名節點，則直接原地改名；
-        /// 若同層已有同名節點，則將本節點的子樹往下疊合併至該既有節點，並移除本節點。
+        /// 改名；兄弟中已有同名節點時，改為把本節點合併進去並移除本節點。
         /// </summary>
         /// <param name="newName">新名稱。</param>
-        /// <returns>改名後的本節點，或合併後的既有同名節點。</returns>
-        /// <exception cref="InvalidOperationException">對樹根呼叫此方法。</exception>
+        /// <returns>本節點，或合併後的同名節點。</returns>
+        /// <exception cref="InvalidOperationException">對樹根呼叫。</exception>
         /// <exception cref="ArgumentException"><paramref name="newName"/> 為空白或含有保留字元。</exception>
         public MenuNode Rename(string newName)
         {
@@ -436,9 +412,8 @@ namespace CascadeControl.Trees
         IReadOnlyList<ICascadeNode> ICascadeNode.Children => _children;
 
         /// <summary>
-        /// 回傳 <see cref="Name"/>，方便除錯與記錄。
+        /// 回傳 <see cref="Name"/>。
         /// </summary>
-        /// <remarks>欄位上的顯示文字由 <see cref="ICascadeNode.DisplayText"/> 決定，不受這裡影響。</remarks>
         public override string ToString() => Name;
     }
 }
