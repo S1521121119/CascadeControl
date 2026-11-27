@@ -485,7 +485,9 @@ namespace CascadeControl.Trees
             public string ToName { get; set; }
 
             public MenuNode Parent(bool after) => after ? ToParent : FromParent;
+
             public int Index(bool after) => after ? ToIndex : FromIndex;
+
             public string Name(bool after) => after ? ToName : FromName;
         }
 

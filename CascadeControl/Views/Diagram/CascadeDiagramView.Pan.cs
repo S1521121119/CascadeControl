@@ -13,6 +13,7 @@ namespace CascadeControl.Views.Diagram
 
         // 超過捲軸範圍（或圖比視窗小）時的自由平移量。
         private Point _panOffset;
+
         private MenuTree _pannedTree;
         private bool _isPanning;
         private MouseButtons _panButton;

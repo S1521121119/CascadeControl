@@ -24,6 +24,7 @@ namespace CascadeControl.Views.Diagram
 
         // 尚未貼上的待剪下狀態（節點先留在樹上並畫成半透明，真正貼上時才移走）。
         private CascadeClipboard.PendingCut _pendingCut;
+
         private HashSet<MenuNode> _cutRoots;
         private bool _suppressPendingCutRedraw;
 

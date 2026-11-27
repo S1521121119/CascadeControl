@@ -42,7 +42,6 @@ namespace CascadeControlTests.Views.Diagram
                 var afterImagePoint = f.View.ClientToImage(shiftedCenter);
                 Assert.AreEqual(beforeImagePoint.X, afterImagePoint.X, 0.01f);
                 Assert.AreEqual(beforeImagePoint.Y, afterImagePoint.Y, 0.01f);
-
             }
         }
 

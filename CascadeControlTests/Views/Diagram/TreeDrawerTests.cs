@@ -801,7 +801,6 @@ namespace CascadeControlTests.Views.Diagram
                 var actualPoint = imageView.ImagePointOf(new Point(24, 18 + actualOffsetY));
                 Assert.AreEqual(24f, actualPoint.X, 0.01f);
                 Assert.AreEqual(18f, actualPoint.Y, 0.01f);
-
             }
         }
 
