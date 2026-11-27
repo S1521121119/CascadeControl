@@ -12,10 +12,16 @@ namespace MindMap
     public partial class MainForm : Form
     {
         private const string ROOT_NAME = "Root";
+        private const string ITEM_01_NAME = "Item 01";
+        private const string ITEM_02_NAME = "Item 02";
+        private const string ITEM_03_NAME = "Item 03";
+        private const string ITEM_03_01_NAME = "Item 04";
+        private const string ITEM_03_02_NAME = "Item 05";
         private const string FILE_FILTER = "CSV (*.csv)|*.csv|All files (*.*)|*.*";
 
         // 目前文件：存檔路徑（新文件為 null）與是否有未存的變更。
         private string _filePath;
+
         private bool _dirty;
 
         public MainForm() : this(null)
@@ -48,9 +54,18 @@ namespace MindMap
         private void NewDocument()
         {
             var tree = new MenuTree();
-            var root = tree.AddPath(ROOT_NAME);
+            var rootNode = tree.AddPath(ROOT_NAME);
+            rootNode.GetOrAddChild(ITEM_01_NAME);
+            rootNode.GetOrAddChild(ITEM_02_NAME);
+            var subNode = tree.AddPath(ROOT_NAME, ITEM_03_NAME);
+            subNode.GetOrAddChild(ITEM_03_01_NAME);
+            subNode.GetOrAddChild(ITEM_03_02_NAME);
+
             LoadTree(tree, null);
-            diagramView1.TrySelectNode(root);
+
+            diagramView1.SetExpanded(rootNode, true);
+            diagramView1.SetExpanded(subNode, true);
+            diagramView1.TrySelectNode(rootNode);
         }
 
         private void OpenFile(string filePath)

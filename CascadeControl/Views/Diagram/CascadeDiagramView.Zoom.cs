@@ -67,22 +67,33 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 重設平移與捲動位置；預設只還原捲動位置。
+        /// 重設自由平移與捲動位置。
         /// </summary>
         public virtual void ResetPan()
         {
-            if (AutoScrollPosition == Point.Empty) return;
+            var changed = _panOffset != Point.Empty;
+            _panOffset = Point.Empty;
+            if (AutoScrollPosition != Point.Empty)
+            {
+                AutoScrollPosition = Point.Empty;
+                changed = true;
+            }
 
-            AutoScrollPosition = Point.Empty;
-            NotifyPanChanged();
+            if (changed) NotifyPanChanged();
         }
 
         /// <summary>
-        /// 把圖面原點移到控制項座標 <paramref name="desiredScreenOffset"/>（縮放錨點用）；預設只能用捲軸吸收，子類別可擴充成自由平移。
+        /// 把圖面原點移到控制項座標 <paramref name="desiredScreenOffset"/>（縮放錨點用）；<see cref="AllowFreePan"/> 為 true 時超出捲軸範圍的部分由自由平移承接，否則只能用捲軸吸收。
         /// </summary>
         /// <param name="desiredScreenOffset">圖面原點在控制項用戶區的目標位置。</param>
         protected virtual void SetScreenOffset(Point desiredScreenOffset)
         {
+            if (AllowFreePan)
+            {
+                SetFreeScreenOffset(desiredScreenOffset);
+                return;
+            }
+
             GetTransform(out _, out var current);
             var scroll = AutoScrollPosition;
             var target = new Point(
@@ -93,10 +104,13 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 縮放或視窗大小改變後讓目前的畫面維持在合法範圍；預設不做事。
+        /// 縮放或視窗大小改變後讓目前的畫面維持在合法範圍；沒有自由平移量時不做事。
         /// </summary>
         protected virtual void ClampCurrentView()
         {
+            if (_panOffset == Point.Empty) return;
+
+            SetScreenOffset(GetScreenOffset());
         }
 
         // 往 direction 方向換到下一個級距（目前不在級距上時，先到最近的級距）。

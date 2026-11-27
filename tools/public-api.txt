@@ -461,6 +461,7 @@ CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeContro
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Trees.MenuTree Tree { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.CascadeDiagramDrawScope DrawScope { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property CascadeControl.Views.Diagram.CascadeDiagramUncheckedDisplay UncheckedDisplay { get; set; }
+CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean AllowFreePan { get; set; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean CanRedo { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean CanUndo { get; }
 CascadeControl.Views.Diagram.CascadeDiagramView :: public property System.Boolean IsEditing { get; }

@@ -28,7 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
             this.cascadeView1 = new CascadeControl.Views.Columns.CascadeColumnsView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.diagramView1 = new CascadeControl.Views.Diagram.CascadeDiagramView();
@@ -48,11 +47,11 @@
             this.cascadeView1.Location = new System.Drawing.Point(0, 0);
             this.cascadeView1.Name = "cascadeView1";
             this.cascadeView1.PathSeparator = "\\";
-            this.cascadeView1.Size = new System.Drawing.Size(343, 426);
+            this.cascadeView1.Size = new System.Drawing.Size(659, 213);
             this.cascadeView1.TabIndex = 0;
-            this.cascadeView1.CheckedChanged += new System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs>(this.CascadeView1_CheckedChanged);
             this.cascadeView1.SelectedPathChanged += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.CascadeView1_SelectedPathChanged);
             this.cascadeView1.NodeActivated += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.CascadeView1_NodeActivated);
+            this.cascadeView1.CheckedChanged += new System.EventHandler<CascadeControl.Trees.MenuCheckChangedEventArgs>(this.CascadeView1_CheckedChanged);
             // 
             // splitContainer2
             // 
@@ -61,6 +60,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.splitContainer2.Location = new System.Drawing.Point(12, 12);
             this.splitContainer2.Name = "splitContainer2";
+            this.splitContainer2.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
             // splitContainer2.Panel1
             // 
@@ -70,7 +70,7 @@
             // 
             this.splitContainer2.Panel2.Controls.Add(this.diagramView1);
             this.splitContainer2.Size = new System.Drawing.Size(659, 426);
-            this.splitContainer2.SplitterDistance = 343;
+            this.splitContainer2.SplitterDistance = 213;
             this.splitContainer2.TabIndex = 7;
             // 
             // diagramView1
@@ -82,7 +82,7 @@
             this.diagramView1.Location = new System.Drawing.Point(0, 0);
             this.diagramView1.Name = "diagramView1";
             this.diagramView1.ShowChecks = true;
-            this.diagramView1.Size = new System.Drawing.Size(312, 426);
+            this.diagramView1.Size = new System.Drawing.Size(659, 209);
             this.diagramView1.TabIndex = 5;
             this.diagramView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseClick);
             this.diagramView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseDoubleClick);

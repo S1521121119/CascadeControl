@@ -59,8 +59,20 @@ namespace CascadeControl.Views.Diagram
         /// <summary>
         /// 每次樹狀圖重畫並更新捲動大小後呼叫（在重新定位就地編輯框與重繪畫面之前）。
         /// </summary>
+        /// <remarks>預設：換成另一棵樹時重設平移與捲動位置；否則縮放以外的重畫會把畫面夾回合法範圍（<see cref="AllowFreePan"/> 為 false 時不做事）。</remarks>
         protected virtual void OnImageUpdated()
         {
+            if (!AllowFreePan) return;
+
+            if (!ReferenceEquals(Tree, _pannedTree))
+            {
+                _pannedTree = Tree;
+                _panOffset = Point.Empty;
+                if (AutoScrollPosition != Point.Empty) AutoScrollPosition = Point.Empty;
+                return;
+            }
+
+            if (!IsZooming) ClampCurrentView();
         }
 
         private void UpdateScrollSize()
@@ -69,9 +81,9 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 額外畫布平移量（控制項像素）；預設為 <see cref="Point.Empty"/>。
+        /// 額外畫布平移量（控制項像素）；預設為自由平移的量，<see cref="AllowFreePan"/> 為 false 時是 <see cref="Point.Empty"/>。
         /// </summary>
-        protected virtual Point PanOffset => Point.Empty;
+        protected virtual Point PanOffset => _allowFreePan ? _panOffset : Point.Empty;
 
         /// <summary>
         /// 圖畫在控制項上的縮放比例與位置：控制項座標 = 圖座標 × <paramref name="scale"/> + <paramref name="offset"/>。
@@ -212,6 +224,13 @@ namespace CascadeControl.Views.Diagram
         protected virtual void ShiftViewport(int dx, int dy)
         {
             if (dx == 0 && dy == 0) return;
+
+            if (AllowFreePan)
+            {
+                var current = GetScreenOffset();
+                SetScreenOffset(new Point(current.X + dx, current.Y + dy));
+                return;
+            }
 
             var target = new Point(Math.Max(0, -AutoScrollPosition.X - dx), Math.Max(0, -AutoScrollPosition.Y - dy));
             if (target == new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y)) return;

@@ -559,6 +559,7 @@ standalone.SetTree(menu);
 | `DrawScope` / `UncheckedDisplay` | 畫整棵樹或選取的子樹；沒勾的節點變淡或隱藏（`State` 為 `CascadeCheckableState` 時有效） |
 | `ZoomFactor`／`ZoomPercent` | 畫圖的倍率（1 = 100%）；整張圖以該倍率重畫，文字與線條保持清晰。`ZoomPercent` 為倍率百分比（唯讀） |
 | `ZoomIn()`／`ZoomOut()`／`ResetZoom()`／`FitToWindow()` | 依級距（25%…400%）放大縮小、回到 100%、縮放到整張圖放進視窗。選單操作以可視區中心為錨點；Ctrl+滾輪以游標為錨點 |
+| `AllowFreePan` | 是否允許按住 Shift + 左鍵拖曳自由平移畫布，預設 `true`；圖比視窗小或已捲到盡頭時也能把節點移到畫面中央（至少保留一小塊圖面在視窗內），拖曳中按 Esc 還原。設為 `false` 時只能用捲軸移動 |
 | `StepIntoCollapsed` | 在收合 [+] 的節點上按 → 是否自動展開並進入下一層，預設 `true`；`false` 時要先按空白鍵展開 |
 | `MultiSelectedNodes` / `ClearMultiSelection()` / `MultiSelectionChanged` | 框選或 Ctrl+點選的多選節點（依圖上前序排列）、取消多選、多選改變後觸發；有多選時 `Copy()`／`CopyPath()` 的對象是多選的節點，`Paste()`／`PasteAsChild()` 的位置跟著多選 |
 | `Redraw()` | 重畫；在外部直接修改節點而未呼叫 `RefreshColumns` 或 `State.Refresh` 時呼叫 |

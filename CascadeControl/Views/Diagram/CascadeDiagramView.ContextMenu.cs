@@ -38,6 +38,9 @@ namespace CascadeControl.Views.Diagram
             }
 
             var displayMenu = new ToolStripMenuItem("顯示");
+            displayMenu.DropDownItems.Add(CreateChoice("顯示編號", _showIndex, () => ShowIndex = !_showIndex));
+            displayMenu.DropDownItems.Add(CreateChoice("顯示子節點數量", _showChildCount, () => ShowChildCount = !_showChildCount));
+            displayMenu.DropDownItems.Add(new ToolStripSeparator());
             displayMenu.DropDownItems.Add(CreateCommand("符合視窗大小", FitToWindow));
             displayMenu.DropDownItems.Add(CreateCommand("重設縮放", ResetZoom));
             displayMenu.DropDownItems.Add(new ToolStripSeparator());

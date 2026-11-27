@@ -46,6 +46,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.splitContainer2.Location = new System.Drawing.Point(12, 40);
             this.splitContainer2.Name = "splitContainer2";
+            this.splitContainer2.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
             // splitContainer2.Panel1
             // 
@@ -55,7 +56,7 @@
             // 
             this.splitContainer2.Panel2.Controls.Add(this.diagramView1);
             this.splitContainer2.Size = new System.Drawing.Size(659, 398);
-            this.splitContainer2.SplitterDistance = 343;
+            this.splitContainer2.SplitterDistance = 199;
             this.splitContainer2.TabIndex = 7;
             // 
             // cascadeView1
@@ -65,7 +66,7 @@
             this.cascadeView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.cascadeView1.Location = new System.Drawing.Point(0, 0);
             this.cascadeView1.Name = "cascadeView1";
-            this.cascadeView1.Size = new System.Drawing.Size(343, 398);
+            this.cascadeView1.Size = new System.Drawing.Size(659, 199);
             this.cascadeView1.TabIndex = 0;
             this.cascadeView1.NodeActivated += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.CascadeView1_NodeActivated);
             // 
@@ -77,7 +78,7 @@
             this.diagramView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.diagramView1.Location = new System.Drawing.Point(0, 0);
             this.diagramView1.Name = "diagramView1";
-            this.diagramView1.Size = new System.Drawing.Size(312, 398);
+            this.diagramView1.Size = new System.Drawing.Size(659, 195);
             this.diagramView1.TabIndex = 5;
             this.diagramView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseClick);
             this.diagramView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseDoubleClick);

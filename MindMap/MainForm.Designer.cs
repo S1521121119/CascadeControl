@@ -230,13 +230,13 @@
             // mnuView
             // 
             this.mnuView.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.mnuViewShowIndex,
+            this.mnuViewShowChildCount,
+            this.mnuViewSep1,
             this.mnuViewZoomIn,
             this.mnuViewZoomOut,
             this.mnuViewResetZoom,
-            this.mnuFitToWindow,
-            this.mnuViewSep1,
-            this.mnuViewShowIndex,
-            this.mnuViewShowChildCount});
+            this.mnuFitToWindow});
             this.mnuView.Name = "mnuView";
             this.mnuView.Size = new System.Drawing.Size(44, 22);
             this.mnuView.Text = "&View";

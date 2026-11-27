@@ -2,6 +2,7 @@
 using CascadeControl.Trees;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -27,6 +28,19 @@ namespace CascadeControl.Views.Diagram
         /// <inheritdoc />
         protected override void OnMouseMove(MouseEventArgs e)
         {
+            if (_isPanning)
+            {
+                if ((e.Button & MouseButtons.Left) != 0)
+                {
+                    SetScreenOffset(new Point(
+                        _panStartScreenOffset.X + (e.Location.X - _panStartClient.X),
+                        _panStartScreenOffset.Y + (e.Location.Y - _panStartClient.Y)));
+                }
+
+                Cursor = Cursors.SizeAll;
+                return;
+            }
+
             base.OnMouseMove(e);
             if (_move != null && e.Button == MouseButtons.Left)
             {
@@ -39,8 +53,18 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <inheritdoc />
+        /// <remarks>
+        /// <see cref="AllowFreePan"/> 為 true 時，按住 Shift + 左鍵拖曳平移畫布，不觸發選取、展開、框選或搬移；編輯中則照常套用編輯。
+        /// </remarks>
         protected override void OnMouseDown(MouseEventArgs e)
         {
+            _swallowPanRelease = false;
+            if (AllowFreePan && _edit == null && e.Button == MouseButtons.Left && IsPanKeyDown)
+            {
+                BeginPan(e.Location);
+                return;
+            }
+
             // 編輯中按在圖上：這一下只用來套用輸入的名稱，不選取、不切換展開。
             if (_edit != null)
             {
@@ -66,6 +90,8 @@ namespace CascadeControl.Views.Diagram
         /// <inheritdoc />
         protected override void OnMouseClick(MouseEventArgs e)
         {
+            if (_isPanning || _swallowPanRelease) return;
+
             base.OnMouseClick(e);
             if (_swallowClick || _press != null || IsMoveDragging || (_move != null && _move.StartedWithControl) || TryToggleExpander(e)) return;
 
@@ -79,6 +105,8 @@ namespace CascadeControl.Views.Diagram
         /// <inheritdoc />
         protected override void OnMouseDoubleClick(MouseEventArgs e)
         {
+            if (_isPanning || _swallowPanRelease) return;
+
             base.OnMouseDoubleClick(e);
 
             // 連點兩下時第二下只會送 DoubleClick，當成第二次點擊再切換一次。
@@ -92,6 +120,13 @@ namespace CascadeControl.Views.Diagram
         /// <remarks>Click 與 DoubleClick 在 MouseUp 之前觸發，所以在這裡結束略過與多選手勢。</remarks>
         protected override void OnMouseUp(MouseEventArgs e)
         {
+            if (e.Button == MouseButtons.Left && (_isPanning || _swallowPanRelease))
+            {
+                _swallowPanRelease = false;
+                EndPan(restore: false, cursorLocation: e.Location);
+                return;
+            }
+
             base.OnMouseUp(e);
             _swallowClick = false;
             if (_press != null && e.Button == MouseButtons.Left) EndMarkPress();
@@ -104,6 +139,8 @@ namespace CascadeControl.Views.Diagram
         {
             base.OnMouseCaptureChanged(e);
             if (Capture) return;
+
+            if (_isPanning) EndPan(restore: false, cursorLocation: null);
 
             if (_move != null) EndMovePress(apply: false);
             if (_press == null) return;
@@ -264,6 +301,13 @@ namespace CascadeControl.Views.Diagram
                 }
 
                 return base.ProcessCmdKey(ref msg, keyData);
+            }
+
+            if (_isPanning && keyData == Keys.Escape)
+            {
+                EndPan(restore: true, cursorLocation: null);
+                _swallowPanRelease = true;
+                return true;
             }
 
             switch (keyData)
