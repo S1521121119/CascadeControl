@@ -895,7 +895,7 @@ namespace CascadeControlTests.Views.Columns
                 g.Clear(Color.Magenta);
 
                 var args = new CascadeDrawNodeEventArgs(
-                    g, view.Font, new Rectangle(0, 0, 120, 20), node, -1,
+                    g, view.Font, new Rectangle(0, 0, 120, 20), node, node.Name, -1,
                     isSelected: false, isFocusedColumn: false, isEnabled: true);
 
                 if (view is ProbeView probe) probe.Draw(args);

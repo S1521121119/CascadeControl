@@ -50,6 +50,8 @@ namespace CascadeControl.Views.Columns
         private CascadeColumnLayoutMode _columnLayoutMode = CascadeColumnLayoutMode.Fixed;
         private int _displayColumnCount;
         private bool _showTrail;
+        private bool _showIndex = true;
+        private bool _showChildCount;
         private Color _selectionBackColor = Color.Empty;
         private Color _selectionForeColor = Color.Empty;
         private Color _inactiveSelectionBackColor = Color.Empty;
@@ -264,6 +266,44 @@ namespace CascadeControl.Views.Columns
 
                 _showTrail = value;
                 SyncColumns();
+            }
+        }
+
+        /// <summary>
+        /// 是否在節點名稱前顯示同層序號（如 &lt;1&gt;，補零到同一欄節點數的位數）並啟用數字鍵跳轉；預設為 true。
+        /// </summary>
+        [Category("Cascade")]
+        [Description("true：在節點名稱前顯示同層序號並啟用數字鍵跳轉；false：只顯示節點名稱，數字鍵和字母一樣依名稱跳轉。")]
+        [DefaultValue(true)]
+        public bool ShowIndex
+        {
+            get => _showIndex;
+            set
+            {
+                if (_showIndex == value) return;
+
+                _showIndex = value;
+                ResetDigitJump();
+                InvalidateNodes();
+            }
+        }
+
+        /// <summary>
+        /// 是否在有子節點的節點名稱後顯示子節點數：一般是 (X)；<see cref="CheckBoxes"/> 為 true 且節點有勾選框時是 (x/X)，x 是勾選的子節點數。
+        /// 子節點數為 0 時不顯示，預設為 false。
+        /// </summary>
+        [Category("Cascade")]
+        [Description("true：在有子節點的節點名稱後加上 (數量)，有勾選框時是 (勾選數/數量)；false：只顯示節點名稱。")]
+        [DefaultValue(false)]
+        public bool ShowChildCount
+        {
+            get => _showChildCount;
+            set
+            {
+                if (_showChildCount == value) return;
+
+                _showChildCount = value;
+                InvalidateNodes();
             }
         }
 

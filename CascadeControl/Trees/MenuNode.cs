@@ -53,10 +53,6 @@ namespace CascadeControl.Trees
         /// </summary>
         public bool IsLeaf => _children.Count == 0;
 
-        // 欄位上的顯示文字只給 CascadeColumnsView 用，節點本身不保存；樹根為空字串。
-        string ICascadeNode.DisplayText =>
-            Parent == null ? string.Empty : CascadeNodeText.Format(SiblingNumber, Name, _children.Count > 0);
-
         /// <summary>
         /// 從第一層到本節點的名稱路徑，例如 A &gt; A1 &gt; A11。
         /// </summary>

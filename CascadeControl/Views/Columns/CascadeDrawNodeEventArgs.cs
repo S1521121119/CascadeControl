@@ -19,7 +19,7 @@ namespace CascadeControl.Views.Columns
         /// </summary>
         public CascadeDrawNodeEventArgs(
             Graphics graphics, Font font, Rectangle bounds,
-            ICascadeNode node, int columnIndex, bool isSelected, bool isFocusedColumn, bool isEnabled,
+            ICascadeNode node, string text, int columnIndex, bool isSelected, bool isFocusedColumn, bool isEnabled,
             bool isTrailNode = false, bool isMultiSelected = false)
         {
             IsTrailNode = isTrailNode;
@@ -28,6 +28,7 @@ namespace CascadeControl.Views.Columns
             Font = font;
             Bounds = bounds;
             Node = node;
+            Text = text ?? string.Empty;
             ColumnIndex = columnIndex;
             IsSelected = isSelected;
             IsFocusedColumn = isFocusedColumn;
@@ -45,6 +46,11 @@ namespace CascadeControl.Views.Columns
 
         /// <summary>這一列對應的節點。</summary>
         public ICascadeNode Node { get; }
+
+        /// <summary>
+        /// 這一列要顯示的文字：名稱，依 <see cref="CascadeColumnsView.ShowIndex"/>、<see cref="CascadeColumnsView.ShowChildCount"/> 加上序號與子節點數，有子節點時再加上 " [+]"。
+        /// </summary>
+        public string Text { get; }
 
         /// <summary>這一列所在的欄位索引，由 0 起算。</summary>
         public int ColumnIndex { get; }

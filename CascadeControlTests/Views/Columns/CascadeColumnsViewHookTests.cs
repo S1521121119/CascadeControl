@@ -2,6 +2,7 @@
 using CascadeControl.Trees;
 using CascadeControl.Views;
 using CascadeControl.Views.Columns;
+using CascadeControlTests.Trees;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Drawing;
@@ -224,7 +225,7 @@ namespace CascadeControlTests.Views.Columns
 
                 var bounds = new Rectangle(0, 0, 120, 20);
                 var args = new CascadeDrawNodeEventArgs(
-                    g, view.Font, bounds, new CascadeNode("Node", "WWWW"), -1,
+                    g, view.Font, bounds, new CascadeNode("Node"), "WWWW", -1,
                     isSelected: false, isFocusedColumn: false, isEnabled: true);
 
                 view.DrawWithTextBounds(args, new Rectangle(60, 0, 60, 20));
@@ -238,6 +239,55 @@ namespace CascadeControlTests.Views.Columns
                 var rightHalfHasText = Enumerable.Range(60, 60).Any(x => Enumerable.Range(0, 20).Any(y => bitmap.GetPixel(x, y).ToArgb() != back));
                 Assert.IsTrue(leftHalfIsBlank, "文字不可以畫到 textBounds 左邊");
                 Assert.IsTrue(rightHalfHasText, "文字要畫在 textBounds 裡");
+            }
+        }
+
+        [TestMethod]
+        public void ItemText_FollowsShowIndexAndShowChildCount()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            {
+                var tree = new MenuTree();
+                tree.ExpandAndAddPaths(TestTrees.Alternatives("N", 12), "x|y");
+                host.View.SetTree(tree);
+
+                var column = host.Columns[0];
+                string TextAt(int index) => column.GetItemText(column.Items[index]);
+
+                Assert.IsTrue(host.View.ShowIndex, "ShowIndex 預設為 true");
+                Assert.IsFalse(host.View.ShowChildCount, "ShowChildCount 預設為 false");
+                Assert.AreEqual("<01>N1 [+]", TextAt(0), "12 個兄弟時補零到兩位");
+                Assert.AreEqual("<12>N12 [+]", TextAt(11));
+
+                host.View.ShowIndex = false;
+                Assert.AreEqual("N1 [+]", TextAt(0));
+
+                host.View.ShowChildCount = true;
+                Assert.AreEqual("N1 (2) [+]", TextAt(0), "沒有勾選框時是 (X)");
+
+                host.View.CheckBoxes = true;
+                host.View.CheckSet.Check(tree.TopLevelNodes[0].Children[0]);
+                Assert.AreEqual("N1 (1/2) [+]", TextAt(0), "有勾選框時是 (x/X)");
+            }
+        }
+
+        [TestMethod]
+        public void DigitKeys_JumpByPositionOnlyWhenShowIndex()
+        {
+            using (var host = new ViewHost<CascadeColumnsView>())
+            {
+                var tree = new MenuTree();
+                tree.ExpandAndAddPaths(TestTrees.Alternatives("N", 12));
+                host.View.SetTree(tree);
+                var column = host.Columns[0];
+
+                Assert.IsTrue(ViewHost.RaiseKeyDown(column, Keys.D1));
+                Assert.IsTrue(ViewHost.RaiseKeyDown(column, Keys.D2));
+                Assert.AreSame(tree.TopLevelNodes[11], host.View.SelectedNode, "連續按 1、2 跳到第 12 個");
+
+                host.View.ShowIndex = false;
+                Assert.IsFalse(ViewHost.RaiseKeyDown(column, Keys.D3), "關閉 ShowIndex 時數字鍵不攔下");
+                Assert.AreSame(tree.TopLevelNodes[11], host.View.SelectedNode);
             }
         }
 

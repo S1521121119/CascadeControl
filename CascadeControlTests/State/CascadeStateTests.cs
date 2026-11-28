@@ -50,8 +50,8 @@ namespace CascadeControlTests.State
         public void SetTopLevelNodes_ClearsTreeAndSupportsCustomNodes()
         {
             var state = new CascadeState();
-            var child = new CascadeNode("Child", "Child");
-            var root = new CascadeNode("Root", "Root", children: new[] { child });
+            var child = new CascadeNode("Child");
+            var root = new CascadeNode("Root", children: new[] { child });
 
             state.SetTree(TestTrees.Template());
             state.SetTopLevelNodes(new ICascadeNode[] { root });
@@ -81,7 +81,7 @@ namespace CascadeControlTests.State
             Assert.IsTrue(state.IsLeafSelected);
             Assert.AreEqual(2, state.ActiveColumnIndex);
 
-            var missing = new CascadeNode("Missing", "Missing");
+            var missing = new CascadeNode("Missing");
             Assert.IsFalse(state.TrySelectPath(new ICascadeNode[] { motor, missing }));
             Assert.AreSame(motor, state.SelectedNode, "中途找不到時停在已比對成功的那一段");
             Assert.IsFalse(state.IsLeafSelected);

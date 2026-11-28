@@ -180,13 +180,19 @@ namespace CascadeControl.Views.Diagram
             // 同層編號（1-based）；預覽移動時照移動後的結果重算，會被移走的節點保留原樹的編號。
             public int Number { get; set; }
 
+            // 同層節點數（含自己），決定編號補零的位數；和 Number 一樣照預覽移動後的結果算，會被移走的節點用原樹的數量。
+            public int SiblingCount { get; set; }
+
             // 原樹的子節點數（含隱藏、收合的）；預覽移動時照移動後的結果重算。
             public int ChildCount { get; set; }
 
-            // 畫在名稱前的編號（如 <1>）；空字串表示不畫編號。排版量寬度和繪製都用這兩個字串。
+            // 勾選的子節點數，和 ChildCount 算法相同；沒有勾選資訊時為 null。
+            public int? CheckedChildCount { get; set; }
+
+            // 畫在名稱前的編號（如 <1>、<01>）；空字串表示不畫編號。排版量寬度和繪製都用這兩個字串。
             public string NumberText { get; set; } = string.Empty;
 
-            // 名稱，顯示子節點數時後面接 (n)；佔位方塊是空字串。
+            // 名稱，顯示子節點數時後面接 (X) 或 (x/X)；佔位方塊是空字串。
             public string NameText { get; set; } = string.Empty;
 
             // 在原樹的深度（Root 是 0），決定色系；佔位方塊是父節點的深度加 1。
@@ -228,8 +234,8 @@ namespace CascadeControl.Views.Diagram
         /// <see cref="CascadeDiagramDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
-        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;）；預設為 false。</param>
-        /// <param name="showChildCount">是否在有子節點的節點名稱後畫出子節點數量（如 (3)）；子節點數為 0 時不顯示，預設為 false。</param>
+        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;，補零到同層節點數的位數，12 個兄弟時是 &lt;01&gt;）；預設為 false。</param>
+        /// <param name="showChildCount">是否在有子節點的節點名稱後畫出子節點數量：沒有勾選資訊時是 (3)，有 isChecked 時是 (勾選數/數量)，如 (1/3)；子節點數為 0 時不顯示，預設為 false。</param>
         public static void Draw(
             PictureBox pictureBox,
             MenuTree tree,
@@ -265,8 +271,8 @@ namespace CascadeControl.Views.Diagram
         /// <see cref="CascadeDiagramDrawScope.WholeTree"/> 在它的外框外圍另外畫一圈矩形紅框。null 或不屬於 <paramref name="tree"/> 時當成沒有選取。
         /// </param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
-        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;）；預設為 false。</param>
-        /// <param name="showChildCount">是否在有子節點的節點名稱後畫出子節點數量（如 (3)）；子節點數為 0 時不顯示，預設為 false。</param>
+        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;，補零到同層節點數的位數，12 個兄弟時是 &lt;01&gt;）；預設為 false。</param>
+        /// <param name="showChildCount">是否在有子節點的節點名稱後畫出子節點數量：沒有勾選資訊時是 (3)，有 isChecked 時是 (勾選數/數量)，如 (1/3)；子節點數為 0 時不顯示，預設為 false。</param>
         public static Bitmap Render(
             MenuTree tree,
             Font font,
@@ -291,8 +297,8 @@ namespace CascadeControl.Views.Diagram
         /// <param name="uncheckedDisplay">有勾選資訊時，沒勾的節點怎麼呈現。</param>
         /// <param name="selectedNode">目前選取的節點，規則同 <see cref="Render"/>。</param>
         /// <param name="isExpanded">判斷有子節點的節點是否展開；收合的節點畫 [+]、不畫子節點。null 時全部展開。</param>
-        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;）；預設為 false。</param>
-        /// <param name="showChildCount">是否在有子節點的節點名稱後畫出子節點數量（如 (3)）；子節點數為 0 時不顯示，預設為 false。</param>
+        /// <param name="showIndex">是否在節點名稱前畫出同層編號（如 &lt;1&gt;，補零到同層節點數的位數，12 個兄弟時是 &lt;01&gt;）；預設為 false。</param>
+        /// <param name="showChildCount">是否在有子節點的節點名稱後畫出子節點數量：沒有勾選資訊時是 (3)，有 isChecked 時是 (勾選數/數量)，如 (1/3)；子節點數為 0 時不顯示，預設為 false。</param>
         /// <returns>圖與節點位置；用完要 Dispose。</returns>
         public static TreeImage RenderImage(
             MenuTree tree,
@@ -434,7 +440,11 @@ namespace CascadeControl.Views.Diagram
                 // 起點就是選取的節點，不另外框起來。
                 options.SelectedNode = null;
                 var start = BuildNode(selectedNode, 0, selectedNode.Depth, ghost: false, leaving: false, cut: false, options: options);
-                if (start != null) start.Number = selectedNode.SiblingNumber;
+                if (start != null)
+                {
+                    start.Number = selectedNode.SiblingNumber;
+                    start.SiblingCount = selectedNode.Parent?.Children.Count ?? 1;
+                }
                 return start == null ? new List<LayoutNode>() : new List<LayoutNode> { start };
             }
 
@@ -494,6 +504,7 @@ namespace CascadeControl.Views.Diagram
 
             var allFullyChecked = true;
             var number = 0;
+            var checkedCount = 0;
             var children = parent.Source.Children;
             var insertPreviewHere = preview != null && !parent.IsGhost && !parent.IsLeaving && ReferenceEquals(preview.Parent, parent.Source);
             var insertIndex = insertPreviewHere ? Math.Max(0, Math.Min(preview.InsertIndex, children.Count)) : -1;
@@ -503,6 +514,7 @@ namespace CascadeControl.Views.Diagram
                 foreach (var moved in preview.Nodes)
                 {
                     number++;
+                    if (options.IsChecked != null && options.IsChecked(moved)) checkedCount++;
                     var ghost = BuildNode(moved, parent.Level + 1, parent.Depth + 1, ghost: true, leaving: false, cut: false, options: options);
                     if (ghost == null) continue;
 
@@ -519,7 +531,11 @@ namespace CascadeControl.Views.Diagram
 
                 // 被移走的節點不佔編號；整棵被移走的子樹裡，子孫照原樹的順序編號。
                 var movedAway = preview != null && !preview.IsCopy && !parent.IsGhost && !parent.IsLeaving && preview.IsMoved(children[i]);
-                if (!movedAway) number++;
+                if (!movedAway)
+                {
+                    number++;
+                    if (options.IsChecked != null && options.IsChecked(children[i])) checkedCount++;
+                }
 
                 var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, parent.IsLeaving || movedAway, parent.IsCut, options);
                 if (child != null)
@@ -535,7 +551,12 @@ namespace CascadeControl.Views.Diagram
             if (insertPreviewHere && insertIndex >= children.Count) AddGhosts();
 
             parent.ChildCount = number;
+            parent.CheckedChildCount = options.IsChecked == null ? (int?)null : checkedCount;
             parent.IsFullyChecked = allFullyChecked;
+
+            // 會被移走的節點保留原樹的編號，補零的位數也照原樹的子節點數。
+            foreach (var child in parent.Children)
+                child.SiblingCount = child.IsLeaving && !parent.IsLeaving ? children.Count : number;
         }
 
         private static LayoutNode CreatePlaceholder(LayoutNode parent, Placeholder placeholder)
@@ -609,15 +630,13 @@ namespace CascadeControl.Views.Diagram
             }
         }
 
-        // 決定每個節點的編號與名稱文字；排版量寬度與繪製都直接用這裡的結果。
+        // 決定每個節點的編號與名稱文字（規則見 CascadeNodeText）；排版量寬度與繪製都直接用這裡的結果。
         private static void AssignTexts(List<LayoutNode> nodes, bool showIndex, bool showChildCount)
         {
             foreach (var node in nodes.Where(node => !node.IsPlaceholder))
             {
-                if (showIndex) node.NumberText = $"<{node.Number}>";
-                node.NameText = showChildCount && node.ChildCount > 0
-                    ? $"{node.Source.Name} ({node.ChildCount})"
-                    : node.Source.Name;
+                if (showIndex) node.NumberText = CascadeNodeText.Number(node.Number, node.SiblingCount);
+                node.NameText = CascadeNodeText.Name(node.Source.Name, showChildCount, node.ChildCount, node.CheckedChildCount);
             }
         }
 

@@ -722,8 +722,6 @@ namespace CascadeControl.Views.Columns
         {
             public string Name => string.Empty;
 
-            public string DisplayText => string.Empty;
-
             public IReadOnlyList<ICascadeNode> Children => NoNodes;
         }
 

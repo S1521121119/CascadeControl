@@ -222,7 +222,7 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 是否在節點名稱前顯示同層編號（如 &lt;1&gt;）並啟用數字鍵跳轉；預設為 false。
+        /// 是否在節點名稱前顯示同層編號（如 &lt;1&gt;，補零到同層節點數的位數，12 個兄弟時是 &lt;01&gt;）並啟用數字鍵跳轉；預設為 false。
         /// </summary>
         [Category("Cascade")]
         [Description("true：在節點名稱前顯示同層編號並啟用數字鍵跳轉；false：只顯示節點名稱並停用數字鍵跳轉。")]
@@ -241,10 +241,11 @@ namespace CascadeControl.Views.Diagram
         }
 
         /// <summary>
-        /// 是否在有子節點的節點名稱後顯示子節點數量（如 <c>Motor (3)</c>）；子節點數為 0 時不顯示，預設為 false。
+        /// 是否在有子節點的節點名稱後顯示子節點數量：一般是 <c>Motor (3)</c>；<see cref="ShowChecks"/> 為 true 時是 <c>Motor (1/3)</c>，前面是勾選的子節點數。
+        /// 子節點數為 0 時不顯示，預設為 false。
         /// </summary>
         [Category("Cascade")]
-        [Description("true：在有子節點的節點名稱後加上 (數量)，無子節點時不顯示；false：只顯示節點名稱。")]
+        [Description("true：在有子節點的節點名稱後加上 (數量)，ShowChecks 時是 (勾選數/數量)，無子節點時不顯示；false：只顯示節點名稱。")]
         [DefaultValue(false)]
         public bool ShowChildCount
         {

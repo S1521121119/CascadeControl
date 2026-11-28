@@ -22,11 +22,10 @@ namespace CascadeControlTests.Views
         public void CascadeNode_StoresValuesAndChildren()
         {
             var tag = new object();
-            var child = new CascadeNode("Child", "<child>");
-            var item = new CascadeNode("Name", "Text", tag, new[] { child });
+            var child = new CascadeNode("Child");
+            var item = new CascadeNode("Name", tag, new[] { child });
 
             Assert.AreEqual("Name", item.Name);
-            Assert.AreEqual("Text", item.DisplayText);
             Assert.AreSame(tag, item.Tag);
             Assert.AreSame(child, item.Children.Single());
             Assert.AreSame(child, ((ICascadeNode)item).Children.Single());
@@ -36,10 +35,9 @@ namespace CascadeControlTests.Views
         [TestMethod]
         public void CascadeNode_NullArguments_BecomeEmpty()
         {
-            var item = new CascadeNode(null, null);
+            var item = new CascadeNode(null);
 
             Assert.AreEqual(string.Empty, item.Name);
-            Assert.AreEqual(string.Empty, item.DisplayText);
             Assert.IsNull(item.Tag);
             Assert.AreEqual(0, item.Children.Count);
         }
@@ -47,8 +45,8 @@ namespace CascadeControlTests.Views
         [TestMethod]
         public void CascadeNode_ChildrenAreEditable()
         {
-            var item = new CascadeNode("A", "A");
-            item.Children.Add(new CascadeNode("B", "B"));
+            var item = new CascadeNode("A");
+            item.Children.Add(new CascadeNode("B"));
 
             Assert.AreEqual(1, ((ICascadeNode)item).Children.Count);
         }
@@ -60,7 +58,7 @@ namespace CascadeControlTests.Views
         [TestMethod]
         public void EventArgs_NoSelection_ExposesTopLevelNodes()
         {
-            var roots = new[] { new CascadeNode("A", "A"), new CascadeNode("B", "B") };
+            var roots = new[] { new CascadeNode("A"), new CascadeNode("B") };
 
             var args = new CascadeNodeEventArgs(null, roots);
 
@@ -123,10 +121,10 @@ namespace CascadeControlTests.Views
         [TestMethod]
         public void EventArgs_PathIsSnapshot()
         {
-            var path = new List<ICascadeNode> { new CascadeNode("A", "A") };
+            var path = new List<ICascadeNode> { new CascadeNode("A") };
             var args = new CascadeNodeEventArgs(path);
 
-            path.Add(new CascadeNode("B", "B"));
+            path.Add(new CascadeNode("B"));
 
             Assert.AreEqual(1, args.Path.Count);
         }
@@ -135,7 +133,7 @@ namespace CascadeControlTests.Views
         public void EventArgs_NullStepInPath_Throws()
         {
             Assert.ThrowsException<ArgumentException>(() =>
-                new CascadeNodeEventArgs(new ICascadeNode[] { new CascadeNode("A", "A"), null }));
+                new CascadeNodeEventArgs(new ICascadeNode[] { new CascadeNode("A"), null }));
         }
 
         [TestMethod]
@@ -181,7 +179,6 @@ namespace CascadeControlTests.Views
         private sealed class NullChildrenNode : ICascadeNode
         {
             public string Name => "X";
-            public string DisplayText => "X";
             public IReadOnlyList<ICascadeNode> Children => null;
         }
 

@@ -9,10 +9,10 @@
 ```
   第 1 欄          第 2 欄          第 3 欄（焦點）   第 4 欄
 +--------------+ +--------------+ +--------------+ +--------------+
-| <01>System   | | <01>Axis X   | | <01>Home     | | <01>Forward  |
-|[<02>Motor   ]| |[<02>Axis Y  ]| |#<02>Jog     #| | <02>Backward |
-| <03>IO       | | <03>Axis Z   | | <03>Speed    | |              |
-| <04>Diagnost.| |              | |              | |              |
+| <1>System    | | <1>Axis X    | | <1>Home      | | <1>Forward   |
+|[<2>Motor    ]| |[<2>Axis Y   ]| |#<2>Jog      #| | <2>Backward  |
+| <3>IO        | | <3>Axis Z    | | <3>Speed     | |              |
+| <4>Diagnost. | |              | |              | |              |
 +--------------+ +--------------+ +--------------+ +--------------+
 ```
 
@@ -146,10 +146,10 @@ string text = MenuTreeCsvText.Format(menu, MenuRowStyle.Outline);   // 轉回文
 ```csharp
 cascadeView1.SetTopLevelNodes(new[]
 {
-    new CascadeNode("System", "System", children: new[]   // 名稱、顯示文字
+    new CascadeNode("System", children: new[]
     {
-        new CascadeNode("Reboot", "Reboot", tag: myRebootCommand),
-        new CascadeNode("Shutdown", "Shutdown", tag: myShutdownCommand),
+        new CascadeNode("Reboot", tag: myRebootCommand),
+        new CascadeNode("Shutdown", tag: myShutdownCommand),
     }),
 });
 
@@ -159,19 +159,19 @@ var command = ((CascadeNode)e.Node).Tag;
 
 ### 接上自己的資料模型
 
-只要實作 `ICascadeNode` 的三個成員就行。這個介面不相依 WinForms，可以放在資料層。
+只要實作 `ICascadeNode` 的兩個成員就行。這個介面不相依 WinForms，可以放在資料層。
 
 ```csharp
 public sealed class DeviceNode : ICascadeNode
 {
-    public string Name { get; }                                    // 原始名稱，用於路徑文字
-    public string DisplayText => Name;                             // 欄位上顯示的文字，可以和 Name 不同
+    public string Name { get; }                                    // 欄位上顯示的名稱，也用於路徑文字
     public IReadOnlyList<ICascadeNode> Children => LoadChildren(); // 空集合代表終點
     // ...
 }
 ```
 
-數字鍵跳轉比對的是 `DisplayText` 開頭的 `<序號>`；想支援它，用 `CascadeNodeText.Format(序號, Name, 有沒有子節點)` 組顯示文字。
+欄位上的文字由控制項組出，資料不需要提供：`ShowIndex` 加上序號、`ShowChildCount` 加上子節點數，有子節點時再加上 ` [+]`（見[自訂外觀](#自訂外觀)）。
+欄位上的每個節點都會讀取 `Children` 的數量，所以 `Children` 至少要能便宜地回答「有幾個」；更深的子節點可以延遲建立。
 
 ### 讀取目前的選取
 
@@ -252,6 +252,7 @@ cascadeView1.DisplayColumnCount = menu.Height;   // 資料有幾層就設幾層
 | 焦點欄的選取底色、文字色 | `SelectionBackColor`、`SelectionForeColor`，預設為系統選取色 |
 | 非焦點欄的選取底色 | `InactiveSelectionBackColor`，預設為調淡的 `SelectionBackColor` |
 | 記憶軌跡項目的底色 | `TrailBackColor`，預設為系統淺灰色 |
+| 序號與子節點數 | `ShowIndex`（預設 true）在名稱前加上 `<序號>`，補零到同一欄節點數的位數（12 個時是 `<01>`…`<12>`），並啟用數字鍵跳轉；`ShowChildCount`（預設 false）在有子節點的名稱後加上 `(數量)`，開著 `CheckBoxes` 時是 `(勾選數/數量)`。有子節點的項目一律加上 ` [+]` |
 | `SelectedPathText` 的分隔字串 | `PathSeparator`，預設 `" => "` |
 | 完全自繪 | `DrawNode` 事件，設定 `e.Handled = true` 就會略過預設外觀 |
 
@@ -262,7 +263,7 @@ cascadeView1.DrawNode += (s, e) =>
     if (e.IsSelected || !(e.Node is MenuNode node) || !node.IsLeaf) return;
 
     e.Graphics.FillRectangle(SystemBrushes.Window, e.Bounds);
-    TextRenderer.DrawText(e.Graphics, e.Node.DisplayText, e.Font, e.Bounds, Color.DarkGreen,
+    TextRenderer.DrawText(e.Graphics, e.Text, e.Font, e.Bounds, Color.DarkGreen,
         TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     e.Handled = true;
 };
@@ -280,7 +281,7 @@ cascadeView1.DrawNode += (s, e) =>
   程式中組這種字串可以用 `CellExpansion.JoinNames`（`CascadeControl.Common`）。
 - **名稱**：前後空白會自動去除；**區分大小寫**，所以 `Reboot` 和 `reboot` 是兩個不同的項目。
 - **重複與延伸**：完全相同的路徑會合併。`A,B` 和 `A,B,C` 同時存在時，`B` 會變成中間節點，不算錯誤。
-- **顯示文字**：`MenuNode` 在欄位上（`ICascadeNode.DisplayText`，格式由 `CascadeNodeText.Format` 產生）顯示成 `<01>Name`，有子節點時再加上 ` [+]`；序號（`SiblingNumber`，由 1 起算）是它在同一層中第一次出現的順序。顯示文字只用在欄位上，路徑與記錄一律使用 `Name`。
+- **顯示文字**：欄位上顯示成 `<1>Name`，有子節點時再加上 ` [+]`；序號（`SiblingNumber`，由 1 起算）是它在同一層中第一次出現的順序，要不要顯示、要不要加上子節點數由 `ShowIndex`、`ShowChildCount` 決定（見[自訂外觀](#自訂外觀)）。路徑與記錄一律使用 `Name`。
 
 以下情況不會丟例外，而是寫進 `warnings`：
 
@@ -345,6 +346,8 @@ ActionStep,ActionBurnIn,Init|Stop,
 | ← | 退回上一欄，**選取也跟著退回**；更深的那一段留作記憶軌跡 |
 | Enter | 在選取的節點上觸發 `NodeActivated`，不論是不是終點（用 `e.IsLeaf` 判斷）；沒有選取時不觸發 |
 | Esc | 有多選時取消多選；沒有時清除選取（記憶軌跡保留），焦點回到第一欄 |
+| 數字鍵 | `ShowIndex` 為 true 時跳到序號相符的項目，連續輸入會累積成多位數（按 1、2 到 `<12>`）；false 時和字母一樣依名稱跳轉 |
+| 字母 | 跳到名稱開頭相符的項目（不分大小寫），連續輸入會累積成前綴 |
 | 滑鼠點選 | 點不同的項目等同改選；點路徑或記憶軌跡中的同一項，等同連按 ← 或 → 到那一欄；有多選時一併取消 |
 | 雙擊 | 在操作欄的節點上觸發 `NodeActivated` |
 | Ctrl＋點選 | 在同一欄內多選：切換那一個節點，不改選取、不進入節點（第一次 Ctrl＋點選時，那一欄原本選取的節點也算在內） |
@@ -506,6 +509,7 @@ cascadeView1.RefreshColumns();
 | `ActiveColumnIndex` | 目前操作中的欄位索引（0-based） |
 | `ColumnLayoutMode` / `DisplayColumnCount` | 欄位排版模式（`Fixed`、`Fill`、`Sliding`）與一次顯示的欄數 |
 | `ShowTrail` | 是否畫出記憶軌跡中的整段路線 |
+| `ShowIndex` / `ShowChildCount` | 名稱前是否加上 `<序號>`（並啟用數字鍵跳轉，預設 true）；名稱後是否加上 `(數量)`，有勾選框時是 `(勾選數/數量)`（預設 false） |
 | `StepBack()` / `StepForward()` | 和按 ← / → 相同的退回、進入一層（走記憶軌跡），不移動鍵盤焦點 |
 | `ClearTrail()` | 忘掉所有分支的記憶軌跡，只留目前的選取路徑 |
 | `ColumnWidth` / `ColumnSpacing` / `SelectionBackColor` / `SelectionForeColor` / `InactiveSelectionBackColor` / `TrailBackColor` / `MultiSelectBackColor` / `PathSeparator` | 外觀設定 |
@@ -562,6 +566,7 @@ standalone.SetTree(menu);
 | `ZoomFactor`／`ZoomPercent` | 畫圖的倍率（1 = 100%）；整張圖以該倍率重畫，文字與線條保持清晰。`ZoomPercent` 為倍率百分比（唯讀） |
 | `ZoomIn()`／`ZoomOut()`／`ResetZoom()`／`FitToWindow()` | 依級距（20%…500%）放大縮小、回到 100%、縮放到整張圖放進視窗。選單操作以可視區中心為錨點；`Ctrl`+滾輪或按住右鍵+滾輪以游標為錨點 |
 | `AllowFreePan` | 是否允許按住 Shift + 左鍵拖曳或右鍵拖曳自由平移畫布，預設 `true`；圖比視窗小或已捲到盡頭時也能把節點移到畫面中央（至少保留一小塊圖面在視窗內），拖曳中按 Esc 還原。設為 `false` 時只能用捲軸移動 |
+| `ShowIndex` / `ShowChildCount` | 名稱前是否畫出 `<序號>`（補零到同層節點數的位數，並啟用數字鍵跳轉）；名稱後是否畫出 `(數量)`，`ShowChecks` 時是 `(勾選數/數量)`。兩者預設 false |
 | `StepIntoCollapsed` | 在收合 [+] 的節點上按 → 是否自動展開並進入下一層，預設 `true`；`false` 時要先按空白鍵展開 |
 | `MultiSelectedNodes` / `ClearMultiSelection()` / `MultiSelectionChanged` | 框選或 Ctrl+點選的多選節點（依圖上前序排列）、取消多選、多選改變後觸發；有多選時 `Copy()`／`CopyPath()` 的對象是多選的節點，`Paste()`／`PasteAsChild()` 的位置跟著多選 |
 | `Redraw()` | 重畫；在外部直接修改節點而未呼叫 `RefreshColumns` 或 `State.Refresh` 時呼叫 |
@@ -671,7 +676,7 @@ standalone.SetTree(menu);
 | `MenuTree.FromRows(rows, out warnings)` / `ToRows(style)` | 與二維字串陣列互轉 |
 | `CellExpansion.NAME_SEPARATOR` / `MAX_EXPANDED_ROWS` | `|` 與展開上限 65,535 |
 | `CellExpansion.JoinNames(names)` | 把多個名稱串成一格 |
-| `MenuNode.Name` | 原始名稱；欄位顯示文字經由 `ICascadeNode.DisplayText` 取得 |
+| `MenuNode.Name` | 名稱，不含序號與 ` [+]` |
 | `MenuNode.FullPath` / `FullPathText` | 由第一層到本節點的節點序列與路徑字串 |
 | `MenuNode.Parent` / `Depth` / `SiblingNumber` / `IsLeaf` | 位置資訊 |
 | `MenuNode.CopySubtree([newName])` / `MergeSubtreeFrom(source)` | 複製與合併子樹 |

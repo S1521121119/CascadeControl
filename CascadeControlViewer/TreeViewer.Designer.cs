@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.cascadeView1 = new CascadeControl.Views.Columns.CascadeColumnsView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.diagramView1 = new CascadeControl.Views.Diagram.CascadeDiagramView();
@@ -45,9 +46,10 @@
             this.cascadeView1.DisplayColumnCount = 1;
             this.cascadeView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.cascadeView1.Location = new System.Drawing.Point(0, 0);
+            this.cascadeView1.Margin = new System.Windows.Forms.Padding(4);
             this.cascadeView1.Name = "cascadeView1";
             this.cascadeView1.PathSeparator = "\\";
-            this.cascadeView1.Size = new System.Drawing.Size(659, 213);
+            this.cascadeView1.Size = new System.Drawing.Size(988, 319);
             this.cascadeView1.TabIndex = 0;
             this.cascadeView1.SelectedPathChanged += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.CascadeView1_SelectedPathChanged);
             this.cascadeView1.NodeActivated += new System.EventHandler<CascadeControl.State.CascadeNodeEventArgs>(this.CascadeView1_NodeActivated);
@@ -58,7 +60,8 @@
             this.splitContainer2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.splitContainer2.Location = new System.Drawing.Point(12, 12);
+            this.splitContainer2.Location = new System.Drawing.Point(18, 18);
+            this.splitContainer2.Margin = new System.Windows.Forms.Padding(4);
             this.splitContainer2.Name = "splitContainer2";
             this.splitContainer2.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
@@ -69,8 +72,9 @@
             // splitContainer2.Panel2
             // 
             this.splitContainer2.Panel2.Controls.Add(this.diagramView1);
-            this.splitContainer2.Size = new System.Drawing.Size(659, 426);
-            this.splitContainer2.SplitterDistance = 213;
+            this.splitContainer2.Size = new System.Drawing.Size(988, 639);
+            this.splitContainer2.SplitterDistance = 319;
+            this.splitContainer2.SplitterWidth = 6;
             this.splitContainer2.TabIndex = 7;
             // 
             // diagramView1
@@ -80,9 +84,11 @@
             this.diagramView1.BackColor = System.Drawing.Color.White;
             this.diagramView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.diagramView1.Location = new System.Drawing.Point(0, 0);
+            this.diagramView1.Margin = new System.Windows.Forms.Padding(4);
             this.diagramView1.Name = "diagramView1";
             this.diagramView1.ShowChecks = true;
-            this.diagramView1.Size = new System.Drawing.Size(659, 209);
+            this.diagramView1.ShowChildCount = true;
+            this.diagramView1.Size = new System.Drawing.Size(988, 314);
             this.diagramView1.TabIndex = 5;
             this.diagramView1.NodeMouseClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseClick);
             this.diagramView1.NodeMouseDoubleClick += new System.EventHandler<CascadeControl.Views.CascadeNodeMouseEventArgs>(this.DiagramView1_NodeMouseDoubleClick);
@@ -91,10 +97,11 @@
             // TreeViewer
             // 
             this.AllowDrop = true;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(683, 450);
+            this.ClientSize = new System.Drawing.Size(1024, 675);
             this.Controls.Add(this.splitContainer2);
+            this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "TreeViewer";
             this.Text = "Tree Viewer";
             this.splitContainer2.Panel1.ResumeLayout(false);

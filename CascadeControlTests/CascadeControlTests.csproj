@@ -57,7 +57,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Common\CascadeNodeTextTests.cs" />
     <Compile Include="Common\CsvFileTests.cs" />
     <Compile Include="Common\CellExpansionTests.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramViewEditingTests.cs" />
@@ -87,6 +86,7 @@
     <Compile Include="State\CascadeStateEditingTests.cs" />
     <Compile Include="State\CascadeStateTests.cs" />
     <Compile Include="Views\CascadeNodeTests.cs" />
+    <Compile Include="Views\CascadeNodeTextTests.cs" />
     <Compile Include="Views\CascadeEditShortcutsTests.cs" />
     <Compile Include="Views\Columns\CascadeColumnsViewCheckBoxesTests.cs" />
     <Compile Include="Views\Columns\CascadeColumnsViewEditingTests.cs" />

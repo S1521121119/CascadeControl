@@ -217,7 +217,7 @@ namespace CascadeControl.Views.Columns
                 ItemHeight = ItemHeight,
                 ImeMode = ColumnImeMode,
 
-                // 讓 GetItemText（打字跳到項目、無障礙功能）也使用 ICascadeNode.DisplayText，而不是各實作自己的 ToString。
+                // 讓 GetItemText（無障礙功能）也使用畫在欄位上的文字（見 TextOf），而不是各實作自己的 ToString。
                 FormattingEnabled = true,
             };
 
@@ -269,9 +269,51 @@ namespace CascadeControl.Views.Columns
             }
         }
 
-        private static void Column_Format(object sender, ListControlConvertEventArgs e)
+        private void Column_Format(object sender, ListControlConvertEventArgs e)
         {
-            if (e.ListItem is ICascadeNode node) e.Value = node.DisplayText;
+            if (!(sender is ListBox list)) return;
+
+            var index = list.Items.IndexOf(e.ListItem);
+            if (index >= 0) e.Value = TextOf(list, index);
+        }
+
+        /// <summary>
+        /// 第 <paramref name="index"/> 列的文字：[&lt;序號&gt;]名稱[ (子節點數)]，有子節點時再加上 " [+]"。
+        /// </summary>
+        /// <remarks>
+        /// 序號與 <see cref="ShowIndex"/>、子節點數與 <see cref="ShowChildCount"/> 的規則見 <see cref="CascadeNodeText"/>；
+        /// 序號是節點在這一欄的位置，序號與節點數都不算插入時暫放的空白列。
+        /// </remarks>
+        private string TextOf(ListBox list, int index)
+        {
+            if (!(list.Items[index] is ICascadeNode node) || node is EditPlaceholder) return string.Empty;
+
+            var childCount = CascadeNavigator.ChildrenOf(node).Count;
+            int? checkedChildCount = null;
+            if (_showChildCount && TryGetCheckableNode(node, out var menuNode))
+            {
+                var checkSet = CheckSet;
+                checkedChildCount = menuNode.Children.Count(child => checkSet.IsChecked(child));
+            }
+
+            var text = CascadeNodeText.Name(node.Name, _showChildCount, childCount, checkedChildCount);
+            if (_showIndex)
+            {
+                var placeholderRow = PlaceholderRow(list);
+                var number = placeholderRow >= 0 && placeholderRow < index ? index : index + 1;
+                var siblingCount = list.Items.Count - (placeholderRow >= 0 ? 1 : 0);
+                text = CascadeNodeText.Number(number, siblingCount) + text;
+            }
+
+            return childCount > 0 ? text + " [+]" : text;
+        }
+
+        // 這一欄裡插入用的空白列在第幾列；沒有時為 -1。
+        private int PlaceholderRow(ListBox list)
+        {
+            return _edit != null && ReferenceEquals(_edit.List, list) && _edit.RowNode is EditPlaceholder
+                ? list.Items.IndexOf(_edit.RowNode)
+                : -1;
         }
 
         /// <summary>

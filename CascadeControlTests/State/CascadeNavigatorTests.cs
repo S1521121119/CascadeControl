@@ -19,12 +19,12 @@ namespace CascadeControlTests.State
         [TestInitialize]
         public void Setup()
         {
-            _d = new CascadeNode("D", "D");
-            _c = new CascadeNode("C", "C", children: new[] { _d });
-            _c2 = new CascadeNode("C2", "C2");
-            _b = new CascadeNode("B", "B", children: new[] { _c, _c2 });
-            _b2 = new CascadeNode("B2", "B2");
-            _a = new CascadeNode("A", "A", children: new[] { _b, _b2 });
+            _d = new CascadeNode("D");
+            _c = new CascadeNode("C", children: new[] { _d });
+            _c2 = new CascadeNode("C2");
+            _b = new CascadeNode("B", children: new[] { _c, _c2 });
+            _b2 = new CascadeNode("B2");
+            _a = new CascadeNode("A", children: new[] { _b, _b2 });
         }
 
         private CascadeNavigator WalkToD()
@@ -283,8 +283,8 @@ namespace CascadeControlTests.State
         public void PathWithTrail_StopsOnCycle()
         {
             // 兩個節點互為子節點：記憶沿線往下查時不可無窮迴圈。
-            var x = new CascadeNode("X", "X");
-            var y = new CascadeNode("Y", "Y", children: new[] { x });
+            var x = new CascadeNode("X");
+            var y = new CascadeNode("Y", children: new[] { x });
             x.Children.Add(y);
 
             var nav = new CascadeNavigator();

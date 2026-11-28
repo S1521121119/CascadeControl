@@ -68,41 +68,6 @@ namespace CascadeControlTests.Trees
         }
 
         [TestMethod]
-        public void DisplayText_LeafAndBranchFormats()
-        {
-            var tree = new MenuTree();
-            var leaf = tree.AddPath("A", "A1");
-            var branch = leaf.Parent;
-
-            Assert.AreEqual("<01>A1", DisplayTextOf(leaf));
-            Assert.AreEqual("<01>A [+]", DisplayTextOf(branch));
-            Assert.AreEqual(string.Empty, DisplayTextOf(tree.Root));
-        }
-
-        [TestMethod]
-        public void DisplayText_RefreshesWhenLeafGainsChildren()
-        {
-            var tree = new MenuTree();
-            var node = tree.AddPath("A");
-            Assert.AreEqual("<01>A", DisplayTextOf(node));
-
-            tree.AddPath("A", "A1");
-
-            Assert.AreEqual("<01>A [+]", DisplayTextOf(node));
-        }
-
-        [TestMethod]
-        public void DisplayText_SiblingNumberIsTwoDigits()
-        {
-            var tree = new MenuTree();
-            var nodes = tree.ExpandAndAddPaths(TestTrees.Alternatives("N", 12));
-
-            Assert.AreEqual("<12>N12", DisplayTextOf(nodes[11]));
-        }
-
-        private static string DisplayTextOf(ICascadeNode node) => node.DisplayText;
-
-        [TestMethod]
         public void FullPathTextAndFullPath_ExcludeRoot()
         {
             var tree = new MenuTree();
@@ -115,14 +80,13 @@ namespace CascadeControlTests.Trees
         }
 
         [TestMethod]
-        public void CascadeNodeView_UsesNameAndDisplayText()
+        public void CascadeNodeView_UsesName()
         {
             var tree = new MenuTree();
             var leaf = tree.AddPath("A", "A1");
             ICascadeNode branch = leaf.Parent;
 
             Assert.AreEqual("A", branch.Name);
-            Assert.AreEqual("<01>A [+]", branch.DisplayText);
             Assert.AreSame(leaf, branch.Children.Single());
             Assert.AreEqual("A", branch.ToString());
         }

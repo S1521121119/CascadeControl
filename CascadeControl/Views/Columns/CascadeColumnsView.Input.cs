@@ -21,7 +21,7 @@ namespace CascadeControl.Views.Columns
         {
             if (_lists.IndexOf(list) < 0) return;
 
-            if (TryGetDigit(e, out var digit))
+            if (_showIndex && TryGetDigit(e, out var digit))
             {
                 // 攔下來，ListBox 原生的「按字元跳到開頭相符的項目」不要再動作。
                 e.Handled = true;
@@ -152,7 +152,7 @@ namespace CascadeControl.Views.Columns
         }
 
         /// <summary>
-        /// 在操作欄裡依數字跳到節點：比對的是 <see cref="ICascadeNode.DisplayText"/> 開頭 &lt;序號&gt; 標籤的數值（&lt;02&gt; 的數值是 2）。
+        /// <see cref="ShowIndex"/> 為 true 時，在操作欄裡依數字跳到序號相符的節點（序號是節點在這一欄的位置，&lt;02&gt; 的序號是 2）。
         /// </summary>
         /// <remarks>
         /// 先試「已輸入的數字 + 這一下」，找不到就只用這一下重新開始，兩者都找不到時不改選取。
@@ -163,7 +163,7 @@ namespace CascadeControl.Views.Columns
             var columnIndex = ActiveColumnIndex;
             if (columnIndex >= _lists.Count) return;
 
-            var nodes = _lists[columnIndex].Items.OfType<ICascadeNode>().ToList();
+            var nodes = _lists[columnIndex].Items.OfType<ICascadeNode>().Where(item => !(item is EditPlaceholder)).ToList();
 
             // 選取不是上次跳到的節點，代表中間做過別的操作，重新開始。
             if (!ReferenceEquals(_digitNode, SelectedNode)) ResetDigitJump();
@@ -192,7 +192,7 @@ namespace CascadeControl.Views.Columns
         }
 
         /// <summary>
-        /// 在操作欄裡依輸入的字元跳到名稱開頭相符的節點（略過開頭的 &lt;數字&gt; 標籤，不分大小寫）。
+        /// 在操作欄裡依輸入的字元跳到名稱開頭相符的節點（不分大小寫）。
         /// </summary>
         /// <remarks>
         /// 連續輸入會累積成前綴：C 選到 Config，再按 l 選到 Clock。
@@ -232,16 +232,14 @@ namespace CascadeControl.Views.Columns
 
         private static ICascadeNode FindByPrefix(IEnumerable<ICascadeNode> nodes, string prefix)
         {
-            return nodes.FirstOrDefault(node =>
-                CascadeNodeText.StripNumber(node.Name).StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+            return nodes.FirstOrDefault(node => node.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
         }
 
-        private static ICascadeNode FindByNumber(IEnumerable<ICascadeNode> nodes, string digits)
+        private static ICascadeNode FindByNumber(IReadOnlyList<ICascadeNode> nodes, string digits)
         {
-            if (!int.TryParse(digits, out var number)) return null;
+            if (!int.TryParse(digits, out var number) || number < 1 || number > nodes.Count) return null;
 
-            // 序號在顯示文字開頭的 <nn> 標籤裡（見 CascadeNodeText），不在 Name。
-            return nodes.FirstOrDefault(node => CascadeNodeText.TryGetNumber(node.DisplayText, out var value) && value == number);
+            return nodes[number - 1];
         }
 
         #endregion 數字鍵跳轉

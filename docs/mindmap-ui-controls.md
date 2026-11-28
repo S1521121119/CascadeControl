@@ -77,7 +77,7 @@
 
 - **File**：New、Open...、Save、Save As...、Exit。
 - **Edit**：Undo、Redo、Cut、Copy、Paste、Delete、Select All、Insert（開啟下拉時依選取與復原狀態更新啟用；快捷鍵僅設 `ShortcutKeyDisplayString` 供顯示，實際按鍵交由畫布處理）。
-- **View**：Zoom In、Zoom Out、Reset Zoom (100%)、Show Index（切換節點編號顯示與數字鍵跳轉）、Show Child Count（切換在有子節點的節點名稱後顯示直屬子節點數量，如 `Motor (3)`，無子節點時不顯示）。
+- **View**：Zoom In、Zoom Out、Reset Zoom (100%)、Show Index（切換節點編號顯示與數字鍵跳轉；編號補零到同層節點數的位數，如 `<01>`）、Show Child Count（切換在有子節點的節點名稱後顯示直屬子節點數量，如 `Motor (3)`；顯示勾選時是 `Motor (1/3)`，前面是勾選的子節點數；無子節點時不顯示）。
 
 ### 畫布右鍵選單
 

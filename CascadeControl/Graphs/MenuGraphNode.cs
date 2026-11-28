@@ -64,9 +64,6 @@ namespace CascadeControl.Graphs
         /// </summary>
         public bool IsRepeatedOnPath { get; }
 
-        // 欄位上的顯示文字只給 CascadeColumnsView 用，格式見 CascadeNodeText。
-        string ICascadeNode.DisplayText => CascadeNodeText.Format(SiblingNumber, Name, Vertex.OutDegree > 0);
-
         /// <summary>
         /// 子節點，每個後繼一個，依 <see cref="MenuVertex.Successors"/> 的順序。第一次讀取時才建立。
         /// </summary>

@@ -48,6 +48,7 @@ namespace CascadeControl.Views.Columns
                 e.Font,
                 e.Bounds,
                 node,
+                TextOf(list, e.Index),
                 columnIndex,
                 isSelected,
                 list.Focused,
@@ -168,7 +169,7 @@ namespace CascadeControl.Views.Columns
 
             TextRenderer.DrawText(
                 e.Graphics,
-                e.Node?.DisplayText ?? string.Empty,
+                e.Text,
                 e.Font,
                 textBounds,
                 fore,

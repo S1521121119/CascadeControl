@@ -6,6 +6,7 @@ using CascadeControl.Views.Columns;
 using CascadeControl.Views.Diagram;
 using CascadeControlTests.Trees;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -1191,6 +1192,33 @@ namespace CascadeControlTests.Views.Diagram
                 imageView.ShowChildCount = false;
                 Assert.AreEqual(2, settingsChanged);
                 Assert.AreEqual(baseMotorWidth, LayoutNodeOf(imageView, tree, motor).Bounds.Width);
+            }
+        }
+
+        [TestMethod]
+        public void ShowChildCount_WithChecks_MatchesCheckedOverTotalLabel()
+        {
+            var tree = new MenuTree();
+            tree.ExpandAndAddPaths("A", "A1|A2|A3");
+            tree.AddPath("B");
+
+            var expected = new MenuTree();
+            expected.ExpandAndAddPaths("A (1/3)", "A1|A2|A3");
+            expected.AddPath("B");
+
+            // 依名稱判斷勾選，兩棵樹勾的是對應的節點：A 與 A1。
+            var checkedNames = new HashSet<string> { "A", "A (1/3)", "A1" };
+            bool IsChecked(MenuNode node) => checkedNames.Contains(node.Name);
+
+            using (var font = new Font("Arial", 9f))
+            using (var actual = TreeDrawer.RenderImage(tree, font, IsChecked, showChildCount: true))
+            using (var reference = TreeDrawer.RenderImage(expected, font, IsChecked, showChildCount: false))
+            {
+                Assert.AreEqual(reference.Image.Size, actual.Image.Size, "有勾選資訊時子節點數顯示成 (勾選數/數量)");
+                for (var i = 0; i < reference.Nodes.Count; i++)
+                {
+                    Assert.AreEqual(reference.Nodes[i].Bounds, actual.Nodes[i].Bounds, reference.Nodes[i].Node.FullPathText);
+                }
             }
         }
 
