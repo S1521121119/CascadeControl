@@ -177,8 +177,17 @@ namespace CascadeControl.Views.Diagram
             // 需要畫在半透明圖層上的節點：拖曳預覽的新位置（IsGhost）或待剪下的節點（IsCut）。
             public bool IsTranslucent => IsGhost || IsCut;
 
-            // 預覽移動時重新算的編號（1-based）；0 表示照原樹的 SiblingNumber。
+            // 同層編號（1-based）；預覽移動時照移動後的結果重算，會被移走的節點保留原樹的編號。
             public int Number { get; set; }
+
+            // 原樹的子節點數（含隱藏、收合的）；預覽移動時照移動後的結果重算。
+            public int ChildCount { get; set; }
+
+            // 畫在名稱前的編號（如 <1>）；空字串表示不畫編號。排版量寬度和繪製都用這兩個字串。
+            public string NumberText { get; set; } = string.Empty;
+
+            // 名稱，顯示子節點數時後面接 (n)；佔位方塊是空字串。
+            public string NameText { get; set; } = string.Empty;
 
             // 在原樹的深度（Root 是 0），決定色系；佔位方塊是父節點的深度加 1。
             public int Depth { get; set; }
@@ -345,6 +354,7 @@ namespace CascadeControl.Views.Diagram
 
             var nodes = Flatten(roots);
             AssignColorGroups(nodes);
+            AssignTexts(nodes, showIndex, showChildCount);
 
             using (var format = CreateTextFormat())
             {
@@ -352,7 +362,7 @@ namespace CascadeControl.Views.Diagram
                 using (var scratch = new Bitmap(1, 1))
                 using (var g = Graphics.FromImage(scratch))
                 {
-                    size = Arrange(g, font, format, roots, nodes, showIndex, showChildCount);
+                    size = Arrange(g, font, format, roots, nodes);
                 }
 
                 var scale = Math.Min(zoom, Math.Min(MAX_BITMAP_SIDE / size.Width, MAX_BITMAP_SIDE / size.Height));
@@ -368,9 +378,9 @@ namespace CascadeControl.Views.Diagram
                     if (scale != 1f) g.ScaleTransform(scale, scale);
 
                     DrawLinks(g, nodes, showChecks, translucent: false);
-                    foreach (var node in nodes.Where(node => !node.IsTranslucent)) DrawNode(g, font, format, node, showChecks, showIndex, showChildCount);
+                    foreach (var node in nodes.Where(node => !node.IsTranslucent)) DrawNode(g, font, format, node, showChecks);
 
-                    if (nodes.Any(node => node.IsTranslucent)) DrawTranslucent(g, bitmap.Size, scale, font, format, nodes, showChecks, showIndex, showChildCount);
+                    if (nodes.Any(node => node.IsTranslucent)) DrawTranslucent(g, bitmap.Size, scale, font, format, nodes, showChecks);
                 }
 
                 var hitNodes = nodes
@@ -424,6 +434,7 @@ namespace CascadeControl.Views.Diagram
                 // 起點就是選取的節點，不另外框起來。
                 options.SelectedNode = null;
                 var start = BuildNode(selectedNode, 0, selectedNode.Depth, ghost: false, leaving: false, cut: false, options: options);
+                if (start != null) start.Number = selectedNode.SiblingNumber;
                 return start == null ? new List<LayoutNode>() : new List<LayoutNode> { start };
             }
 
@@ -506,13 +517,14 @@ namespace CascadeControl.Views.Diagram
                 if (placeholderHere != null && i == placeholderHere.Position) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
                 if (insertPreviewHere && i == insertIndex) AddGhosts();
 
-                var leaving = parent.IsLeaving || (preview != null && !preview.IsCopy && !parent.IsGhost && preview.IsMoved(children[i]));
-                if (!leaving) number++;
+                // 被移走的節點不佔編號；整棵被移走的子樹裡，子孫照原樹的順序編號。
+                var movedAway = preview != null && !preview.IsCopy && !parent.IsGhost && !parent.IsLeaving && preview.IsMoved(children[i]);
+                if (!movedAway) number++;
 
-                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, leaving, parent.IsCut, options);
+                var child = BuildNode(children[i], parent.Level + 1, parent.Depth + 1, parent.IsGhost, parent.IsLeaving || movedAway, parent.IsCut, options);
                 if (child != null)
                 {
-                    if (preview != null && !leaving && !parent.IsGhost) child.Number = number;
+                    child.Number = movedAway ? children[i].SiblingNumber : number;
                     parent.Children.Add(child);
                 }
 
@@ -522,6 +534,7 @@ namespace CascadeControl.Views.Diagram
             if (placeholderHere != null && placeholderHere.Position >= children.Count) parent.Children.Add(CreatePlaceholder(parent, placeholderHere));
             if (insertPreviewHere && insertIndex >= children.Count) AddGhosts();
 
+            parent.ChildCount = number;
             parent.IsFullyChecked = allFullyChecked;
         }
 
@@ -596,11 +609,23 @@ namespace CascadeControl.Views.Diagram
             }
         }
 
+        // 決定每個節點的編號與名稱文字；排版量寬度與繪製都直接用這裡的結果。
+        private static void AssignTexts(List<LayoutNode> nodes, bool showIndex, bool showChildCount)
+        {
+            foreach (var node in nodes.Where(node => !node.IsPlaceholder))
+            {
+                if (showIndex) node.NumberText = $"<{node.Number}>";
+                node.NameText = showChildCount && node.ChildCount > 0
+                    ? $"{node.Source.Name} ({node.ChildCount})"
+                    : node.Source.Name;
+            }
+        }
+
         #endregion 建立要畫的節點
 
         #region 排版
 
-        private static SizeF Arrange(Graphics g, Font font, StringFormat format, List<LayoutNode> roots, List<LayoutNode> nodes, bool showIndex, bool showChildCount)
+        private static SizeF Arrange(Graphics g, Font font, StringFormat format, List<LayoutNode> roots, List<LayoutNode> nodes)
         {
             var lineHeight = (float)Math.Ceiling(font.GetHeight(g));
             var boxHeight = lineHeight + PADDING_Y * 2f;
@@ -620,9 +645,9 @@ namespace CascadeControl.Views.Diagram
 
                 hasExpanders[node.Level] |= HasExpander(node);
 
-                if (showIndex) numberWidths[node.Level] = Math.Max(numberWidths[node.Level], (float)Math.Ceiling(MeasureWidth(g, font, format, NumberText(node))));
+                numberWidths[node.Level] = Math.Max(numberWidths[node.Level], (float)Math.Ceiling(MeasureWidth(g, font, format, node.NumberText)));
                 // 佔位方塊沒有名稱，留 PLACEHOLDER_NAME_LINES 個行高的寬度給蓋在上面的編輯框輸入。
-                var nameWidth = node.IsPlaceholder ? lineHeight * PLACEHOLDER_NAME_LINES : MeasureWidth(g, font, format, NameText(node, showChildCount));
+                var nameWidth = node.IsPlaceholder ? lineHeight * PLACEHOLDER_NAME_LINES : MeasureWidth(g, font, format, node.NameText);
                 nameWidths[node.Level] = Math.Max(nameWidths[node.Level], (float)Math.Ceiling(nameWidth));
             }
 
@@ -674,17 +699,6 @@ namespace CascadeControl.Views.Diagram
         {
             return string.IsNullOrEmpty(text) ? 0f : g.MeasureString(text, font, int.MaxValue, format).Width;
         }
-
-        private static string NameText(LayoutNode node, bool showChildCount)
-        {
-            if (node.IsPlaceholder) return string.Empty;
-
-            var count = node.Source.Children.Count;
-            return showChildCount && count > 0 ? $"{node.Source.Name} ({count})" : node.Source.Name;
-        }
-
-        private static string NumberText(LayoutNode node) =>
-            node.IsPlaceholder ? string.Empty : $"<{(node.Number > 0 ? node.Number : node.Source.SiblingNumber)}>";
 
         #endregion 排版
 
@@ -738,7 +752,7 @@ namespace CascadeControl.Views.Diagram
         /// 選取的節點照樣畫原本的外框，再往外留 <see cref="SELECTED_BORDER_GAP"/> 的空隙另外畫一圈矩形紅框，不蓋住原本的外框；
         /// 預覽移動時會被移走的節點：底色往白色調淡 <see cref="LEAVING_FADE"/>，外框與文字用灰色，外框是虛線，不畫選取框。
         /// </remarks>
-        private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks, bool showIndex, bool showChildCount, bool drawSelectionFrame = true)
+        private static void DrawNode(Graphics g, Font font, StringFormat format, LayoutNode node, bool showChecks, bool drawSelectionFrame = true)
         {
             var back = LevelColor(node);
             var border = Darken(back, BORDER_LIGHTNESS_RATIO);
@@ -790,14 +804,14 @@ namespace CascadeControl.Views.Diagram
                     g.DrawRectangle(borderPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
                 }
 
-                if (showIndex)
+                if (node.NumberText.Length > 0)
                 {
                     var numberLeft = bounds.Left + PADDING_X;
-                    g.DrawString(NumberText(node), font, foreBrush, new RectangleF(numberLeft, bounds.Top, node.NameLeft - numberLeft, bounds.Height), format);
+                    g.DrawString(node.NumberText, font, foreBrush, new RectangleF(numberLeft, bounds.Top, node.NameLeft - numberLeft, bounds.Height), format);
                 }
 
                 var nameRight = HasExpander(node) ? ExpanderBounds(node).Left - EXPANDER_GAP : bounds.Right - PADDING_X;
-                g.DrawString(NameText(node, showChildCount), font, foreBrush, new RectangleF(node.NameLeft, bounds.Top, nameRight - node.NameLeft, bounds.Height), format);
+                g.DrawString(node.NameText, font, foreBrush, new RectangleF(node.NameLeft, bounds.Top, nameRight - node.NameLeft, bounds.Height), format);
             }
 
             if (HasExpander(node)) DrawExpander(g, node, border);
@@ -840,7 +854,7 @@ namespace CascadeControl.Views.Diagram
         /// <summary>
         /// 半透明節點（拖曳預覽的新位置與待剪下的節點）以及通往它們的連線先畫在一張透明圖上，再以 <see cref="GHOST_OPACITY"/> 疊上去：整組一起變淡，重疊的地方不會更深。
         /// </summary>
-        private static void DrawTranslucent(Graphics g, Size size, float scale, Font font, StringFormat format, List<LayoutNode> nodes, bool showChecks, bool showIndex, bool showChildCount)
+        private static void DrawTranslucent(Graphics g, Size size, float scale, Font font, StringFormat format, List<LayoutNode> nodes, bool showChecks)
         {
             using (var layer = new Bitmap(size.Width, size.Height))
             {
@@ -851,7 +865,7 @@ namespace CascadeControl.Views.Diagram
                     if (scale != 1f) lg.ScaleTransform(scale, scale);
 
                     DrawLinks(lg, nodes, showChecks, translucent: true);
-                    foreach (var node in nodes.Where(node => node.IsTranslucent)) DrawNode(lg, font, format, node, showChecks, showIndex, showChildCount, drawSelectionFrame: false);
+                    foreach (var node in nodes.Where(node => node.IsTranslucent)) DrawNode(lg, font, format, node, showChecks, drawSelectionFrame: false);
                 }
 
                 using (var attributes = new ImageAttributes())

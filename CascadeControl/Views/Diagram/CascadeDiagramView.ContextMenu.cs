@@ -11,7 +11,7 @@ namespace CascadeControl.Views.Diagram
     {
         // 右鍵按下時點到的節點；點在空白處、用鍵盤開啟或功能表關閉後為 null。
         private MenuNode _contextMenuNode;
-
+        private const string DEFAULT_PATH_SEPARATOR = "/";
         #region 右鍵功能表
 
         // 每次開啟前重建：編輯項目依 ReadOnly 與對象決定；沒開 ShowChecks 或 State 沒有勾選能力時不列出「未勾選節點」。
@@ -120,7 +120,7 @@ namespace CascadeControl.Views.Diagram
 
             var collapseAll = new ToolStripMenuItem("全部摺疊")
             {
-                ShortcutKeyDisplayString = "/",
+                ShortcutKeyDisplayString = DEFAULT_PATH_SEPARATOR,
                 Enabled = hasChildren,
             };
             collapseAll.Click += (sender, e) => SetSubtreesExpanded(EditTargets(target), expanded: false);
