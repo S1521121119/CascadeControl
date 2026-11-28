@@ -120,6 +120,7 @@
     </Compile>
     <Compile Include="Views\Columns\CascadeColumnsViewDesigner.cs" />
     <Compile Include="Common\CsvFile.cs" />
+    <Compile Include="Common\CascadeNodeText.cs" />
     <Compile Include="Common\ICascadeNode.cs" />
     <Compile Include="Common\CellExpansion.cs" />
     <Compile Include="Trees\MenuCheckChangedEventArgs.cs" />

@@ -171,6 +171,8 @@ public sealed class DeviceNode : ICascadeNode
 }
 ```
 
+數字鍵跳轉比對的是 `DisplayText` 開頭的 `<序號>`；想支援它，用 `CascadeNodeText.Format(序號, Name, 有沒有子節點)` 組顯示文字。
+
 ### 讀取目前的選取
 
 `SelectedPathChanged` 和 `NodeActivated` 用的是同一個 `CascadeNodeEventArgs`：
@@ -278,7 +280,7 @@ cascadeView1.DrawNode += (s, e) =>
   程式中組這種字串可以用 `CellExpansion.JoinNames`（`CascadeControl.Common`）。
 - **名稱**：前後空白會自動去除；**區分大小寫**，所以 `Reboot` 和 `reboot` 是兩個不同的項目。
 - **重複與延伸**：完全相同的路徑會合併。`A,B` 和 `A,B,C` 同時存在時，`B` 會變成中間節點，不算錯誤。
-- **顯示文字**：`MenuNode.DisplayText` 在畫面上顯示成 `<01>Name`，有子節點時再加上 ` [+]`；序號（`SiblingNumber`，由 1 起算）是它在同一層中第一次出現的順序。顯示文字只用在欄位上，路徑與記錄一律使用 `Name`。
+- **顯示文字**：`MenuNode` 在欄位上（`ICascadeNode.DisplayText`，格式由 `CascadeNodeText.Format` 產生）顯示成 `<01>Name`，有子節點時再加上 ` [+]`；序號（`SiblingNumber`，由 1 起算）是它在同一層中第一次出現的順序。顯示文字只用在欄位上，路徑與記錄一律使用 `Name`。
 
 以下情況不會丟例外，而是寫進 `warnings`：
 
@@ -669,7 +671,7 @@ standalone.SetTree(menu);
 | `MenuTree.FromRows(rows, out warnings)` / `ToRows(style)` | 與二維字串陣列互轉 |
 | `CellExpansion.NAME_SEPARATOR` / `MAX_EXPANDED_ROWS` | `|` 與展開上限 65,535 |
 | `CellExpansion.JoinNames(names)` | 把多個名稱串成一格 |
-| `MenuNode.Name` / `DisplayText` | 原始名稱與欄位顯示文字 |
+| `MenuNode.Name` | 原始名稱；欄位顯示文字經由 `ICascadeNode.DisplayText` 取得 |
 | `MenuNode.FullPath` / `FullPathText` | 由第一層到本節點的節點序列與路徑字串 |
 | `MenuNode.Parent` / `Depth` / `SiblingNumber` / `IsLeaf` | 位置資訊 |
 | `MenuNode.CopySubtree([newName])` / `MergeSubtreeFrom(source)` | 複製與合併子樹 |

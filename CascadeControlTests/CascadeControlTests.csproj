@@ -57,6 +57,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Common\CascadeNodeTextTests.cs" />
     <Compile Include="Common\CsvFileTests.cs" />
     <Compile Include="Common\CellExpansionTests.cs" />
     <Compile Include="Views\Diagram\CascadeDiagramViewEditingTests.cs" />

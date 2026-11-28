@@ -74,9 +74,9 @@ namespace CascadeControlTests.Trees
             var leaf = tree.AddPath("A", "A1");
             var branch = leaf.Parent;
 
-            Assert.AreEqual("<01>A1", leaf.DisplayText);
-            Assert.AreEqual("<01>A [+]", branch.DisplayText);
-            Assert.AreEqual(string.Empty, tree.Root.DisplayText);
+            Assert.AreEqual("<01>A1", DisplayTextOf(leaf));
+            Assert.AreEqual("<01>A [+]", DisplayTextOf(branch));
+            Assert.AreEqual(string.Empty, DisplayTextOf(tree.Root));
         }
 
         [TestMethod]
@@ -84,11 +84,11 @@ namespace CascadeControlTests.Trees
         {
             var tree = new MenuTree();
             var node = tree.AddPath("A");
-            Assert.AreEqual("<01>A", node.DisplayText, "先讀一次，讓顯示文字被快取");
+            Assert.AreEqual("<01>A", DisplayTextOf(node));
 
             tree.AddPath("A", "A1");
 
-            Assert.AreEqual("<01>A [+]", node.DisplayText);
+            Assert.AreEqual("<01>A [+]", DisplayTextOf(node));
         }
 
         [TestMethod]
@@ -97,8 +97,10 @@ namespace CascadeControlTests.Trees
             var tree = new MenuTree();
             var nodes = tree.ExpandAndAddPaths(TestTrees.Alternatives("N", 12));
 
-            Assert.AreEqual("<12>N12", nodes[11].DisplayText);
+            Assert.AreEqual("<12>N12", DisplayTextOf(nodes[11]));
         }
+
+        private static string DisplayTextOf(ICascadeNode node) => node.DisplayText;
 
         [TestMethod]
         public void FullPathTextAndFullPath_ExcludeRoot()

@@ -53,32 +53,9 @@ namespace CascadeControl.Trees
         /// </summary>
         public bool IsLeaf => _children.Count == 0;
 
-        private string _displayText;
-
-        /// <summary>
-        /// 顯示文字：&lt;序號&gt;名稱，有子節點時加 " [+]"，例如 &lt;01&gt;A [+]。樹根為空字串。
-        /// </summary>
-        public string DisplayText
-        {
-            get
-            {
-                if (_displayText == null)
-                    _displayText = BuildDisplayText();
-                return _displayText;
-            }
-        }
-
-        private string BuildDisplayText()
-        {
-            return Parent == null
-                ? string.Empty
-                : $"<{SiblingNumber:00}>{Name}{(_children.Count > 0 ? " [+]" : string.Empty)}";
-        }
-
-        private void InvalidateDisplayText()
-        {
-            _displayText = null;
-        }
+        // 欄位上的顯示文字只給 CascadeColumnsView 用，節點本身不保存；樹根為空字串。
+        string ICascadeNode.DisplayText =>
+            Parent == null ? string.Empty : CascadeNodeText.Format(SiblingNumber, Name, _children.Count > 0);
 
         /// <summary>
         /// 從第一層到本節點的名稱路徑，例如 A &gt; A1 &gt; A11。
@@ -154,7 +131,6 @@ namespace CascadeControl.Trees
             var child = new MenuNode(key) { Parent = this, Depth = Depth + 1, SiblingNumber = _children.Count + 1 };
             _children.Add(child);
             _index.Add(key, child);
-            InvalidateDisplayText(); // 本節點可能剛從葉節點變成中間節點，" [+]" 要重算
             return child;
         }
 
@@ -364,7 +340,6 @@ namespace CascadeControl.Trees
             if (Parent != null) throw new InvalidOperationException("節點還接在父節點底下，請用 Rename。");
 
             Name = ValidateNodeName(newName);
-            InvalidateDisplayText();
         }
 
         /// <summary>
@@ -392,7 +367,6 @@ namespace CascadeControl.Trees
             parent._index.Remove(Name);
             Name = key;
             parent._index.Add(key, this);
-            InvalidateDisplayText();
             return this;
         }
 
@@ -410,18 +384,7 @@ namespace CascadeControl.Trees
 
         private void ReindexChildren()
         {
-            for (var i = 0; i < _children.Count; i++)
-            {
-                var child = _children[i];
-                var newNumber = i + 1;
-                if (child.SiblingNumber != newNumber)
-                {
-                    child.SiblingNumber = newNumber;
-                    child.InvalidateDisplayText();
-                }
-            }
-
-            InvalidateDisplayText();
+            for (var i = 0; i < _children.Count; i++) _children[i].SiblingNumber = i + 1;
         }
 
         private void UpdateDepthRecursive(int rootDepth)

@@ -13,7 +13,7 @@ namespace CascadeControlTests.Graphs
         {
             var nodes = TestGraphs.Small().CreateTopLevelNodes();
 
-            Assert.AreEqual("<01>A [+] / <02>Z", string.Join(" / ", nodes.Select(node => node.DisplayText)));
+            Assert.AreEqual("<01>A [+] / <02>Z", string.Join(" / ", nodes.Select(DisplayTextOf)));
             Assert.IsTrue(nodes.All(node => node.Parent == null && node.Depth == 1));
             Assert.IsTrue(nodes[1].IsLeaf);
         }
@@ -31,8 +31,8 @@ namespace CascadeControlTests.Graphs
             var underQ = top[1].Children[0];
 
             Assert.AreSame(underP.Vertex, underQ.Vertex);
-            Assert.AreEqual("<02>s", underP.DisplayText);
-            Assert.AreEqual("<01>s", underQ.DisplayText);
+            Assert.AreEqual("<02>s", DisplayTextOf(underP));
+            Assert.AreEqual("<01>s", DisplayTextOf(underQ));
             Assert.AreEqual("P > s", underP.FullPathText);
             Assert.AreEqual("Q > s", underQ.FullPathText);
             Assert.AreEqual(2, underP.Depth);
@@ -45,10 +45,12 @@ namespace CascadeControlTests.Graphs
             var nodes = TestGraphs.Small().CreateTopLevelNodes();
             var m = nodes[0].Children[1];
 
-            Assert.AreEqual("<02>m [+]", m.DisplayText);
-            Assert.AreEqual("<01>1", m.Children[0].DisplayText);
+            Assert.AreEqual("<02>m [+]", DisplayTextOf(m));
+            Assert.AreEqual("<01>1", DisplayTextOf(m.Children[0]));
             Assert.AreEqual("m", m.ToString());
         }
+
+        private static string DisplayTextOf(ICascadeNode node) => node.DisplayText;
 
         [TestMethod]
         public void Children_AreCreatedOnceAndCached()

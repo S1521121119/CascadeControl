@@ -15,7 +15,6 @@ namespace CascadeControl.Graphs
     public sealed class MenuGraphNode : ICascadeNode
     {
         private IReadOnlyList<MenuGraphNode> _children;
-        private string _displayText;
 
         internal MenuGraphNode(MenuVertex vertex, MenuGraphNode parent, int siblingNumber)
         {
@@ -65,18 +64,8 @@ namespace CascadeControl.Graphs
         /// </summary>
         public bool IsRepeatedOnPath { get; }
 
-        /// <summary>
-        /// 顯示文字，格式與 <see cref="Trees.MenuNode.DisplayText"/> 相同：&lt;序號&gt;名稱，有後繼時再加上 " [+]"。
-        /// </summary>
-        public string DisplayText
-        {
-            get
-            {
-                if (_displayText == null)
-                    _displayText = $"<{SiblingNumber:00}>{Name}{(Vertex.OutDegree > 0 ? " [+]" : string.Empty)}";
-                return _displayText;
-            }
-        }
+        // 欄位上的顯示文字只給 CascadeColumnsView 用，格式見 CascadeNodeText。
+        string ICascadeNode.DisplayText => CascadeNodeText.Format(SiblingNumber, Name, Vertex.OutDegree > 0);
 
         /// <summary>
         /// 子節點，每個後繼一個，依 <see cref="MenuVertex.Successors"/> 的順序。第一次讀取時才建立。

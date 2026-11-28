@@ -130,9 +130,6 @@ namespace CascadeControl.Views.Columns
 
         private ICascadeNode _digitNode;
 
-        private static readonly System.Text.RegularExpressions.Regex NumberTag =
-            new System.Text.RegularExpressions.Regex(@"^\s*<(\d+)>", System.Text.RegularExpressions.RegexOptions.Compiled);
-
         private static bool TryGetDigit(KeyEventArgs e, out char digit)
         {
             digit = '\0';
@@ -146,9 +143,6 @@ namespace CascadeControl.Views.Columns
         }
 
         private string _textBuffer = string.Empty;
-
-        private static readonly System.Text.RegularExpressions.Regex NumberPrefix =
-            new System.Text.RegularExpressions.Regex(@"^\s*<\d+>\s*", System.Text.RegularExpressions.RegexOptions.Compiled);
 
         private void ResetDigitJump()
         {
@@ -239,21 +233,15 @@ namespace CascadeControl.Views.Columns
         private static ICascadeNode FindByPrefix(IEnumerable<ICascadeNode> nodes, string prefix)
         {
             return nodes.FirstOrDefault(node =>
-                NumberPrefix.Replace(node.Name ?? string.Empty, string.Empty).StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+                CascadeNodeText.StripNumber(node.Name).StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
         }
 
         private static ICascadeNode FindByNumber(IEnumerable<ICascadeNode> nodes, string digits)
         {
             if (!int.TryParse(digits, out var number)) return null;
 
-            foreach (var node in nodes)
-            {
-                // 序號在顯示文字開頭的 <nn> 標籤裡（MenuNode.DisplayText），不在 Name。
-                var match = NumberTag.Match(node.DisplayText ?? string.Empty);
-                if (match.Success && int.TryParse(match.Groups[1].Value, out var value) && value == number) return node;
-            }
-
-            return null;
+            // 序號在顯示文字開頭的 <nn> 標籤裡（見 CascadeNodeText），不在 Name。
+            return nodes.FirstOrDefault(node => CascadeNodeText.TryGetNumber(node.DisplayText, out var value) && value == number);
         }
 
         #endregion 數字鍵跳轉
