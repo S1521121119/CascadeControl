@@ -174,7 +174,7 @@ namespace CascadeControl.Views.Diagram
 
         /// <summary>
         /// ↑↓ 在圖上看得到的同一層節點之間移動（可以跨父節點）；← 退回上一層、→ 進入下一層（記憶與 <see cref="State"/> 共用）；
-        /// 空白鍵展開或收合選取的節點；* 展開選取節點與其全部子孫；摺疊選取節點與其全部子孫/ <see cref="ShowIndex"/> 為 true 時，數字鍵在同層兄弟之間依編號跳轉；
+        /// 空白鍵展開或收合選取的節點，<see cref="ShowChecks"/> 為 true 時葉節點改為切換勾選；* 展開選取節點與其全部子孫；摺疊選取節點與其全部子孫/ <see cref="ShowIndex"/> 為 true 時，數字鍵在同層兄弟之間依編號跳轉；
         /// Enter 在選取的節點上觸發 <see cref="NodeActivated"/>。改的是 <see cref="State"/> 的選取，所以共享狀態的檢視一起動。
         /// </summary>
         /// <param name="e">按鍵資料。</param>
@@ -453,15 +453,41 @@ namespace CascadeControl.Views.Diagram
             if (FindImageNode(node) != null) OnNodeActivated(new CascadeNodeEventArgs(node.FullPath, null, PathSeparator));
         }
 
-        // 單選時切換選取的節點；多選時以第一個有子節點的目標為準，全部設成相反的狀態。
+        // 有子節點的目標切換展開收合；ShowChecks 開啟時，葉節點的目標切換勾選。
+        // 多選時兩種各以第一個目標為準，全部設成相反的狀態；勾選合成一個復原步驟。
         private void ToggleSelected()
         {
-            var targets = ExpansionTargets(SelectedMenuNode).Where(node => node != null && node.Children.Count > 0).ToList();
+            var targets = ExpansionTargets(SelectedMenuNode).Where(node => node != null).ToList();
+            ToggleExpansion(targets.Where(node => node.Children.Count > 0).ToList());
+            ToggleLeafChecks(targets.Where(node => node.Children.Count == 0).ToList());
+        }
+
+        private void ToggleExpansion(IReadOnlyList<MenuNode> targets)
+        {
             if (targets.Count == 0) return;
 
             var expanded = !IsExpanded(targets[0]);
             foreach (var node in targets) _expandOverrides[node] = expanded;
             Redraw();
+        }
+
+        private void ToggleLeafChecks(IReadOnlyList<MenuNode> leaves)
+        {
+            var checkSet = DisplayedCheckSet;
+            if (checkSet == null) return;
+
+            var targets = leaves.Where(checkSet.Contains).ToList();
+            if (targets.Count == 0) return;
+
+            var check = !checkSet.IsChecked(targets[0]);
+            using (checkSet.History.BeginGroup())
+            {
+                foreach (var node in targets)
+                {
+                    if (check) checkSet.Check(node);
+                    else checkSet.Uncheck(node);
+                }
+            }
         }
 
         private void ExpandAllSelected()

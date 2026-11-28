@@ -503,6 +503,38 @@ namespace CascadeControlTests.Views.Diagram
         }
 
         [TestMethod]
+        public void Space_WithShowChecks_TogglesExpansionOnInnerNodeAndCheckOnLeaf()
+        {
+            var tree = TestTrees.Template();
+            using (var imageView = new ProbeImageView { ShowChecks = true })
+            {
+                imageView.SetTree(tree);
+                var checkSet = ((CascadeCheckableState)imageView.State).CheckSet;
+                var system = Find(tree, "System");
+                var reboot = Find(tree, "System", "Reboot");
+
+                imageView.Press(Keys.Down);
+                Assert.AreSame(system, imageView.SelectedNode);
+                imageView.Press(Keys.Space);
+                Assert.IsTrue(imageView.IsExpanded(system));
+                Assert.IsFalse(checkSet.IsChecked(system));
+
+                imageView.Press(Keys.Right);
+                Assert.AreSame(reboot, imageView.SelectedNode);
+                imageView.Press(Keys.Space);
+                Assert.IsTrue(checkSet.IsChecked(reboot));
+                Assert.IsTrue(imageView.IsExpanded(system));
+
+                imageView.Press(Keys.Space);
+                Assert.IsFalse(checkSet.IsChecked(reboot));
+
+                imageView.ShowChecks = false;
+                imageView.Press(Keys.Space);
+                Assert.IsFalse(checkSet.IsChecked(reboot));
+            }
+        }
+
+        [TestMethod]
         public void SharedCheckableState_SharesPathSeparatorAndAutoRedrawsOnCheckAndEdit()
         {
             var tree = TestTrees.Template();

@@ -57,7 +57,24 @@ namespace CascadeControlTests.Trees
             AssertChecked(set, "System", "System > Info");
 
             Assert.IsTrue(set.Toggle(info));
-            AssertChecked(set, "System");
+            AssertChecked(set);
+        }
+
+        [TestMethod]
+        public void Uncheck_UnchecksAncestorsLeftWithoutCheckedChildren()
+        {
+            var set = new MenuCheckSet(TestTrees.Template());
+            set.Check(Find(set, "System", "Info", "Version"));
+            set.Check(Find(set, "System", "Reboot"));
+
+            Assert.IsTrue(set.Uncheck(Find(set, "System", "Info", "Version")));
+            AssertChecked(set, "System", "System > Reboot");
+
+            Assert.IsTrue(set.Uncheck(Find(set, "System", "Reboot")));
+            AssertChecked(set);
+
+            set.History.Undo();
+            AssertChecked(set, "System", "System > Reboot");
         }
 
         [TestMethod]
@@ -107,7 +124,7 @@ namespace CascadeControlTests.Trees
         }
 
         [TestMethod]
-        public void UncheckSiblings_ClearsWholeLevelButKeepsParent()
+        public void UncheckSiblings_ClearsWholeLevelAndEmptiedParent()
         {
             var set = new MenuCheckSet(TestTrees.Template());
             set.CheckSubtree(Find(set, "System"));
@@ -115,7 +132,7 @@ namespace CascadeControlTests.Trees
 
             Assert.IsTrue(set.UncheckSiblings(Find(set, "System", "Info")));
 
-            AssertChecked(set, "System", "Motor");
+            AssertChecked(set, "Motor");
         }
 
         [TestMethod]
@@ -414,26 +431,23 @@ namespace CascadeControlTests.Trees
             set.Uncheck(jog.Parent);
             set.History.Undo();
             set.History.Redo();
-            set.UncheckAll();
+            set.UncheckAll();                     // Uncheck 已經連同 Motor 一起取消，沒有變化，不觸發
 
-            Assert.AreEqual(5, events.Count);
+            Assert.AreEqual(4, events.Count);
 
             CollectionAssert.AreEqual(new[] { "Motor", "Motor > Axis X", "Motor > Axis X > Jog" }, Paths(events[0].Added));
             Assert.AreEqual(0, events[0].Removed.Count);
             Assert.AreSame(jog, events[0].Target);
             Assert.AreEqual(MenuCheckChangeReason.User, events[0].Reason);
 
-            CollectionAssert.AreEqual(new[] { "Motor > Axis X", "Motor > Axis X > Jog" }, Paths(events[1].Removed));
+            CollectionAssert.AreEqual(new[] { "Motor > Axis X", "Motor > Axis X > Jog", "Motor" }, Paths(events[1].Removed));
 
             Assert.AreEqual(MenuCheckChangeReason.Undo, events[2].Reason);
-            CollectionAssert.AreEqual(new[] { "Motor > Axis X", "Motor > Axis X > Jog" }, Paths(events[2].Added));
+            CollectionAssert.AreEqual(new[] { "Motor > Axis X", "Motor > Axis X > Jog", "Motor" }, Paths(events[2].Added));
             Assert.AreSame(jog.Parent, events[2].Target);
 
             Assert.AreEqual(MenuCheckChangeReason.Redo, events[3].Reason);
-            CollectionAssert.AreEqual(new[] { "Motor > Axis X", "Motor > Axis X > Jog" }, Paths(events[3].Removed));
-
-            Assert.IsNull(events[4].Target);
-            CollectionAssert.AreEqual(new[] { "Motor" }, Paths(events[4].Removed));
+            CollectionAssert.AreEqual(new[] { "Motor > Axis X", "Motor > Axis X > Jog", "Motor" }, Paths(events[3].Removed));
         }
 
         #endregion 事件
